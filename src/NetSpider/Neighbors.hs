@@ -10,6 +10,7 @@ module NetSpider.Neighbors
          LinkDirection(..)
        ) where
 
+import Data.Vector (Vector)
 import NetSpider.Timestamp (Timestamp)
 
 -- | Direction of a link found in neighbors.
@@ -42,6 +43,6 @@ data Neighbors n p =
   Neighbors
   { subjectNode :: n,
     observedTime :: Timestamp,
-    neighborLinks :: [FoundLink n p]
+    neighborLinks :: Vector (FoundLink n p)
   }
   deriving (Show,Eq)
