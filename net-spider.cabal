@@ -19,9 +19,12 @@ library
   ghc-options:          -Wall -fno-warn-unused-imports
   -- default-extensions:   
   -- other-extensions:     
-  exposed-modules:      NetSpider
+  exposed-modules:      NetSpider,
+                        NetSpider.Snapshot
   -- other-modules:        
-  build-depends:        base
+  build-depends:        base,
+                        unix-time,
+                        time
 
 -- executable net-spider
 --   default-language:     Haskell2010

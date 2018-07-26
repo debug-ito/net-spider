@@ -5,4 +5,3 @@
 -- 
 module NetSpider
        () where
-
