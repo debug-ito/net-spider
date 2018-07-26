@@ -6,14 +6,22 @@
 -- 
 module NetSpider.Spider
        ( Spider,
-         addNeighbors
+         addNeighbors,
+         getLatestSnapshot
        ) where
 
-import NetSpider.Neighbors (Neighbors)
+import Data.Vector (Vector)
 
--- | 'Spider' is an IO agent of NetSpider database.
+import NetSpider.Neighbors (Neighbors)
+import NetSpider.Snapshot (SnapshotElement)
+
+-- | An IO agent of the NetSpider database.
 data Spider = Spider
 
 -- | Add a snapshot of 'Neighbors' to the NetSpider database.
 addNeighbors :: Spider -> Neighbors n p -> IO ()
 addNeighbors = undefined
+
+-- | Get the latest snapshot graph from the NetSpider databsae.
+getLatestSnapshot :: Spider -> IO (Vector (SnapshotElement n p))
+getLatestSnapshot = undefined
