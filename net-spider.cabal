@@ -28,7 +28,8 @@ library
   build-depends:        base,
                         unix-time,
                         time,
-                        vector
+                        vector,
+                        greskell-websocket
 
 -- executable net-spider
 --   default-language:     Haskell2010

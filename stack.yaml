@@ -39,6 +39,9 @@ packages:
 # using the same syntax as the packages field.
 # (e.g., acme-missiles-0.3)
 # extra-deps: []
+extra-deps:
+- greskell-websocket-0.1.0.0
+- greskell-core-0.1.2.2
 
 # Override default flag values for local packages and extra-deps
 # flags: {}
