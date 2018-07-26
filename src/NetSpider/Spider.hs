@@ -39,3 +39,6 @@ addNeighbors = undefined
 -- | Get the latest snapshot graph from the NetSpider databsae.
 getLatestSnapshot :: Spider -> IO (Vector (SnapshotElement n p))
 getLatestSnapshot = undefined
+
+-- We can create much more complex function to query snapshot graphs,
+-- but at least we need 'getLatestSnapshot'.
