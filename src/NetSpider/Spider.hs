@@ -18,7 +18,7 @@ import NetSpider.Snapshot (SnapshotElement)
 -- | An IO agent of the NetSpider database.
 data Spider = Spider
 
--- | Add a snapshot of 'Neighbors' to the NetSpider database.
+-- | Add an observation of 'Neighbors' to the NetSpider database.
 addNeighbors :: Spider -> Neighbors n p -> IO ()
 addNeighbors = undefined
 
