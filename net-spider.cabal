@@ -22,11 +22,13 @@ library
   exposed-modules:      NetSpider,
                         NetSpider.Neighbors,
                         NetSpider.Timestamp,
-                        NetSpider.Spider
+                        NetSpider.Spider,
+                        NetSpider.Snapshot
   -- other-modules:        
   build-depends:        base,
                         unix-time,
-                        time
+                        time,
+                        vector
 
 -- executable net-spider
 --   default-language:     Haskell2010
