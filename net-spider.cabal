@@ -20,7 +20,8 @@ library
   -- default-extensions:   
   -- other-extensions:     
   exposed-modules:      NetSpider,
-                        NetSpider.Neighbors
+                        NetSpider.Neighbors,
+                        NetSpider.Timestamp
   -- other-modules:        
   build-depends:        base,
                         unix-time,

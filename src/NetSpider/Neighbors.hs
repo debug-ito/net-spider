@@ -1,19 +1,16 @@
 -- |
 -- Module: NetSpider.Neighbors
--- Description: Objects related to neighbors
+-- Description: Neighbors type
 -- Maintainer: Toshio Ito <debug.ito@gmail.com>
 --
 -- 
 module NetSpider.Neighbors
        ( Neighbors(..),
-         Timestamp(..),
          FoundLink(..),
          LinkDirection(..)
        ) where
 
-
-import Data.UnixTime (UnixTime)
-import Data.Time.LocalTime (TimeZone)
+import NetSpider.Timestamp (Timestamp)
 
 -- | Direction of a link found in neighbors.
 data LinkDirection =
@@ -35,14 +32,6 @@ data FoundLink n p =
     linkDirection :: Maybe LinkDirection
   }
   deriving (Show,Eq,Ord)
-
--- | Timestamp when the snapshot is observed.
-data Timestamp =
-  Timestamp
-  { unixTime :: UnixTime,
-    timeZone :: Maybe TimeZone
-  }
-  deriving (Show,Eq) -- UnixTime's Ord is dangerous.
 
 -- | 'Neighbors' is a set of neighbor links connected to a specific
 -- node (the subject node) observed at a specific time.
