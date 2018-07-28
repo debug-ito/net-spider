@@ -24,14 +24,16 @@ library
                         NetSpider.Timestamp,
                         NetSpider.Spider,
                         NetSpider.Snapshot
-  other-modules:        NetSpider.Snapshot.Internal
+  other-modules:        NetSpider.Snapshot.Internal,
+                        NetSpider.Spider.Internal.Graph
   build-depends:        base,
                         time,
                         vector,
                         greskell-websocket,
                         greskell,
                         aeson,
-                        safe-exceptions
+                        safe-exceptions,
+                        text
 
 -- executable net-spider
 --   default-language:     Haskell2010
