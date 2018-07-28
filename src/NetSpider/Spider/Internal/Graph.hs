@@ -71,7 +71,7 @@ instance Element VNeighbors where
 
 instance Vertex VNeighbors
 
-gGetNodeByEID :: EID -> Binder (Walk Transform () VNode)
+gGetNodeByEID :: EID -> Binder (Walk Transform s VNode)
 gGetNodeByEID vid = do
   var_vid <- newBind vid
   return $ gV [var_vid]
