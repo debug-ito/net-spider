@@ -16,9 +16,17 @@ module NetSpider.Spider
          clearAll
        ) where
 
+import Control.Exception.Safe (throwString)
 import Control.Monad (void)
-import Data.Greskell (source, sV', ($.), gDrop, liftWalk)
+import Data.Aeson (ToJSON)
+import Data.Greskell
+  ( source, sV', sAddV',
+    ($.), gDrop, liftWalk, gHas2, gId, gProperty, gHasLabel,
+    GValue,
+    runBinder, newBind
+  )
 import Data.Vector (Vector)
+import qualified Data.Vector as V
 import Network.Greskell.WebSocket
   ( Host, Port
   )
@@ -46,6 +54,38 @@ close sp = Gr.close $ spiderClient sp
 addNeighbors :: Spider -> Neighbors n p -> IO ()
 addNeighbors = undefined
 
+
+-- | ID of the Vertex kept internally in the graph DB.
+type VertexID = GValue
+
+vToMaybe :: Vector a -> Maybe a
+vToMaybe v = v V.!? 0
+
+getNode :: (ToJSON n) => Spider -> n -> IO (Maybe VertexID)
+getNode spider nid = fmap vToMaybe $ Gr.slurpResults =<< Gr.submit (spiderClient spider) script mbindings
+  where
+    (script, bindings) = runBinder $ do
+      var_nid <- newBind nid
+      return $ gId $. gHas2 "@node_id" var_nid $. gHasLabel "node" $. sV' [] $ source "g"
+    mbindings = Just bindings
+
+getOrMakeNode :: (ToJSON n) => Spider -> n -> IO VertexID
+getOrMakeNode spider nid = do
+  mvid <- getNode spider nid
+  case mvid of
+   Just vid -> return vid
+   Nothing -> makeNode
+  where
+    makeNode = expectOne =<< Gr.slurpResults =<< Gr.submit (spiderClient spider) script mbindings
+    (script, bindings) = runBinder $ do
+      var_nid <- newBind nid
+      return $ liftWalk gId $. gProperty "@node_id" var_nid $. sAddV' "node" $ source "g"
+    mbindings = Just bindings
+    expectOne v = case vToMaybe v of
+      Just e -> return e
+      Nothing -> throwString "Expects at least single result, but got nothing."
+      -- TODO: make decent exception spec.
+
 -- | Get the latest snapshot graph from the NetSpider database.
 --
 -- This function is very simple, and should be used only for testing.
@@ -57,7 +97,7 @@ getLatestSnapshot = undefined
 -- | Clear all content in the NetSpider database. This is mainly for
 -- testing.
 clearAll :: Spider -> IO ()
-clearAll spider = void $ Gr.slurpResults =<< Gr.submit (spiderClient spider) script Nothing
+clearAll spider = Gr.drainResults =<< Gr.submit (spiderClient spider) script Nothing
   where
     script = void $ gDrop $. liftWalk $ sV' [] $ source "g"
 

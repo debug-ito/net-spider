@@ -30,7 +30,9 @@ library
                         time,
                         vector,
                         greskell-websocket,
-                        greskell
+                        greskell,
+                        aeson,
+                        safe-exceptions
 
 -- executable net-spider
 --   default-language:     Haskell2010
