@@ -44,7 +44,8 @@ data SnapshotLink n p =
 -- | A node observed at a specific time.
 data SnapshotNode n =
   SnapshotNode
-  { _nodeId :: n
+  { _nodeId :: n,
+    _isOnBoundary :: Bool
     
     -- node attributes?
   }
