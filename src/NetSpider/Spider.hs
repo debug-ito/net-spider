@@ -36,7 +36,11 @@ close = undefined
 addNeighbors :: Spider -> Neighbors n p -> IO ()
 addNeighbors = undefined
 
--- | Get the latest snapshot graph from the NetSpider databsae.
+-- | Get the latest snapshot graph from the NetSpider database.
+--
+-- This function is very simple, and should be used only for testing.
+-- This function starts from an arbitrary node, traverses the history
+-- graph using the latest links with unlimited number of hops.
 getLatestSnapshot :: Spider -> IO (Vector (SnapshotElement n p))
 getLatestSnapshot = undefined
 
