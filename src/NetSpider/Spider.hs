@@ -7,6 +7,8 @@
 module NetSpider.Spider
        ( Spider,
          connectWS,
+         Host,
+         Port,
          close,
          addNeighbors,
          getLatestSnapshot
