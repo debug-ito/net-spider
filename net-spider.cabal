@@ -26,7 +26,6 @@ library
                         NetSpider.Snapshot
   other-modules:        NetSpider.Snapshot.Internal
   build-depends:        base,
-                        unix-time,
                         time,
                         vector,
                         greskell-websocket,
