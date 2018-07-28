@@ -5,12 +5,14 @@
 --
 -- 
 module NetSpider.Timestamp
-       ( Timestamp(..)
+       ( Timestamp(..),
+         fromEpochSecond
        ) where
 
-import Data.UnixTime (UnixTime)
+import Data.Int (Int64)
+import Data.UnixTime (UnixTime, fromEpochTime)
 import Data.Time.LocalTime (TimeZone)
-
+import Foreign.C.Types (CTime(CTime))
 
 -- | Timestamp when the snapshot is observed.
 data Timestamp =
@@ -20,3 +22,7 @@ data Timestamp =
   }
   deriving (Show,Eq) -- UnixTime's Ord is dangerous.
 
+-- | Make 'Timestamp' from seconds from the epoch. 'timeZone' is
+-- 'Nothing'.
+fromEpochSecond :: Int64 -> Timestamp
+fromEpochSecond sec = Timestamp (fromEpochTime $ CTime sec) Nothing
