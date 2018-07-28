@@ -10,7 +10,8 @@ import NetSpider.Neighbors
   ( FoundLink(..), LinkState(..), Neighbors(..)
   )
 import NetSpider.Snapshot
-  ( nodeId, linkTuple, isDirected, linkTimestamp
+  ( nodeId, linkTuple, isDirected, linkTimestamp,
+    isOnBoundary
   )
 import NetSpider.Spider
   ( Host, Port, Spider,
@@ -49,7 +50,9 @@ spec_getLatestSnapshot = withServer $ describe "getLatestSnapshot" $ do
     got <- fmap (sort . V.toList) $ getLatestSnapshot spider 
     let [Left got_n1, Left got_n2, Right got_link] = got
     nodeId got_n1 `shouldBe` "n1"
+    isOnBoundary got_n1 `shouldBe` False
     nodeId got_n2 `shouldBe` "n2"
+    isOnBoundary got_n2 `shouldBe` False
     linkTuple got_link `shouldBe` ("n1", "n2", "p1", "p9")
     isDirected got_link `shouldBe` True
     linkTimestamp got_link `shouldBe` fromEpochSecond 100
