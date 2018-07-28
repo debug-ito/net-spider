@@ -11,7 +11,8 @@ module NetSpider.Spider
          Port,
          close,
          addNeighbors,
-         getLatestSnapshot
+         getLatestSnapshot,
+         clearAll
        ) where
 
 import Data.Vector (Vector)
@@ -45,6 +46,11 @@ addNeighbors = undefined
 -- graph using the latest links with unlimited number of hops.
 getLatestSnapshot :: Spider -> IO (Vector (SnapshotElement n p))
 getLatestSnapshot = undefined
+
+-- | Clear all content in the NetSpider database. This is mainly for
+-- testing.
+clearAll :: Spider -> IO ()
+clearAll = undefined
 
 -- We can create much more complex function to query snapshot graphs,
 -- but at least we need 'getLatestSnapshot'.
