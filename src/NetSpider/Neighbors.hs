@@ -7,16 +7,22 @@
 module NetSpider.Neighbors
        ( Neighbors(..),
          FoundLink(..),
-         LinkDirection(..)
+         LinkState(..)
        ) where
 
 import Data.Vector (Vector)
 import NetSpider.Timestamp (Timestamp)
 
--- | Direction of a link found in neighbors.
-data LinkDirection =
-    SubjectToTarget
-  | TargetToSubject
+-- | State of the found link.
+data LinkState =
+    LinkUnused
+    -- ^ Link is possible, but not used.
+  | LinkToTarget
+    -- ^ Link is directional. It's from subject to target.
+  | LinkToSubject
+    -- ^ Link is directional. It's from target to subject.
+  | LinkBidirectional
+    -- ^ Link is bidirectional.
   deriving (Show,Eq,Ord,Bounded,Enum)
 
 -- | A link found in neighbors. The link connects a port in the
@@ -30,7 +36,7 @@ data FoundLink n p =
   { subjectPort :: p,
     targetNode :: n,
     targetPort :: p,
-    linkDirection :: Maybe LinkDirection
+    linkState :: LinkState
   }
   deriving (Show,Eq,Ord)
 
