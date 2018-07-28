@@ -40,10 +40,14 @@ packages:
 # (e.g., acme-missiles-0.3)
 # extra-deps: []
 extra-deps:
-- greskell-websocket-0.1.0.0
-- greskell-core-0.1.2.2
-- greskell-0.2.0.3
-- hspec-need-env-0.1.0.0
+- ../greskell/greskell-core
+- ../greskell/greskell
+- ../greskell/greskell-websocket
+
+## - greskell-websocket-0.1.0.0
+## - greskell-core-0.1.2.2
+## - greskell-0.2.0.3
+## - hspec-need-env-0.1.0.0
 
 # Override default flag values for local packages and extra-deps
 # flags: {}
