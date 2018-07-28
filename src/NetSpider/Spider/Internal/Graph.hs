@@ -21,12 +21,13 @@ import Data.Foldable (fold)
 import Data.Greskell
   ( FromGraphSON,
     Element(..), Vertex,
-    AVertexProperty,
+    AVertexProperty, AEdge,
     GTraversal, Transform, SideEffect, Walk, liftWalk,
     Binder, newBind,
     source, sV, sAddV, gHasLabel, gHas2, gId, gProperty, gPropertyV, gV,
     gAddE, gSideEffect, gTo, gFrom,
-    ($.), (<*.>)
+    ($.), (<*.>),
+    ToGTraversal,
   )
 import Data.Text (Text)
 import Data.Traversable (traverse)
@@ -87,22 +88,25 @@ gMakeNeighbors subject_vid link_pairs timestamp =
     mAddObservesEdge :: Binder (Walk SideEffect VNeighbors VNeighbors)
     mAddObservesEdge = do
       v <- gGetNodeByEID subject_vid
-      return $ gSideEffect $ gAddE "observes" $ gFrom v
+      return $ gSideEffect $ emitsAEdge $ gAddE "observes" $ gFrom v
     mAddFindsEdges = fmap fold $ traverse mAddFindsEdgeFor link_pairs
     mAddFindsEdgeFor :: (ToJSON p) => (FoundLink n p, EID) -> Binder (Walk SideEffect VNeighbors VNeighbors)
     mAddFindsEdgeFor (link, target_vid) = do
       v <- gGetNodeByEID target_vid
       var_sp <- newBind $ subjectPort link
       var_tp <- newBind $ targetPort link
-      return $ gSideEffect ( gProperty "@target_port" var_tp
+      return $ gSideEffect ( emitsAEdge
+                             $ gProperty "@target_port" var_tp
                              <<< gProperty "@subject_port" var_sp
                              <<< gAddE "finds" (gTo v)
                              -- TODO: encode LinkState
                            )
   
-
 gSetTimestamp :: Timestamp -> Binder (Walk SideEffect VNeighbors VNeighbors)
 gSetTimestamp ts = do
   var_epoch <- newBind $ epochTime ts
   return $ gPropertyV Nothing "@timestamp" var_epoch []
   -- TODO: set timezone.
+
+emitsAEdge :: ToGTraversal g => g c s AEdge -> g c s AEdge
+emitsAEdge = id
