@@ -15,6 +15,7 @@ module NetSpider.Snapshot
          sourcePort,
          destinationNode,
          destinationPort,
+         linkTuple,
          isDirected,
          linkTimestamp,
          -- * SnapshotElement
@@ -24,6 +25,7 @@ module NetSpider.Snapshot
 import NetSpider.Snapshot.Internal
   ( SnapshotNode(..),
     SnapshotLink(..),
+    linkTuple,
     SnapshotElement
   )
 import NetSpider.Timestamp (Timestamp)

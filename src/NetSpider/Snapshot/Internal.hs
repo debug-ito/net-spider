@@ -6,6 +6,7 @@
 -- __this module is internal. End-users should not use this.__
 module NetSpider.Snapshot.Internal
        ( SnapshotLink(..),
+         linkTuple,
          SnapshotNode(..),
          SnapshotElement
        ) where
@@ -41,6 +42,16 @@ data SnapshotLink n p =
   }
   deriving (Show,Eq)
 
+-- | Comparison by 4-tuple (source node, destination node, source
+-- port, destination port).
+instance (Ord n, Ord p) => Ord (SnapshotLink n p) where
+  compare l r = compare (linkTuple l) (linkTuple r)
+
+-- | 4-tuple (source node, destination node, source port, destination
+-- port) of the link.
+linkTuple :: SnapshotLink n p -> (n, n, p, p)
+linkTuple link = (_sourceNode link, _destinationNode link, _sourcePort link, _destinationPort link)
+
 -- | A node observed at a specific time.
 data SnapshotNode n =
   SnapshotNode
@@ -51,6 +62,8 @@ data SnapshotNode n =
   }
   deriving (Show,Eq)
 
+-- | Comparison by node ID.
+instance Ord n => Ord (SnapshotNode n) where
+  compare l r = compare (_nodeId l) (_nodeId r)
 
 type SnapshotElement n p = Either (SnapshotNode n) (SnapshotLink n p)
-
