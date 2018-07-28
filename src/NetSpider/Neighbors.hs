@@ -33,10 +33,10 @@ data LinkState =
 -- - type @@@: port ID.
 data FoundLink n p =
   FoundLink
-  { subjectPort :: p,
-    targetNode :: n,
-    targetPort :: p,
-    linkState :: LinkState
+  { subjectPort :: !p,
+    targetNode :: !n,
+    targetPort :: !p,
+    linkState :: !LinkState
   }
   deriving (Show,Eq,Ord)
 
@@ -47,8 +47,8 @@ data FoundLink n p =
 -- - type @p@: port ID.
 data Neighbors n p =
   Neighbors
-  { subjectNode :: n,
-    observedTime :: Timestamp,
-    neighborLinks :: Vector (FoundLink n p)
+  { subjectNode :: !n,
+    observedTime :: !Timestamp,
+    neighborLinks :: !(Vector (FoundLink n p))
   }
   deriving (Show,Eq)

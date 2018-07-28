@@ -15,8 +15,8 @@ import Data.Time.LocalTime (TimeZone)
 -- | Timestamp when the snapshot is observed.
 data Timestamp =
   Timestamp
-  { unixTime :: UnixTime,
-    timeZone :: Maybe TimeZone
+  { unixTime :: !UnixTime,
+    timeZone :: !(Maybe TimeZone)
   }
   deriving (Show,Eq) -- UnixTime's Ord is dangerous.
 

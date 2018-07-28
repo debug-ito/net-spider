@@ -29,12 +29,12 @@ import NetSpider.Timestamp (Timestamp)
 -- - type @p@: port ID.
 data SnapshotLink n p =
   SnapshotLink
-  { _sourceNode :: n,
-    _sourcePort :: p,
-    _destinationNode :: n,
-    _destinationPort :: p,
-    _isDirected :: Bool,
-    _linkTimestamp :: Timestamp
+  { _sourceNode :: !n,
+    _sourcePort :: !p,
+    _destinationNode :: !n,
+    _destinationPort :: !p,
+    _isDirected :: !Bool,
+    _linkTimestamp :: !Timestamp
     
     -- Maybe it's a good idea to include 'observationLogs', which can
     -- contain warnings or other logs about making this SnapshotLink.
@@ -44,8 +44,8 @@ data SnapshotLink n p =
 -- | A node observed at a specific time.
 data SnapshotNode n =
   SnapshotNode
-  { _nodeId :: n,
-    _isOnBoundary :: Bool
+  { _nodeId :: !n,
+    _isOnBoundary :: !Bool
     
     -- node attributes?
   }
