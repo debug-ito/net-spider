@@ -24,7 +24,7 @@ library
                         NetSpider.Timestamp,
                         NetSpider.Spider,
                         NetSpider.Snapshot
-  -- other-modules:        
+  other-modules:        NetSpider.Snapshot.Internal
   build-depends:        base,
                         unix-time,
                         time,
