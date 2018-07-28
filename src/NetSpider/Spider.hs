@@ -16,15 +16,21 @@ module NetSpider.Spider
          clearAll
        ) where
 
+import Control.Category ((<<<))
 import Control.Exception.Safe (throwString)
 import Control.Monad (void)
 import Data.Aeson (ToJSON)
+import Data.Foldable (fold)
 import Data.Greskell
-  ( source, sV', sAddV',
-    ($.), gDrop, liftWalk, gHas2, gId, gProperty, gHasLabel,
+  ( Walk, SideEffect, Vertex,
+    AVertex,
+    source, sV', sAddV',
+    ($.), (<*.>), gDrop, liftWalk, gHas2, gId, gProperty, gPropertyV, gHasLabel,
+    gSideEffect, gAddE', gFrom, gTo, gV',
     GValue,
-    runBinder, newBind
+    runBinder, newBind, Binder
   )
+import Data.Traversable (traverse)
 import Data.Vector (Vector)
 import qualified Data.Vector as V
 import Network.Greskell.WebSocket
@@ -32,8 +38,9 @@ import Network.Greskell.WebSocket
   )
 import qualified Network.Greskell.WebSocket as Gr
 
-import NetSpider.Neighbors (Neighbors)
+import NetSpider.Neighbors (Neighbors(..), FoundLink(..))
 import NetSpider.Snapshot (SnapshotElement)
+import NetSpider.Timestamp (Timestamp(..))
 
 -- | An IO agent of the NetSpider database.
 data Spider =
@@ -51,9 +58,54 @@ close :: Spider -> IO ()
 close sp = Gr.close $ spiderClient sp
 
 -- | Add an observation of 'Neighbors' to the NetSpider database.
-addNeighbors :: Spider -> Neighbors n p -> IO ()
-addNeighbors = undefined
+addNeighbors :: (ToJSON n, ToJSON p) => Spider -> Neighbors n p -> IO ()
+addNeighbors spider nbs = do
+  subject_vid <- getOrMakeNode spider $ subjectNode nbs
+  link_pairs <- traverse linkAndTargetVID $ neighborLinks nbs
+  makeNeighborsVertex spider subject_vid link_pairs $ observedTime nbs
+  where
+    linkAndTargetVID link = do
+      target_vid <- getOrMakeNode spider $ targetNode link
+      return (link, target_vid)
 
+makeNeighborsVertex :: (ToJSON p)
+                    => Spider
+                    -> VertexID -- ^ subject node VID
+                    -> Vector (FoundLink n p, VertexID) -- ^ (link, target node VID)
+                    -> Timestamp
+                    -> IO ()
+makeNeighborsVertex spider subject_vid link_pairs timestamp =
+  Gr.drainResults =<< Gr.submit (spiderClient spider) script mbindings
+  where
+    (script, bindings) = runBinder
+                         $ mAddFindsEdges
+                         <*.> setTimestamp timestamp
+                         <*.> mAddObservesEdge
+                         <*.> pure $ sAddV' "neighbors" $ source "g"
+    mbindings = Just bindings
+    mAddObservesEdge = do
+      v <- mVertexById subject_vid
+      return $ gSideEffect $ gAddE' "observes" $ gFrom v
+    mVertexById vid = do
+      var_vid <- newBind vid
+      return $ gV' [var_vid]
+    mAddFindsEdges = fmap fold $ traverse mAddFindsEdgeFor link_pairs
+    mAddFindsEdgeFor :: (ToJSON p) => (FoundLink n p, VertexID) -> Binder (Walk SideEffect AVertex AVertex)
+    mAddFindsEdgeFor (link, target_vid) = do
+      v <- mVertexById target_vid
+      var_sp <- newBind $ subjectPort link
+      var_tp <- newBind $ targetPort link
+      return $ gSideEffect ( gProperty "@target_port" var_tp
+                             <<< gProperty "@subject_port" var_sp
+                             <<< gAddE' "finds" (gTo v)
+                             -- TODO: encode LinkState
+                           )
+
+setTimestamp :: Timestamp -> Binder (Walk SideEffect AVertex AVertex)
+setTimestamp ts = do
+  var_epoch <- newBind $ epochTime ts
+  return $ gPropertyV Nothing "@timestamp" var_epoch []
+  -- TODO: set timezone.
 
 -- | ID of the Vertex kept internally in the graph DB.
 type VertexID = GValue
