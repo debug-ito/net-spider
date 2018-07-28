@@ -110,6 +110,11 @@ setTimestamp ts = do
 -- | ID of the Vertex kept internally in the graph DB.
 type VertexID = GValue
 
+-- TODO: is it OK to use GValue naively for ID? It's bad for the code
+-- to depend on GraphSON encoding..
+
+
+
 vToMaybe :: Vector a -> Maybe a
 vToMaybe v = v V.!? 0
 
