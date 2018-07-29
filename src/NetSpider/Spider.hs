@@ -19,6 +19,7 @@ module NetSpider.Spider
 import Control.Exception.Safe (throwString)
 import Control.Monad (void)
 import Data.Aeson (ToJSON)
+import Data.Foldable (foldr')
 import Data.Greskell
   ( runBinder, ($.), (<$.>), (<*.>),
     Binder, ToGreskell(GreskellReturn), AsIterator(IteratorItem), FromGraphSON,
@@ -137,7 +138,7 @@ getLatestSnapshot spider = do
       where
         binder = return $ gNodeID $. gLimit 1 $. gAllNodes
 
-visitNodeForSnapshot :: (ToJSON n, Eq n, Hashable n, FromGraphSON n, FromGraphSON p)
+visitNodeForSnapshot :: (ToJSON n, Eq n, Hashable n, FromGraphSON n, Eq p, Hashable p, FromGraphSON p)
                      => Spider
                      -> IORef (SnapshotState n p)
                      -> n
@@ -153,6 +154,7 @@ visitNodeForSnapshot spider ref_state visit_nid = do
       Nothing -> return ()
       Just next_neighbors -> do
         slink_entries <- makeSnapshotLinks spider visit_nid next_neighbors
+        modifyIORef ref_state $ addSnapshotLinks slink_entries
         undefined -- TODo
   where
     markAsVisited = modifyIORef ref_state $ addVisitedNode visit_nid
@@ -241,10 +243,15 @@ addVisitedNode nid state = state { ssVisitedNodes = HS.insert nid $ ssVisitedNod
 addUnvisitedNode :: n -> SnapshotState n p -> SnapshotState n p
 addUnvisitedNode nid state = state { ssUnvisitedNodes = V.snoc (ssUnvisitedNodes state) nid }
 
-addSnapshotLink :: SnapshotLinkID n p -> SnapshotLinkSample -> SnapshotState n p -> SnapshotState n p
+addSnapshotLink :: (Eq n, Hashable n, Eq p, Hashable p)
+                => SnapshotLinkID n p -> SnapshotLinkSample -> SnapshotState n p -> SnapshotState n p
 addSnapshotLink lid ls state = state { ssVisitedLinks = updated }
   where
     updated = HM.insertWith (V.++) lid (return ls) $ ssVisitedLinks state
+
+addSnapshotLinks :: (Eq n, Hashable n, Eq p, Hashable p)
+                 => Vector (SnapshotLinkID n p, SnapshotLinkSample) -> SnapshotState n p -> SnapshotState n p
+addSnapshotLinks links orig_state = foldr' (uncurry addSnapshotLink) orig_state links
 
 makeSnapshot :: SnapshotState n p -> Vector (SnapshotElement n p)
 makeSnapshot = undefined -- TODO
