@@ -1,4 +1,4 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings, TypeFamilies #-}
 -- |
 -- Module: NetSpider.Spider
 -- Description: Spider type.
@@ -20,7 +20,8 @@ import Control.Exception.Safe (throwString)
 import Control.Monad (void)
 import Data.Aeson (ToJSON)
 import Data.Greskell
-  ( runBinder
+  ( runBinder,
+    Binder, ToGreskell(GreskellReturn), AsIterator(IteratorItem), FromGraphSON
   )
 import Data.Vector (Vector)
 import qualified Data.Vector as V
@@ -51,6 +52,13 @@ connectWS host port = fmap Spider $ Gr.connect host port
 close :: Spider -> IO ()
 close sp = Gr.close $ spiderClient sp
 
+submitB :: (ToGreskell g, r ~ GreskellReturn g, AsIterator r, v ~ IteratorItem r, FromGraphSON v)
+        => Spider -> Binder g -> IO (Gr.ResultHandle v)
+submitB sp b = Gr.submit (spiderClient sp) script mbs
+  where
+    (script, bs) = runBinder b
+    mbs = Just bs
+
 -- | Add an observation of 'Neighbors' to the NetSpider database.
 addNeighbors :: (ToJSON n, ToJSON p) => Spider -> Neighbors n p -> IO ()
 addNeighbors spider nbs = do
@@ -69,19 +77,13 @@ makeNeighborsVertex :: (ToJSON p)
                     -> Timestamp
                     -> IO ()
 makeNeighborsVertex spider subject_vid link_pairs timestamp =
-  Gr.drainResults =<< Gr.submit (spiderClient spider) script mbindings
-  where
-    (script, bindings) = runBinder $ fmap void $ gMakeNeighbors subject_vid link_pairs timestamp
-    mbindings = Just bindings
+  Gr.drainResults =<< submitB spider (fmap void $ gMakeNeighbors subject_vid link_pairs timestamp)
 
 vToMaybe :: Vector a -> Maybe a
 vToMaybe v = v V.!? 0
 
 getNode :: (ToJSON n) => Spider -> n -> IO (Maybe EID)
-getNode spider nid = fmap vToMaybe $ Gr.slurpResults =<< Gr.submit (spiderClient spider) script mbindings
-  where
-    (script, bindings) = runBinder $ gGetNode nid
-    mbindings = Just bindings
+getNode spider nid = fmap vToMaybe $ Gr.slurpResults =<< submitB spider (gGetNode nid)
 
 getOrMakeNode :: (ToJSON n) => Spider -> n -> IO EID
 getOrMakeNode spider nid = do
@@ -90,9 +92,7 @@ getOrMakeNode spider nid = do
    Just vid -> return vid
    Nothing -> makeNode
   where
-    makeNode = expectOne =<< Gr.slurpResults =<< Gr.submit (spiderClient spider) script mbindings
-    (script, bindings) = runBinder $ gMakeNode nid
-    mbindings = Just bindings
+    makeNode = expectOne =<< Gr.slurpResults =<< submitB spider (gMakeNode nid)
     expectOne v = case vToMaybe v of
       Just e -> return e
       Nothing -> throwString "Expects at least single result, but got nothing."
@@ -109,7 +109,7 @@ getLatestSnapshot = undefined
 -- | Clear all content in the NetSpider database. This is mainly for
 -- testing.
 clearAll :: Spider -> IO ()
-clearAll spider = Gr.drainResults =<< Gr.submit (spiderClient spider) gClearAll Nothing
+clearAll spider = Gr.drainResults =<< submitB spider (return gClearAll)
 
 -- We can create much more complex function to query snapshot graphs,
 -- but at least we need 'getLatestSnapshot'.
