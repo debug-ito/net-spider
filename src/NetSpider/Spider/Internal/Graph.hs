@@ -7,19 +7,25 @@
 -- __this module is internal. End-users should not use it.__
 module NetSpider.Spider.Internal.Graph
        ( EID,
+         gClearAll,
+         -- * VNode
          VNode,
-         VNeighbors,
          gAllNodes,
          gHasNodeID,
          gHasNodeEID,
          gNodeEID,
          gNodeID,
          gMakeNode,
+         -- * VNeighbors
+         VNeighbors(..),
+         gAllNeighbors,
+         gHasNeighborsEID,
          gMakeNeighbors,
-         gClearAll,
          gSelectNeighbors,
          gLatestNeighbors,
-         gFoundNodes
+         -- * EFinds
+         EFinds(..),
+         gFinds
        ) where
 
 import Control.Category ((<<<))
@@ -27,13 +33,13 @@ import Control.Monad (void)
 import Data.Aeson (ToJSON, FromJSON)
 import Data.Foldable (fold)
 import Data.Greskell
-  ( FromGraphSON,
-    Element(..), Vertex,
-    AVertexProperty, AEdge,
+  ( FromGraphSON(..),
+    Element(..), Vertex, Edge(..), WalkType,
+    AVertexProperty, AProperty, AEdge(..), AVertex(..), parseOneValue,
     GTraversal, Filter, Transform, SideEffect, Walk, liftWalk,
     Binder, newBind,
     source, sV, sV', sAddV, gHasLabel, gHasId, gHas2, gId, gProperty, gPropertyV, gV,
-    gAddE, gSideEffect, gTo, gFrom, gDrop, gOut, gOrder, gBy2, gValues,
+    gAddE, gSideEffect, gTo, gFrom, gDrop, gOut, gOrder, gBy2, gValues, gOutE,
     ($.), (<*.>),
     ToGTraversal,
     Key, oDecr, gLimit
@@ -43,8 +49,8 @@ import Data.Text (Text)
 import Data.Traversable (traverse)
 import Data.Vector (Vector)
 
-import NetSpider.Neighbors (FoundLink(..))
-import NetSpider.Timestamp (Timestamp(..))
+import NetSpider.Neighbors (FoundLink(..), LinkState(..))
+import NetSpider.Timestamp (Timestamp(..), fromEpochSecond)
 
 -- | Generic element ID used in the graph DB.
 newtype EID = EID (Either Int Text)
@@ -85,7 +91,11 @@ gMakeNode nid = do
   return $ gProperty "@node_id" var_nid $. sAddV "node" $ source "g"
 
 -- | The \"neighbors\" vertex.
-data VNeighbors
+data VNeighbors =
+  VNeighbors
+  { vnID :: !EID,
+    vnTimestamp :: !Timestamp
+  }
 
 instance Element VNeighbors where
   type ElementID VNeighbors = EID
@@ -93,10 +103,30 @@ instance Element VNeighbors where
 
 instance Vertex VNeighbors
 
+instance FromGraphSON VNeighbors where
+  parseGraphSON gv = fromAVertex =<< parseGraphSON gv
+    where
+      fromAVertex av = do
+        eid <- parseGraphSON $ avId av
+        epoch_ts <- parseOneValue "@timestanp" $ avProperties av
+        -- TODO: parse timezone.
+        return $ VNeighbors { vnID = eid,
+                              vnTimestamp = fromEpochSecond epoch_ts
+                            }
+
 gGetNodeByEID :: EID -> Binder (Walk Transform s VNode)
 gGetNodeByEID vid = do
   f <- gHasNodeEID vid
   return (liftWalk f <<< gV [])
+
+
+gAllNeighbors :: GTraversal Transform () VNeighbors
+gAllNeighbors = gHasLabel "neighbors" $. sV [] $ source "g"
+
+gHasNeighborsEID :: WalkType c => EID -> Binder (Walk c VNeighbors VNeighbors)
+gHasNeighborsEID eid = do
+  var_eid <- newBind eid
+  return $ gHasId var_eid
 
 gMakeNeighbors :: (ToJSON p)
                => EID -- ^ subject node EID
@@ -144,5 +174,38 @@ gSelectNeighbors filterNeighbors = liftWalk filterNeighbors <<< gOut ["observes"
 gLatestNeighbors :: Walk Transform VNeighbors VNeighbors
 gLatestNeighbors = gLimit 1 <<< gOrder [gBy2 keyTimestamp oDecr]
 
-gFoundNodes :: Walk Transform VNeighbors VNode
-gFoundNodes = gOut ["finds"]
+gFinds :: Walk Transform VNeighbors (EFinds p)
+gFinds = gOutE ["finds"]
+
+-- | \"finds\" edge.
+data EFinds p =
+  EFinds
+  { efEID :: !EID,
+    efSubjectEID :: !EID,
+    efSubjectPort :: !p,
+    efTargetEID :: !EID,
+    efTargetPort :: !p,
+    efLinkState :: !LinkState
+  }
+
+instance Element (EFinds p) where
+  type ElementID (EFinds p) = EID
+  type ElementProperty (EFinds p) = AProperty
+
+instance Edge (EFinds p) where
+  type EdgeVertexID (EFinds p) = EID
+
+instance FromGraphSON p => FromGraphSON (EFinds p) where
+  parseGraphSON gv = fromAEdge =<< parseGraphSON gv
+    where
+      fromAEdge ae = EFinds 
+                     <$> (parseGraphSON $ aeId ae)
+                     <*> (parseGraphSON $ aeOutV ae)
+                     <*> (parseOneValue "@subject_port" ps)
+                     <*> (parseGraphSON $ aeInV ae)
+                     <*> (parseOneValue "@target_port" ps)
+                     <*> pure LinkBidirectional -- TODO: encode and decode LinkState
+        where
+          ps = aeProperties ae
+  
+        

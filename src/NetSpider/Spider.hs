@@ -43,7 +43,8 @@ import NetSpider.Snapshot (SnapshotElement)
 import NetSpider.Timestamp (Timestamp(..))
 import NetSpider.Spider.Internal.Graph
   ( EID, gMakeNeighbors, gAllNodes, gHasNodeID, gHasNodeEID, gNodeEID, gNodeID, gMakeNode, gClearAll,
-    gLatestNeighbors, gSelectNeighbors
+    gLatestNeighbors, gSelectNeighbors, gFinds, gHasNeighborsEID, gAllNeighbors,
+    VNeighbors(..), EFinds
   )
 
 -- | An IO agent of the NetSpider database.
@@ -140,19 +141,28 @@ visitNodeForSnapshot spider ref_state visit_nid = do
   mnode_eid <- getVisitedNodeEID
   case mnode_eid of
    Nothing -> return ()
-   Just node_eid -> undefined -- TODO
+   Just node_eid -> do
+     mnext_neighbors <- getNextNeighbors node_eid
+     case mnext_neighbors of
+      Nothing -> return ()
+      Just next_neighbors -> do
+        -- vfinds <- getFinds $ vnID next_neighbors
+        undefined -- TODO
   where
     markAsVisited = modifyIORef ref_state $ addVisitedNode visit_nid
     getVisitedNodeEID = fmap vToMaybe $ Gr.slurpResults =<< submitB spider binder
       where
         binder = gNodeEID <$.> (fmap liftWalk $ gHasNodeID visit_nid) <*.> pure gAllNodes
-    getNextNeighbors node_vid = fmap vToMaybe $ Gr.slurpResults =<< submitB spider binder
+    getNextNeighbors node_eid = fmap vToMaybe $ Gr.slurpResults =<< submitB spider binder
       where
-        binder = fmap void
-                 $ gLatestNeighbors
+        binder = gLatestNeighbors
                  <$.> gSelectNeighbors gIdentity -- TODO: select Neighbors to consider
-                 <$.> (fmap liftWalk $ gHasNodeEID node_vid)
+                 <$.> (fmap liftWalk $ gHasNodeEID node_eid)
                  <*.> pure gAllNodes
+    getFinds :: (FromGraphSON p) => EID -> IO (Vector (EFinds p))
+    getFinds neighbors_eid = Gr.slurpResults =<< submitB spider binder
+      where
+        binder = gFinds <$.> gHasNeighborsEID neighbors_eid <*.> pure gAllNeighbors
   
 
 -- | Clear all content in the NetSpider database. This is mainly for
@@ -206,3 +216,4 @@ addUnvisitedNode nid state = state { ssUnvisitedNodes = V.snoc (ssUnvisitedNodes
 
 makeSnapshot :: SnapshotState n p -> Vector (SnapshotElement n p)
 makeSnapshot = undefined -- TODO
+
