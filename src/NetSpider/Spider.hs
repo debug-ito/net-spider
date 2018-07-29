@@ -27,6 +27,8 @@ import Data.Greskell
 import Data.Hashable (Hashable)
 import Data.HashMap.Strict (HashMap)
 import Data.HashSet (HashSet)
+import qualified Data.HashSet as HS
+import Data.IORef (IORef, modifyIORef, newIORef, readIORef)
 import Data.Monoid (mempty)
 import Data.Vector (Vector)
 import qualified Data.Vector as V
@@ -40,7 +42,7 @@ import NetSpider.Neighbors (Neighbors(..), FoundLink(..), LinkState(..))
 import NetSpider.Snapshot (SnapshotElement)
 import NetSpider.Timestamp (Timestamp(..))
 import NetSpider.Spider.Internal.Graph
-  ( EID, gMakeNeighbors, gAllNodes, gHasNodeID, gHasNodeEID, gNodeEID, gMakeNode, gClearAll,
+  ( EID, gMakeNeighbors, gAllNodes, gHasNodeID, gHasNodeEID, gNodeEID, gNodeID, gMakeNode, gClearAll,
     gLatestNeighbors, gSelectNeighbors
   )
 
@@ -112,18 +114,38 @@ getOrMakeNode spider nid = do
 -- This function is very simple, and should be used only for testing.
 -- This function starts from an arbitrary node, traverses the history
 -- graph using the latest links with unlimited number of hops.
-getLatestSnapshot :: Spider -> IO (Vector (SnapshotElement n p))
+getLatestSnapshot :: (FromGraphSON n, ToJSON n, Eq n, Eq p, Hashable n, Hashable p)
+                  => Spider -> IO (Vector (SnapshotElement n p))
 getLatestSnapshot spider = do
-  mstart_vid <- getStartNode
-  case mstart_vid of
+  mstart_nid <- getStartNode
+  case mstart_nid of
    Nothing -> return mempty
-   Just start_vid -> do
-     _ <- getNextNeighbors start_vid
-     undefined
+   Just start_nid -> do
+     ref_state <- newIORef emptySnapshotState
+     visitNodeForSnapshot spider ref_state start_nid
+     -- TODO: recursively update the state.
+     fmap makeSnapshot $ readIORef ref_state
   where
     getStartNode = fmap vToMaybe $ Gr.slurpResults =<< submitB spider binder
       where
-        binder = return $ gNodeEID $. gLimit 1 $. gAllNodes
+        binder = return $ gNodeID $. gLimit 1 $. gAllNodes
+
+visitNodeForSnapshot :: (ToJSON n, Eq n, Hashable n)
+                     => Spider
+                     -> IORef (SnapshotState n p)
+                     -> n
+                     -> IO ()
+visitNodeForSnapshot spider ref_state visit_nid = do
+  markAsVisited
+  mnode_eid <- getVisitedNodeEID
+  case mnode_eid of
+   Nothing -> return ()
+   Just node_eid -> undefined -- TODO
+  where
+    markAsVisited = modifyIORef ref_state $ addVisitedNode visit_nid
+    getVisitedNodeEID = fmap vToMaybe $ Gr.slurpResults =<< submitB spider binder
+      where
+        binder = gNodeEID <$.> (fmap liftWalk $ gHasNodeID visit_nid) <*.> pure gAllNodes
     getNextNeighbors node_vid = fmap vToMaybe $ Gr.slurpResults =<< submitB spider binder
       where
         binder = fmap void
@@ -131,6 +153,7 @@ getLatestSnapshot spider = do
                  <$.> gSelectNeighbors gIdentity -- TODO: select Neighbors to consider
                  <$.> (fmap liftWalk $ gHasNodeEID node_vid)
                  <*.> pure gAllNodes
+  
 
 -- | Clear all content in the NetSpider database. This is mainly for
 -- testing.
@@ -163,6 +186,23 @@ data SnapshotLinkSample =
 -- | The state kept while making the snapshot graph.
 data SnapshotState n p =
   SnapshotState
-  { ssVisitedNodes :: !(HashSet n),
+  { ssUnvisitedNodes :: !(Vector n),
+    ssVisitedNodes :: !(HashSet n),
     ssVisitedLinks :: !(HashMap (SnapshotLinkID n p) (Vector SnapshotLinkSample))
   }
+
+emptySnapshotState :: (Eq n, Eq p, Hashable n, Hashable p) => SnapshotState n p
+emptySnapshotState = SnapshotState
+                     { ssUnvisitedNodes = mempty,
+                       ssVisitedNodes = mempty,
+                       ssVisitedLinks = mempty
+                     }
+
+addVisitedNode :: (Eq n, Hashable n) => n -> SnapshotState n p -> SnapshotState n p
+addVisitedNode nid state = state { ssVisitedNodes = HS.insert nid $ ssVisitedNodes state }
+
+addUnvisitedNode :: n -> SnapshotState n p -> SnapshotState n p
+addUnvisitedNode nid state = state { ssUnvisitedNodes = V.snoc (ssUnvisitedNodes state) nid }
+
+makeSnapshot :: SnapshotState n p -> Vector (SnapshotElement n p)
+makeSnapshot = undefined -- TODO

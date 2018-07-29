@@ -13,6 +13,7 @@ module NetSpider.Spider.Internal.Graph
          gHasNodeID,
          gHasNodeEID,
          gNodeEID,
+         gNodeID,
          gMakeNode,
          gMakeNeighbors,
          gClearAll,
@@ -32,7 +33,7 @@ import Data.Greskell
     GTraversal, Filter, Transform, SideEffect, Walk, liftWalk,
     Binder, newBind,
     source, sV, sV', sAddV, gHasLabel, gHasId, gHas2, gId, gProperty, gPropertyV, gV,
-    gAddE, gSideEffect, gTo, gFrom, gDrop, gOut, gOrder, gBy2,
+    gAddE, gSideEffect, gTo, gFrom, gDrop, gOut, gOrder, gBy2, gValues,
     ($.), (<*.>),
     ToGTraversal,
     Key, oDecr, gLimit
@@ -61,6 +62,9 @@ instance Vertex VNode
 
 gNodeEID :: Walk Transform VNode EID
 gNodeEID = gId
+
+gNodeID :: Walk Transform VNode n
+gNodeID = gValues ["@node_id"]
 
 gAllNodes :: GTraversal Transform () VNode
 gAllNodes = gHasLabel "node" $. sV [] $ source "g"
