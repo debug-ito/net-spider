@@ -22,8 +22,9 @@ import Data.Aeson (ToJSON)
 import Data.Greskell
   ( runBinder, ($.), (<$.>), (<*.>),
     Binder, ToGreskell(GreskellReturn), AsIterator(IteratorItem), FromGraphSON,
-    liftWalk, gLimit
+    liftWalk, gLimit, gIdentity
   )
+import Data.Monoid (mempty)
 import Data.Vector (Vector)
 import qualified Data.Vector as V
 import Network.Greskell.WebSocket
@@ -35,7 +36,8 @@ import NetSpider.Neighbors (Neighbors(..), FoundLink(..))
 import NetSpider.Snapshot (SnapshotElement)
 import NetSpider.Timestamp (Timestamp(..))
 import NetSpider.Spider.Internal.Graph
-  ( EID, gMakeNeighbors, gAllNodes, gHasNodeID, gNodeEID, gMakeNode, gClearAll
+  ( EID, gMakeNeighbors, gAllNodes, gHasNodeID, gHasNodeEID, gNodeEID, gMakeNode, gClearAll,
+    gLatestNeighbors, gSelectNeighbors
   )
 
 -- | An IO agent of the NetSpider database.
@@ -108,12 +110,23 @@ getOrMakeNode spider nid = do
 -- graph using the latest links with unlimited number of hops.
 getLatestSnapshot :: Spider -> IO (Vector (SnapshotElement n p))
 getLatestSnapshot spider = do
-  mstart_v <- getStartNode
-  undefined -- TODO
+  mstart_vid <- getStartNode
+  case mstart_vid of
+   Nothing -> return mempty
+   Just start_vid -> do
+     _ <- getNextNeighbors start_vid
+     undefined
   where
-    getStartNode = submitB spider binder
+    getStartNode = fmap vToMaybe $ Gr.slurpResults =<< submitB spider binder
       where
         binder = return $ gNodeEID $. gLimit 1 $. gAllNodes
+    getNextNeighbors node_vid = fmap vToMaybe $ Gr.slurpResults =<< submitB spider binder
+      where
+        binder = fmap void
+                 $ gLatestNeighbors
+                 <$.> gSelectNeighbors gIdentity -- TODO: select Neighbors to consider
+                 <$.> (fmap liftWalk $ gHasNodeEID node_vid)
+                 <*.> pure gAllNodes
 
 -- | Clear all content in the NetSpider database. This is mainly for
 -- testing.

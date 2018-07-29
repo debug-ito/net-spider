@@ -11,10 +11,14 @@ module NetSpider.Spider.Internal.Graph
          VNeighbors,
          gAllNodes,
          gHasNodeID,
+         gHasNodeEID,
          gNodeEID,
          gMakeNode,
          gMakeNeighbors,
-         gClearAll
+         gClearAll,
+         gSelectNeighbors,
+         gLatestNeighbors,
+         gFoundNodes
        ) where
 
 import Control.Category ((<<<))
@@ -27,11 +31,13 @@ import Data.Greskell
     AVertexProperty, AEdge,
     GTraversal, Filter, Transform, SideEffect, Walk, liftWalk,
     Binder, newBind,
-    source, sV, sV', sAddV, gHasLabel, gHas2, gId, gProperty, gPropertyV, gV,
-    gAddE, gSideEffect, gTo, gFrom, gDrop,
+    source, sV, sV', sAddV, gHasLabel, gHasId, gHas2, gId, gProperty, gPropertyV, gV,
+    gAddE, gSideEffect, gTo, gFrom, gDrop, gOut, gOrder, gBy2,
     ($.), (<*.>),
     ToGTraversal,
+    Key, oDecr, gLimit
   )
+import Data.Int (Int64)
 import Data.Text (Text)
 import Data.Traversable (traverse)
 import Data.Vector (Vector)
@@ -64,6 +70,11 @@ gHasNodeID nid = do
   var_nid <- newBind nid
   return $ gHas2 "@node_id" var_nid
 
+gHasNodeEID :: EID -> Binder (Walk Filter VNode VNode)
+gHasNodeEID eid = do
+  var_eid <- newBind eid
+  return $ gHasId var_eid
+
 gMakeNode :: ToJSON n => n -> Binder (GTraversal SideEffect () VNode)
 gMakeNode nid = do
   var_nid <- newBind nid
@@ -80,8 +91,8 @@ instance Vertex VNeighbors
 
 gGetNodeByEID :: EID -> Binder (Walk Transform s VNode)
 gGetNodeByEID vid = do
-  var_vid <- newBind vid
-  return $ gV [var_vid]
+  f <- gHasNodeEID vid
+  return (liftWalk f <<< gV [])
 
 gMakeNeighbors :: (ToJSON p)
                => EID -- ^ subject node EID
@@ -107,11 +118,14 @@ gMakeNeighbors subject_vid link_pairs timestamp =
                              <<< gAddE "finds" (gTo v)
                              -- TODO: encode LinkState
                            )
+
+keyTimestamp :: Key VNeighbors Int64
+keyTimestamp = "@timestamp"
   
 gSetTimestamp :: Timestamp -> Binder (Walk SideEffect VNeighbors VNeighbors)
 gSetTimestamp ts = do
   var_epoch <- newBind $ epochTime ts
-  return $ gPropertyV Nothing "@timestamp" var_epoch []
+  return $ gPropertyV Nothing keyTimestamp var_epoch []
   -- TODO: set timezone.
 
 emitsAEdge :: ToGTraversal g => g c s AEdge -> g c s AEdge
@@ -119,3 +133,12 @@ emitsAEdge = id
 
 gClearAll :: GTraversal SideEffect () ()
 gClearAll = void $ gDrop $. liftWalk $ sV' [] $ source "g"
+
+gSelectNeighbors :: Walk Filter VNeighbors VNeighbors -> Walk Transform VNode VNeighbors
+gSelectNeighbors filterNeighbors = liftWalk filterNeighbors <<< gOut ["observes"]
+
+gLatestNeighbors :: Walk Transform VNeighbors VNeighbors
+gLatestNeighbors = gLimit 1 <<< gOrder [gBy2 keyTimestamp oDecr]
+
+gFoundNodes :: Walk Transform VNeighbors VNode
+gFoundNodes = gOut ["finds"]
