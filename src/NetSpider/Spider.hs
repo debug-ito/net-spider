@@ -129,14 +129,16 @@ getLatestSnapshot spider = do
   case mstart_nid of
    Nothing -> return mempty
    Just start_nid -> do
-     ref_state <- newIORef emptySnapshotState
-     visitNodeForSnapshot spider ref_state start_nid
-     -- TODO: recursively update the state.
+     ref_state <- newIORef $ initSnapshotState $ return start_nid
+     recurseVisitNodesForSnapshot spider ref_state
      fmap makeSnapshot $ readIORef ref_state
   where
     getStartNode = fmap vToMaybe $ Gr.slurpResults =<< submitB spider binder
       where
         binder = return $ gNodeID $. gLimit 1 $. gAllNodes
+
+recurseVisitNodesForSnapshot :: Spider -> IORef (SnapshotState n p) -> IO ()
+recurseVisitNodesForSnapshot = undefined -- TODO
 
 visitNodeForSnapshot :: (ToJSON n, Eq n, Hashable n, FromGraphSON n, Eq p, Hashable p, FromGraphSON p)
                      => Spider
@@ -235,6 +237,9 @@ emptySnapshotState = SnapshotState
                        ssVisitedNodes = mempty,
                        ssVisitedLinks = mempty
                      }
+
+initSnapshotState :: (Eq n, Eq p, Hashable n, Hashable p) => Vector n -> SnapshotState n p
+initSnapshotState init_unvisited_nodes = emptySnapshotState { ssUnvisitedNodes = init_unvisited_nodes }
 
 addVisitedNode :: (Eq n, Hashable n) => n -> SnapshotState n p -> SnapshotState n p
 addVisitedNode nid state = state { ssVisitedNodes = HS.insert nid $ ssVisitedNodes state }
