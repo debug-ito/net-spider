@@ -155,7 +155,6 @@ visitNodeForSnapshot spider ref_state visit_nid = do
       Just next_neighbors -> do
         slink_entries <- makeSnapshotLinks spider visit_nid next_neighbors
         modifyIORef ref_state $ addSnapshotLinks slink_entries
-        undefined -- TODo
   where
     markAsVisited = modifyIORef ref_state $ addVisitedNode visit_nid
     getVisitedNodeEID = fmap vToMaybe $ Gr.slurpResults =<< submitB spider binder
@@ -240,14 +239,18 @@ emptySnapshotState = SnapshotState
 addVisitedNode :: (Eq n, Hashable n) => n -> SnapshotState n p -> SnapshotState n p
 addVisitedNode nid state = state { ssVisitedNodes = HS.insert nid $ ssVisitedNodes state }
 
-addUnvisitedNode :: n -> SnapshotState n p -> SnapshotState n p
-addUnvisitedNode nid state = state { ssUnvisitedNodes = V.snoc (ssUnvisitedNodes state) nid }
-
 addSnapshotLink :: (Eq n, Hashable n, Eq p, Hashable p)
                 => SnapshotLinkID n p -> SnapshotLinkSample -> SnapshotState n p -> SnapshotState n p
-addSnapshotLink lid ls state = state { ssVisitedLinks = updated }
+addSnapshotLink lid ls state = state { ssVisitedLinks = updatedLinks,
+                                       ssUnvisitedNodes = updatedUnvisited
+                                     }
   where
-    updated = HM.insertWith (V.++) lid (return ls) $ ssVisitedLinks state
+    updatedLinks = HM.insertWith (V.++) lid (return ls) $ ssVisitedLinks state
+    target_nid = sliTargetNode lid
+    target_already_visited = HS.member target_nid $ ssVisitedNodes state
+    updatedUnvisited = if target_already_visited
+                       then ssUnvisitedNodes state
+                       else V.snoc (ssUnvisitedNodes state) target_nid
 
 addSnapshotLinks :: (Eq n, Hashable n, Eq p, Hashable p)
                  => Vector (SnapshotLinkID n p, SnapshotLinkSample) -> SnapshotState n p -> SnapshotState n p
