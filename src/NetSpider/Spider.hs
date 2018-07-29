@@ -44,7 +44,7 @@ import NetSpider.Timestamp (Timestamp(..))
 import NetSpider.Spider.Internal.Graph
   ( EID, gMakeNeighbors, gAllNodes, gHasNodeID, gHasNodeEID, gNodeEID, gNodeID, gMakeNode, gClearAll,
     gLatestNeighbors, gSelectNeighbors, gFinds, gHasNeighborsEID, gAllNeighbors,
-    VNeighbors(..), EFinds
+    VNeighbors(..), EFinds(..)
   )
 
 -- | An IO agent of the NetSpider database.
@@ -68,6 +68,11 @@ submitB sp b = Gr.submit (spiderClient sp) script mbs
   where
     (script, bs) = runBinder b
     mbs = Just bs
+
+-- | Clear all content in the NetSpider database. This is mainly for
+-- testing.
+clearAll :: Spider -> IO ()
+clearAll spider = Gr.drainResults =<< submitB spider (return gClearAll)
 
 -- | Add an observation of 'Neighbors' to the NetSpider database.
 addNeighbors :: (ToJSON n, ToJSON p) => Spider -> Neighbors n p -> IO ()
@@ -95,7 +100,7 @@ vToMaybe v = v V.!? 0
 getNode :: (ToJSON n) => Spider -> n -> IO (Maybe EID)
 getNode spider nid = fmap vToMaybe $ Gr.slurpResults =<< submitB spider gt
   where
-    gt = gNodeEID <$.> (fmap liftWalk $ gHasNodeID nid) <*.> pure gAllNodes
+    gt = gNodeEID <$.> gHasNodeID nid <*.> pure gAllNodes
 
 getOrMakeNode :: (ToJSON n) => Spider -> n -> IO EID
 getOrMakeNode spider nid = do
@@ -152,23 +157,44 @@ visitNodeForSnapshot spider ref_state visit_nid = do
     markAsVisited = modifyIORef ref_state $ addVisitedNode visit_nid
     getVisitedNodeEID = fmap vToMaybe $ Gr.slurpResults =<< submitB spider binder
       where
-        binder = gNodeEID <$.> (fmap liftWalk $ gHasNodeID visit_nid) <*.> pure gAllNodes
+        binder = gNodeEID <$.> gHasNodeID visit_nid <*.> pure gAllNodes
     getNextNeighbors node_eid = fmap vToMaybe $ Gr.slurpResults =<< submitB spider binder
       where
         binder = gLatestNeighbors
                  <$.> gSelectNeighbors gIdentity -- TODO: select Neighbors to consider
-                 <$.> (fmap liftWalk $ gHasNodeEID node_eid)
+                 <$.> gHasNodeEID node_eid
                  <*.> pure gAllNodes
-    getFinds :: (FromGraphSON p) => EID -> IO (Vector (EFinds p))
+
+makeSnapshotLinks :: (FromGraphSON n, FromGraphSON p)
+                  => Spider
+                  -> n -- ^ subject node ID.
+                  -> VNeighbors
+                  -> IO (Vector (SnapshotLinkID n p, SnapshotLinkSample))
+makeSnapshotLinks spider subject_nid vneighbors = do
+  finds_edges <- getFinds $ vnID vneighbors
+  traverse toSnapshotLinkEntry finds_edges
+  where
     getFinds neighbors_eid = Gr.slurpResults =<< submitB spider binder
       where
         binder = gFinds <$.> gHasNeighborsEID neighbors_eid <*.> pure gAllNeighbors
-  
-
--- | Clear all content in the NetSpider database. This is mainly for
--- testing.
-clearAll :: Spider -> IO ()
-clearAll spider = Gr.drainResults =<< submitB spider (return gClearAll)
+    toSnapshotLinkEntry efinds = do
+      target_nid <- getNodeID $ efTargetEID $ efinds
+      return ( SnapshotLinkID { sliSubjectNode = subject_nid,
+                                sliSubjectPort = efSubjectPort efinds,
+                                sliTargetNode = target_nid,
+                                sliTargetPort = efTargetPort efinds
+                              },
+               SnapshotLinkSample { slsLinkState = efLinkState efinds,
+                                    slsTimestamp = vnTimestamp vneighbors
+                                  }
+             )
+    getNodeID node_eid = expectOne =<< (fmap vToMaybe $ Gr.slurpResults =<< submitB spider binder)
+      where
+        binder = gNodeID <$.> gHasNodeEID node_eid <*.> pure gAllNodes
+        expectOne (Just r) = return r
+        expectOne Nothing = throwString "Expects a Vertex for a NodeID, but nothing found."
+        -- TODO: better exception spec.
+    
 
 -- We can create much more complex function to query snapshot graphs,
 -- but at least we need 'getLatestSnapshot'.
@@ -216,4 +242,5 @@ addUnvisitedNode nid state = state { ssUnvisitedNodes = V.snoc (ssUnvisitedNodes
 
 makeSnapshot :: SnapshotState n p -> Vector (SnapshotElement n p)
 makeSnapshot = undefined -- TODO
+
 
