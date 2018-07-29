@@ -26,6 +26,7 @@ import Data.Greskell
   )
 import Data.Hashable (Hashable)
 import Data.HashMap.Strict (HashMap)
+import qualified Data.HashMap.Strict as HM
 import Data.HashSet (HashSet)
 import qualified Data.HashSet as HS
 import Data.IORef (IORef, modifyIORef, newIORef, readIORef)
@@ -120,7 +121,7 @@ getOrMakeNode spider nid = do
 -- This function is very simple, and should be used only for testing.
 -- This function starts from an arbitrary node, traverses the history
 -- graph using the latest links with unlimited number of hops.
-getLatestSnapshot :: (FromGraphSON n, ToJSON n, Eq n, Eq p, Hashable n, Hashable p)
+getLatestSnapshot :: (FromGraphSON n, FromGraphSON p, ToJSON n, Eq n, Eq p, Hashable n, Hashable p)
                   => Spider -> IO (Vector (SnapshotElement n p))
 getLatestSnapshot spider = do
   mstart_nid <- getStartNode
@@ -136,7 +137,7 @@ getLatestSnapshot spider = do
       where
         binder = return $ gNodeID $. gLimit 1 $. gAllNodes
 
-visitNodeForSnapshot :: (ToJSON n, Eq n, Hashable n)
+visitNodeForSnapshot :: (ToJSON n, Eq n, Hashable n, FromGraphSON n, FromGraphSON p)
                      => Spider
                      -> IORef (SnapshotState n p)
                      -> n
@@ -151,8 +152,8 @@ visitNodeForSnapshot spider ref_state visit_nid = do
      case mnext_neighbors of
       Nothing -> return ()
       Just next_neighbors -> do
-        -- vfinds <- getFinds $ vnID next_neighbors
-        undefined -- TODO
+        slink_entries <- makeSnapshotLinks spider visit_nid next_neighbors
+        undefined -- TODo
   where
     markAsVisited = modifyIORef ref_state $ addVisitedNode visit_nid
     getVisitedNodeEID = fmap vToMaybe $ Gr.slurpResults =<< submitB spider binder
@@ -239,6 +240,11 @@ addVisitedNode nid state = state { ssVisitedNodes = HS.insert nid $ ssVisitedNod
 
 addUnvisitedNode :: n -> SnapshotState n p -> SnapshotState n p
 addUnvisitedNode nid state = state { ssUnvisitedNodes = V.snoc (ssUnvisitedNodes state) nid }
+
+addSnapshotLink :: SnapshotLinkID n p -> SnapshotLinkSample -> SnapshotState n p -> SnapshotState n p
+addSnapshotLink lid ls state = state { ssVisitedLinks = updated }
+  where
+    updated = HM.insertWith (V.++) lid (return ls) $ ssVisitedLinks state
 
 makeSnapshot :: SnapshotState n p -> Vector (SnapshotElement n p)
 makeSnapshot = undefined -- TODO
