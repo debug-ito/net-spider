@@ -20,8 +20,9 @@ import Control.Exception.Safe (throwString)
 import Control.Monad (void)
 import Data.Aeson (ToJSON)
 import Data.Greskell
-  ( runBinder,
-    Binder, ToGreskell(GreskellReturn), AsIterator(IteratorItem), FromGraphSON
+  ( runBinder, (<$.>), (<*.>),
+    Binder, ToGreskell(GreskellReturn), AsIterator(IteratorItem), FromGraphSON,
+    liftWalk
   )
 import Data.Vector (Vector)
 import qualified Data.Vector as V
@@ -34,7 +35,7 @@ import NetSpider.Neighbors (Neighbors(..), FoundLink(..))
 import NetSpider.Snapshot (SnapshotElement)
 import NetSpider.Timestamp (Timestamp(..))
 import NetSpider.Spider.Internal.Graph
-  ( EID, gMakeNeighbors, gGetNode, gMakeNode, gClearAll
+  ( EID, gMakeNeighbors, gAllNodes, gHasNodeID, gNodeEID, gMakeNode, gClearAll
   )
 
 -- | An IO agent of the NetSpider database.
@@ -83,7 +84,9 @@ vToMaybe :: Vector a -> Maybe a
 vToMaybe v = v V.!? 0
 
 getNode :: (ToJSON n) => Spider -> n -> IO (Maybe EID)
-getNode spider nid = fmap vToMaybe $ Gr.slurpResults =<< submitB spider (gGetNode nid)
+getNode spider nid = fmap vToMaybe $ Gr.slurpResults =<< submitB spider gt
+  where
+    gt = gNodeEID <$.> (fmap liftWalk $ gHasNodeID nid) <*.> pure gAllNodes
 
 getOrMakeNode :: (ToJSON n) => Spider -> n -> IO EID
 getOrMakeNode spider nid = do
@@ -92,7 +95,7 @@ getOrMakeNode spider nid = do
    Just vid -> return vid
    Nothing -> makeNode
   where
-    makeNode = expectOne =<< Gr.slurpResults =<< submitB spider (gMakeNode nid)
+    makeNode = expectOne =<< Gr.slurpResults =<< submitB spider (liftWalk gNodeEID <$.> gMakeNode nid)
     expectOne v = case vToMaybe v of
       Just e -> return e
       Nothing -> throwString "Expects at least single result, but got nothing."

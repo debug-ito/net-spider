@@ -9,7 +9,9 @@ module NetSpider.Spider.Internal.Graph
        ( EID,
          VNode,
          VNeighbors,
-         gGetNode,
+         gAllNodes,
+         gHasNodeID,
+         gNodeEID,
          gMakeNode,
          gMakeNeighbors,
          gClearAll
@@ -23,7 +25,7 @@ import Data.Greskell
   ( FromGraphSON,
     Element(..), Vertex,
     AVertexProperty, AEdge,
-    GTraversal, Transform, SideEffect, Walk, liftWalk,
+    GTraversal, Filter, Transform, SideEffect, Walk, liftWalk,
     Binder, newBind,
     source, sV, sV', sAddV, gHasLabel, gHas2, gId, gProperty, gPropertyV, gV,
     gAddE, gSideEffect, gTo, gFrom, gDrop,
@@ -51,18 +53,21 @@ instance Element VNode where
 
 instance Vertex VNode
 
-gNodeId :: Walk Transform VNode EID
-gNodeId = gId
+gNodeEID :: Walk Transform VNode EID
+gNodeEID = gId
 
-gGetNode :: ToJSON n => n -> Binder (GTraversal Transform () EID)
-gGetNode nid = do
+gAllNodes :: GTraversal Transform () VNode
+gAllNodes = gHasLabel "node" $. sV [] $ source "g"
+
+gHasNodeID :: ToJSON n => n -> Binder (Walk Filter VNode VNode)
+gHasNodeID nid = do
   var_nid <- newBind nid
-  return $ gNodeId $. gHas2 "@node_id" var_nid $. gHasLabel "node" $. sV [] $ source "g"
+  return $ gHas2 "@node_id" var_nid
 
-gMakeNode :: ToJSON n => n -> Binder (GTraversal SideEffect () EID)
+gMakeNode :: ToJSON n => n -> Binder (GTraversal SideEffect () VNode)
 gMakeNode nid = do
   var_nid <- newBind nid
-  return $ liftWalk gNodeId $. gProperty "@node_id" var_nid $. sAddV "node" $ source "g"
+  return $ gProperty "@node_id" var_nid $. sAddV "node" $ source "g"
 
 -- | The \"neighbors\" vertex.
 data VNeighbors
