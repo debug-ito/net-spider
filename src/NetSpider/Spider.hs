@@ -1,4 +1,4 @@
-{-# LANGUAGE OverloadedStrings, TypeFamilies #-}
+{-# LANGUAGE OverloadedStrings, TypeFamilies, DeriveGeneric #-}
 -- |
 -- Module: NetSpider.Spider
 -- Description: Spider type.
@@ -24,15 +24,19 @@ import Data.Greskell
     Binder, ToGreskell(GreskellReturn), AsIterator(IteratorItem), FromGraphSON,
     liftWalk, gLimit, gIdentity
   )
+import Data.Hashable (Hashable)
+import Data.HashMap.Strict (HashMap)
+import Data.HashSet (HashSet)
 import Data.Monoid (mempty)
 import Data.Vector (Vector)
 import qualified Data.Vector as V
+import GHC.Generics (Generic)
 import Network.Greskell.WebSocket
   ( Host, Port
   )
 import qualified Network.Greskell.WebSocket as Gr
 
-import NetSpider.Neighbors (Neighbors(..), FoundLink(..))
+import NetSpider.Neighbors (Neighbors(..), FoundLink(..), LinkState(..))
 import NetSpider.Snapshot (SnapshotElement)
 import NetSpider.Timestamp (Timestamp(..))
 import NetSpider.Spider.Internal.Graph
@@ -135,3 +139,30 @@ clearAll spider = Gr.drainResults =<< submitB spider (return gClearAll)
 
 -- We can create much more complex function to query snapshot graphs,
 -- but at least we need 'getLatestSnapshot'.
+
+-- | Identitfy of link while making the snapshot graph.
+data SnapshotLinkID n p =
+  SnapshotLinkID
+  { sliSubjectNode :: !n,
+    sliSubjectPort :: !p,
+    sliTargetNode :: !n,
+    sliTargetPort :: !p
+  }
+  deriving (Show,Eq,Ord,Generic)
+
+instance (Hashable n, Hashable p) => Hashable (SnapshotLinkID n p)
+
+-- | Observation sample of a link while making the snapshot graph.
+data SnapshotLinkSample =
+  SnapshotLinkSample
+  { slsLinkState :: !LinkState,
+    slsTimestamp :: !Timestamp
+  }
+  deriving (Show,Eq)
+
+-- | The state kept while making the snapshot graph.
+data SnapshotState n p =
+  SnapshotState
+  { ssVisitedNodes :: !(HashSet n),
+    ssVisitedLinks :: !(HashMap (SnapshotLinkID n p) (Vector SnapshotLinkSample))
+  }

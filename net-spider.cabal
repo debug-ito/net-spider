@@ -20,7 +20,8 @@ library
   -- default-extensions:   
   other-extensions:     OverloadedStrings,
                         GeneralizedNewtypeDeriving,
-                        TypeFamilies
+                        TypeFamilies,
+                        DeriveGeneric
   exposed-modules:      NetSpider,
                         NetSpider.Neighbors,
                         NetSpider.Timestamp,
@@ -35,7 +36,9 @@ library
                         greskell,
                         aeson,
                         safe-exceptions,
-                        text
+                        text,
+                        unordered-containers,
+                        hashable
 
 -- executable net-spider
 --   default-language:     Haskell2010
