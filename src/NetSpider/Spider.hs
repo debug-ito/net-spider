@@ -20,9 +20,9 @@ import Control.Exception.Safe (throwString)
 import Control.Monad (void)
 import Data.Aeson (ToJSON)
 import Data.Greskell
-  ( runBinder, (<$.>), (<*.>),
+  ( runBinder, ($.), (<$.>), (<*.>),
     Binder, ToGreskell(GreskellReturn), AsIterator(IteratorItem), FromGraphSON,
-    liftWalk
+    liftWalk, gLimit
   )
 import Data.Vector (Vector)
 import qualified Data.Vector as V
@@ -107,7 +107,13 @@ getOrMakeNode spider nid = do
 -- This function starts from an arbitrary node, traverses the history
 -- graph using the latest links with unlimited number of hops.
 getLatestSnapshot :: Spider -> IO (Vector (SnapshotElement n p))
-getLatestSnapshot = undefined
+getLatestSnapshot spider = do
+  mstart_v <- getStartNode
+  undefined -- TODO
+  where
+    getStartNode = submitB spider binder
+      where
+        binder = return $ gNodeEID $. gLimit 1 $. gAllNodes
 
 -- | Clear all content in the NetSpider database. This is mainly for
 -- testing.
