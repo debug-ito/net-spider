@@ -181,7 +181,6 @@ gFinds = gOutE ["finds"]
 data EFinds p =
   EFinds
   { efEID :: !EID,
-    efSubjectEID :: !EID,
     efSubjectPort :: !p,
     efTargetEID :: !EID,
     efTargetPort :: !p,
@@ -200,7 +199,6 @@ instance FromGraphSON p => FromGraphSON (EFinds p) where
     where
       fromAEdge ae = EFinds 
                      <$> (parseGraphSON $ aeId ae)
-                     <*> (parseGraphSON $ aeOutV ae)
                      <*> (parseOneValue "@subject_port" ps)
                      <*> (parseGraphSON $ aeInV ae)
                      <*> (parseOneValue "@target_port" ps)
