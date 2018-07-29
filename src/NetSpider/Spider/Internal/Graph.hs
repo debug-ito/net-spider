@@ -75,12 +75,12 @@ gNodeID = gValues ["@node_id"]
 gAllNodes :: GTraversal Transform () VNode
 gAllNodes = gHasLabel "node" $. sV [] $ source "g"
 
-gHasNodeID :: ToJSON n => n -> Binder (Walk Filter VNode VNode)
+gHasNodeID :: (ToJSON n, WalkType c) => n -> Binder (Walk c VNode VNode)
 gHasNodeID nid = do
   var_nid <- newBind nid
   return $ gHas2 "@node_id" var_nid
 
-gHasNodeEID :: EID -> Binder (Walk Filter VNode VNode)
+gHasNodeEID :: (WalkType c) => EID -> Binder (Walk c VNode VNode)
 gHasNodeEID eid = do
   var_eid <- newBind eid
   return $ gHasId var_eid
@@ -117,7 +117,7 @@ instance FromGraphSON VNeighbors where
 gGetNodeByEID :: EID -> Binder (Walk Transform s VNode)
 gGetNodeByEID vid = do
   f <- gHasNodeEID vid
-  return (liftWalk f <<< gV [])
+  return (f <<< gV [])
 
 
 gAllNeighbors :: GTraversal Transform () VNeighbors
