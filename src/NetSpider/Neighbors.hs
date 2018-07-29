@@ -30,7 +30,7 @@ data LinkState =
 -- directional or non-directional.
 --
 -- - type @n@: node ID.
--- - type @@@: port ID.
+-- - type @p@: port ID.
 data FoundLink n p =
   FoundLink
   { subjectPort :: !p,
