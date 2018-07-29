@@ -18,7 +18,9 @@ library
   hs-source-dirs:       src
   ghc-options:          -Wall -fno-warn-unused-imports
   -- default-extensions:   
-  other-extensions:     OverloadedStrings
+  other-extensions:     OverloadedStrings,
+                        GeneralizedNewtypeDeriving,
+                        TypeFamilies
   exposed-modules:      NetSpider,
                         NetSpider.Neighbors,
                         NetSpider.Timestamp,

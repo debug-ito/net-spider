@@ -11,7 +11,8 @@ module NetSpider.Spider.Internal.Graph
          VNeighbors,
          gGetNode,
          gMakeNode,
-         gMakeNeighbors
+         gMakeNeighbors,
+         gClearAll
        ) where
 
 import Control.Category ((<<<))
@@ -24,8 +25,8 @@ import Data.Greskell
     AVertexProperty, AEdge,
     GTraversal, Transform, SideEffect, Walk, liftWalk,
     Binder, newBind,
-    source, sV, sAddV, gHasLabel, gHas2, gId, gProperty, gPropertyV, gV,
-    gAddE, gSideEffect, gTo, gFrom,
+    source, sV, sV', sAddV, gHasLabel, gHas2, gId, gProperty, gPropertyV, gV,
+    gAddE, gSideEffect, gTo, gFrom, gDrop,
     ($.), (<*.>),
     ToGTraversal,
   )
@@ -110,3 +111,6 @@ gSetTimestamp ts = do
 
 emitsAEdge :: ToGTraversal g => g c s AEdge -> g c s AEdge
 emitsAEdge = id
+
+gClearAll :: GTraversal SideEffect () ()
+gClearAll = void $ gDrop $. liftWalk $ sV' [] $ source "g"

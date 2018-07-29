@@ -16,21 +16,12 @@ module NetSpider.Spider
          clearAll
        ) where
 
-import Control.Category ((<<<))
 import Control.Exception.Safe (throwString)
 import Control.Monad (void)
 import Data.Aeson (ToJSON)
-import Data.Foldable (fold)
 import Data.Greskell
-  ( Walk, SideEffect, Vertex,
-    AVertex,
-    source, sV', sAddV',
-    ($.), (<*.>), gDrop, liftWalk, gHas2, gId, gProperty, gPropertyV, gHasLabel,
-    gSideEffect, gAddE', gFrom, gTo, gV',
-    GValue,
-    runBinder, newBind, Binder
+  ( runBinder
   )
-import Data.Traversable (traverse)
 import Data.Vector (Vector)
 import qualified Data.Vector as V
 import Network.Greskell.WebSocket
@@ -41,6 +32,9 @@ import qualified Network.Greskell.WebSocket as Gr
 import NetSpider.Neighbors (Neighbors(..), FoundLink(..))
 import NetSpider.Snapshot (SnapshotElement)
 import NetSpider.Timestamp (Timestamp(..))
+import NetSpider.Spider.Internal.Graph
+  ( EID, gMakeNeighbors, gGetNode, gMakeNode, gClearAll
+  )
 
 -- | An IO agent of the NetSpider database.
 data Spider =
@@ -70,63 +64,26 @@ addNeighbors spider nbs = do
 
 makeNeighborsVertex :: (ToJSON p)
                     => Spider
-                    -> VertexID -- ^ subject node VID
-                    -> Vector (FoundLink n p, VertexID) -- ^ (link, target node VID)
+                    -> EID -- ^ subject node vertex ID
+                    -> Vector (FoundLink n p, EID) -- ^ (link, target node vertex ID)
                     -> Timestamp
                     -> IO ()
 makeNeighborsVertex spider subject_vid link_pairs timestamp =
   Gr.drainResults =<< Gr.submit (spiderClient spider) script mbindings
   where
-    (script, bindings) = runBinder
-                         $ mAddFindsEdges
-                         <*.> setTimestamp timestamp
-                         <*.> mAddObservesEdge
-                         <*.> pure $ sAddV' "neighbors" $ source "g"
+    (script, bindings) = runBinder $ fmap void $ gMakeNeighbors subject_vid link_pairs timestamp
     mbindings = Just bindings
-    mAddObservesEdge = do
-      v <- mVertexById subject_vid
-      return $ gSideEffect $ gAddE' "observes" $ gFrom v
-    mVertexById vid = do
-      var_vid <- newBind vid
-      return $ gV' [var_vid]
-    mAddFindsEdges = fmap fold $ traverse mAddFindsEdgeFor link_pairs
-    mAddFindsEdgeFor :: (ToJSON p) => (FoundLink n p, VertexID) -> Binder (Walk SideEffect AVertex AVertex)
-    mAddFindsEdgeFor (link, target_vid) = do
-      v <- mVertexById target_vid
-      var_sp <- newBind $ subjectPort link
-      var_tp <- newBind $ targetPort link
-      return $ gSideEffect ( gProperty "@target_port" var_tp
-                             <<< gProperty "@subject_port" var_sp
-                             <<< gAddE' "finds" (gTo v)
-                             -- TODO: encode LinkState
-                           )
-
-setTimestamp :: Timestamp -> Binder (Walk SideEffect AVertex AVertex)
-setTimestamp ts = do
-  var_epoch <- newBind $ epochTime ts
-  return $ gPropertyV Nothing "@timestamp" var_epoch []
-  -- TODO: set timezone.
-
--- | ID of the Vertex kept internally in the graph DB.
-type VertexID = GValue
-
--- TODO: is it OK to use GValue naively for ID? It's bad for the code
--- to depend on GraphSON encoding..
-
-
 
 vToMaybe :: Vector a -> Maybe a
 vToMaybe v = v V.!? 0
 
-getNode :: (ToJSON n) => Spider -> n -> IO (Maybe VertexID)
+getNode :: (ToJSON n) => Spider -> n -> IO (Maybe EID)
 getNode spider nid = fmap vToMaybe $ Gr.slurpResults =<< Gr.submit (spiderClient spider) script mbindings
   where
-    (script, bindings) = runBinder $ do
-      var_nid <- newBind nid
-      return $ gId $. gHas2 "@node_id" var_nid $. gHasLabel "node" $. sV' [] $ source "g"
+    (script, bindings) = runBinder $ gGetNode nid
     mbindings = Just bindings
 
-getOrMakeNode :: (ToJSON n) => Spider -> n -> IO VertexID
+getOrMakeNode :: (ToJSON n) => Spider -> n -> IO EID
 getOrMakeNode spider nid = do
   mvid <- getNode spider nid
   case mvid of
@@ -134,9 +91,7 @@ getOrMakeNode spider nid = do
    Nothing -> makeNode
   where
     makeNode = expectOne =<< Gr.slurpResults =<< Gr.submit (spiderClient spider) script mbindings
-    (script, bindings) = runBinder $ do
-      var_nid <- newBind nid
-      return $ liftWalk gId $. gProperty "@node_id" var_nid $. sAddV' "node" $ source "g"
+    (script, bindings) = runBinder $ gMakeNode nid
     mbindings = Just bindings
     expectOne v = case vToMaybe v of
       Just e -> return e
@@ -154,9 +109,7 @@ getLatestSnapshot = undefined
 -- | Clear all content in the NetSpider database. This is mainly for
 -- testing.
 clearAll :: Spider -> IO ()
-clearAll spider = Gr.drainResults =<< Gr.submit (spiderClient spider) script Nothing
-  where
-    script = void $ gDrop $. liftWalk $ sV' [] $ source "g"
+clearAll spider = Gr.drainResults =<< Gr.submit (spiderClient spider) gClearAll Nothing
 
 -- We can create much more complex function to query snapshot graphs,
 -- but at least we need 'getLatestSnapshot'.
