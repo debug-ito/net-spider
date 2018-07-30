@@ -151,6 +151,7 @@ recurseVisitNodesForSnapshot spider ref_state = go
          visitNodeForSnapshot spider ref_state next_visit
          go
     getNextVisit = atomicModifyIORef' ref_state popUnvisitedNode
+    -- TODO: limit number of steps.
 
 visitNodeForSnapshot :: (ToJSON n, Eq n, Hashable n, FromGraphSON n, Eq p, Hashable p, FromGraphSON p)
                      => Spider
