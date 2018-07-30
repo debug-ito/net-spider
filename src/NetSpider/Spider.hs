@@ -193,6 +193,7 @@ makeSnapshotLinks spider subject_nid vneighbors = do
                                   }
              )
     getNodeID node_eid = expectOne =<< (fmap vToMaybe $ Gr.slurpResults =<< submitB spider binder)
+    -- TODO: Using .as and .select steps, we can get EFinds and its destination vertex simultaneously.
       where
         binder = gNodeID <$.> gHasNodeEID node_eid <*.> pure gAllNodes
         expectOne (Just r) = return r
