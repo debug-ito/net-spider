@@ -30,7 +30,7 @@ import Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HM
 import Data.HashSet (HashSet)
 import qualified Data.HashSet as HS
-import Data.IORef (IORef, modifyIORef, newIORef, readIORef)
+import Data.IORef (IORef, modifyIORef, newIORef, readIORef, atomicModifyIORef')
 import Data.Monoid (mempty)
 import Data.Vector (Vector)
 import qualified Data.Vector as V
@@ -137,8 +137,20 @@ getLatestSnapshot spider = do
       where
         binder = return $ gNodeID $. gLimit 1 $. gAllNodes
 
-recurseVisitNodesForSnapshot :: Spider -> IORef (SnapshotState n p) -> IO ()
-recurseVisitNodesForSnapshot = undefined -- TODO
+recurseVisitNodesForSnapshot :: (ToJSON n, Eq n, Hashable n, FromGraphSON n, Eq p, Hashable p, FromGraphSON p)
+                             => Spider
+                             -> IORef (SnapshotState n p)
+                             -> IO ()
+recurseVisitNodesForSnapshot spider ref_state = go
+  where
+    go = do
+      mnext_visit <- getNextVisit
+      case mnext_visit of
+       Nothing -> return ()
+       Just next_visit -> do
+         visitNodeForSnapshot spider ref_state next_visit
+         go
+    getNextVisit = atomicModifyIORef' ref_state popUnvisitedNode
 
 visitNodeForSnapshot :: (ToJSON n, Eq n, Hashable n, FromGraphSON n, Eq p, Hashable p, FromGraphSON p)
                      => Spider
@@ -261,6 +273,16 @@ addSnapshotLink lid ls state = state { ssVisitedLinks = updatedLinks,
 addSnapshotLinks :: (Eq n, Hashable n, Eq p, Hashable p)
                  => Vector (SnapshotLinkID n p, SnapshotLinkSample) -> SnapshotState n p -> SnapshotState n p
 addSnapshotLinks links orig_state = foldr' (uncurry addSnapshotLink) orig_state links
+
+popUnvisitedNode :: SnapshotState n p -> (SnapshotState n p, Maybe n)
+popUnvisitedNode state = (updated, popped)
+  where
+    updated = state { ssUnvisitedNodes = updatedUnvisited }
+    (popped, updatedUnvisited) = popHead $ ssUnvisitedNodes state
+    popHead v = let mh = v V.!? 0
+                in case mh of
+                    Just _ -> (mh, V.tail v)
+                    Nothing -> (mh, v)
 
 makeSnapshot :: SnapshotState n p -> Vector (SnapshotElement n p)
 makeSnapshot = undefined -- TODO
