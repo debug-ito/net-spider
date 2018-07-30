@@ -42,6 +42,7 @@ import qualified Network.Greskell.WebSocket as Gr
 
 import NetSpider.Neighbors (Neighbors(..), FoundLink(..), LinkState(..))
 import NetSpider.Snapshot (SnapshotElement)
+import NetSpider.Snapshot.Internal (SnapshotNode(..))
 import NetSpider.Timestamp (Timestamp(..))
 import NetSpider.Spider.Internal.Graph
   ( EID, gMakeNeighbors, gAllNodes, gHasNodeID, gHasNodeEID, gNodeEID, gNodeID, gMakeNode, gClearAll,
@@ -286,6 +287,13 @@ popUnvisitedNode state = (updated, popped)
                     Nothing -> (mh, v)
 
 makeSnapshot :: SnapshotState n p -> Vector (SnapshotElement n p)
-makeSnapshot = undefined -- TODO
-
-
+makeSnapshot state = (fmap Left nodes) V.++ (fmap Right links)
+  where
+    nodes = visited_nodes V.++ boundary_nodes
+    makeSnapshotNode on_boundary nid =
+      SnapshotNode { _nodeId = nid,
+                     _isOnBoundary = on_boundary
+                   }
+    visited_nodes = fmap (makeSnapshotNode False) $ foldr' V.cons mempty $ ssVisitedNodes state
+    boundary_nodes = fmap (makeSnapshotNode True) $ ssUnvisitedNodes state
+    links = undefined -- TODO
