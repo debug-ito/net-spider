@@ -31,6 +31,7 @@ import qualified Data.HashMap.Strict as HM
 import Data.HashSet (HashSet)
 import qualified Data.HashSet as HS
 import Data.IORef (IORef, modifyIORef, newIORef, readIORef, atomicModifyIORef')
+import Data.Maybe (catMaybes)
 import Data.Monoid (mempty)
 import Data.Vector (Vector)
 import qualified Data.Vector as V
@@ -42,7 +43,7 @@ import qualified Network.Greskell.WebSocket as Gr
 
 import NetSpider.Neighbors (Neighbors(..), FoundLink(..), LinkState(..))
 import NetSpider.Snapshot (SnapshotElement)
-import NetSpider.Snapshot.Internal (SnapshotNode(..))
+import NetSpider.Snapshot.Internal (SnapshotNode(..), SnapshotLink(..))
 import NetSpider.Timestamp (Timestamp(..))
 import NetSpider.Spider.Internal.Graph
   ( EID, gMakeNeighbors, gAllNodes, gHasNodeID, gHasNodeEID, gNodeEID, gNodeID, gMakeNode, gClearAll,
@@ -296,4 +297,25 @@ makeSnapshot state = (fmap Left nodes) V.++ (fmap Right links)
                    }
     visited_nodes = fmap (makeSnapshotNode False) $ foldr' V.cons mempty $ ssVisitedNodes state
     boundary_nodes = fmap (makeSnapshotNode True) $ ssUnvisitedNodes state
-    links = undefined -- TODO
+    links = V.fromList $ catMaybes $ map (uncurry makeSnapshotLink) $ HM.toList $ ssVisitedLinks state
+
+makeSnapshotLink :: SnapshotLinkID n p -> Vector SnapshotLinkSample -> Maybe (SnapshotLink n p)
+makeSnapshotLink link_id link_samples = do
+  agg_sample <- aggregateSnapshotLinkSamples link_id link_samples
+  case slsLinkState agg_sample of
+   LinkUnused -> Nothing
+   LinkToTarget -> Just $ aggSampleToLink agg_sample True True
+   LinkToSubject -> Just $ aggSampleToLink agg_sample False True
+   LinkBidirectional -> Just $ aggSampleToLink agg_sample True False
+  where
+    aggSampleToLink agg_sample to_target is_directed = 
+      SnapshotLink { _sourceNode = (if to_target then sliSubjectNode else sliTargetNode) link_id,
+                     _destinationNode = (if to_target then sliTargetNode else sliSubjectNode) link_id,
+                     _sourcePort = (if to_target then sliSubjectPort else sliTargetPort) link_id,
+                     _destinationPort = (if to_target then sliTargetPort else sliSubjectPort) link_id,
+                     _isDirected = is_directed,
+                     _linkTimestamp = slsTimestamp agg_sample
+                   }
+
+aggregateSnapshotLinkSamples :: SnapshotLinkID n p -> Vector SnapshotLinkSample -> Maybe SnapshotLinkSample
+aggregateSnapshotLinkSamples = undefined -- TODO
