@@ -277,15 +277,17 @@ addSnapshotLinks :: (Eq n, Hashable n, Eq p, Hashable p)
                  => Vector (SnapshotLinkID n p, SnapshotLinkSample) -> SnapshotState n p -> SnapshotState n p
 addSnapshotLinks links orig_state = foldr' (uncurry addSnapshotLink) orig_state links
 
+popHeadV :: Vector a -> (Maybe a, Vector a)
+popHeadV v = let mh = v V.!? 0
+             in case mh of
+                 Just _ -> (mh, V.tail v)
+                 Nothing -> (mh, v)
+
 popUnvisitedNode :: SnapshotState n p -> (SnapshotState n p, Maybe n)
 popUnvisitedNode state = (updated, popped)
   where
     updated = state { ssUnvisitedNodes = updatedUnvisited }
-    (popped, updatedUnvisited) = popHead $ ssUnvisitedNodes state
-    popHead v = let mh = v V.!? 0
-                in case mh of
-                    Just _ -> (mh, V.tail v)
-                    Nothing -> (mh, v)
+    (popped, updatedUnvisited) = popHeadV $ ssUnvisitedNodes state
 
 makeSnapshot :: SnapshotState n p -> Vector (SnapshotElement n p)
 makeSnapshot state = (fmap Left nodes) V.++ (fmap Right links)
@@ -318,4 +320,10 @@ makeSnapshotLink link_id link_samples = do
                    }
 
 aggregateSnapshotLinkSamples :: SnapshotLinkID n p -> Vector SnapshotLinkSample -> Maybe SnapshotLinkSample
-aggregateSnapshotLinkSamples = undefined -- TODO
+aggregateSnapshotLinkSamples _ samples = let (mhead, samples_tail) = popHeadV samples
+                                         in fmap (aggregate samples_tail) mhead
+  where
+    aggregate samples_tail sample_head = foldr' f sample_head samples_tail
+      where
+        f :: SnapshotLinkSample -> SnapshotLinkSample -> SnapshotLinkSample
+        f ls rs = undefined -- TODO
