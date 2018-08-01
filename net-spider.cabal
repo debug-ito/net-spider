@@ -75,7 +75,7 @@ test-suite server-test-suite
   hs-source-dirs:       test
   ghc-options:          -Wall -fno-warn-unused-imports "-with-rtsopts=-M512m"
   main-is:              ServerTest.hs
-  build-depends:        base, hspec, net-spider, vector,
+  build-depends:        base, hspec, net-spider, vector, text,
                         safe-exceptions,
                         hspec-need-env
                         

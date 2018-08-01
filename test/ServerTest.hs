@@ -1,7 +1,10 @@
+{-# LANGUAGE OverloadedStrings #-}
 module Main (main,spec) where
 
 import Control.Exception.Safe (bracket)
 import Data.List (sort)
+import Data.Text (Text)
+import Data.Vector (Vector)
 import qualified Data.Vector as V
 import Test.Hspec
 import Test.Hspec.NeedEnv (needEnvHostPort, EnvMode(Need))
@@ -10,7 +13,8 @@ import NetSpider.Neighbors
   ( FoundLink(..), LinkState(..), Neighbors(..)
   )
 import NetSpider.Snapshot
-  ( nodeId, linkTuple, isDirected, linkTimestamp,
+  ( SnapshotElement,
+    nodeId, linkTuple, isDirected, linkTimestamp,
     isOnBoundary
   )
 import NetSpider.Spider
@@ -37,17 +41,19 @@ withSpider action (host, port) = bracket (connectWS host port) close $ \spider -
 spec_getLatestSnapshot :: Spec
 spec_getLatestSnapshot = withServer $ describe "getLatestSnapshot" $ do
   specify "one neighbor" $ withSpider $ \spider -> do
-    let link = FoundLink { subjectPort = "p1",
+    let link :: FoundLink Text Text
+        link = FoundLink { subjectPort = "p1",
                            targetNode = "n2",
                            targetPort = "p9",
                            linkState = LinkToTarget
                          }
+        nbs :: Neighbors Text Text
         nbs = Neighbors { subjectNode = "n1",
                           observedTime = fromEpochSecond 100,
                           neighborLinks = return link
                         }
     addNeighbors spider nbs
-    got <- fmap (sort . V.toList) $ getLatestSnapshot spider 
+    got <- fmap (sort . V.toList) $ (getLatestSnapshot spider :: IO (Vector (SnapshotElement Text Text)))
     let [Left got_n1, Left got_n2, Right got_link] = got
     nodeId got_n1 `shouldBe` "n1"
     isOnBoundary got_n1 `shouldBe` False
