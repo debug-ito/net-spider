@@ -19,7 +19,10 @@ data Timestamp =
   { epochTime :: !Int64,
     timeZone :: !(Maybe TimeZone)
   }
-  deriving (Show,Eq) -- don' derive Ord because Ord with timezone is confusing
+  deriving (Show,Eq)
+
+instance Ord Timestamp where
+  compare l r = compare (epochTime l) (epochTime r)
 
 -- | Make 'Timestamp' from seconds from the epoch. 'timeZone' is
 -- 'Nothing'.
