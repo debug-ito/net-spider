@@ -319,6 +319,12 @@ makeSnapshotLink link_id link_samples = do
                      _linkTimestamp = slsTimestamp agg_sample
                    }
 
+-- | Aggregate 'SnapshotLinkSample's into one.
+--
+-- Input 'SnapshotLinkSample's are already filtered in terms of
+-- 'Timestamp', so implementation should consider all samples
+-- sufficiently recent. Note that the input 'SnapshotLinkSample's can
+-- be inconsistent with each other.
 aggregateSnapshotLinkSamples :: SnapshotLinkID n p -> Vector SnapshotLinkSample -> Maybe SnapshotLinkSample
 aggregateSnapshotLinkSamples _ samples = let (mhead, samples_tail) = popHeadV samples
                                          in fmap (aggregate samples_tail) mhead
@@ -326,4 +332,6 @@ aggregateSnapshotLinkSamples _ samples = let (mhead, samples_tail) = popHeadV sa
     aggregate samples_tail sample_head = foldr' f sample_head samples_tail
       where
         f :: SnapshotLinkSample -> SnapshotLinkSample -> SnapshotLinkSample
-        f ls rs = undefined -- TODO
+        f ls rs = if slsTimestamp ls >= slsTimestamp rs -- simply trust the latest sample.
+                  then ls
+                  else rs
