@@ -52,22 +52,25 @@ import NetSpider.Spider.Internal.Graph
   )
 
 -- | An IO agent of the NetSpider database.
-data Spider =
+--
+-- - type @n@: node ID.
+-- - type @p@: port ID.
+data Spider n p =
   Spider
   { spiderClient :: Gr.Client
   }
 
 -- | Connect to the WebSocket endpoint of Tinkerpop Gremlin Server
 -- that hosts the NetSpider database.
-connectWS :: Host -> Port -> IO Spider
+connectWS :: Host -> Port -> IO (Spider n p)
 connectWS host port = fmap Spider $ Gr.connect host port
 
 -- | Close and release the 'Spider' object.
-close :: Spider -> IO ()
+close :: Spider n p -> IO ()
 close sp = Gr.close $ spiderClient sp
 
 submitB :: (ToGreskell g, r ~ GreskellReturn g, AsIterator r, v ~ IteratorItem r, FromGraphSON v)
-        => Spider -> Binder g -> IO (Gr.ResultHandle v)
+        => Spider n p -> Binder g -> IO (Gr.ResultHandle v)
 submitB sp b = Gr.submit (spiderClient sp) script mbs
   where
     (script, bs) = runBinder b
@@ -75,11 +78,11 @@ submitB sp b = Gr.submit (spiderClient sp) script mbs
 
 -- | Clear all content in the NetSpider database. This is mainly for
 -- testing.
-clearAll :: Spider -> IO ()
+clearAll :: Spider n p -> IO ()
 clearAll spider = Gr.drainResults =<< submitB spider (return gClearAll)
 
 -- | Add an observation of 'Neighbors' to the NetSpider database.
-addNeighbors :: (ToJSON n, ToJSON p) => Spider -> Neighbors n p -> IO ()
+addNeighbors :: (ToJSON n, ToJSON p) => Spider n p -> Neighbors n p -> IO ()
 addNeighbors spider nbs = do
   subject_vid <- getOrMakeNode spider $ subjectNode nbs
   link_pairs <- traverse linkAndTargetVID $ neighborLinks nbs
@@ -90,7 +93,7 @@ addNeighbors spider nbs = do
       return (link, target_vid)
 
 makeNeighborsVertex :: (ToJSON p)
-                    => Spider
+                    => Spider n p
                     -> EID -- ^ subject node vertex ID
                     -> Vector (FoundLink n p, EID) -- ^ (link, target node vertex ID)
                     -> Timestamp
@@ -101,12 +104,12 @@ makeNeighborsVertex spider subject_vid link_pairs timestamp =
 vToMaybe :: Vector a -> Maybe a
 vToMaybe v = v V.!? 0
 
-getNode :: (ToJSON n) => Spider -> n -> IO (Maybe EID)
+getNode :: (ToJSON n) => Spider n p -> n -> IO (Maybe EID)
 getNode spider nid = fmap vToMaybe $ Gr.slurpResults =<< submitB spider gt
   where
     gt = gNodeEID <$.> gHasNodeID nid <*.> pure gAllNodes
 
-getOrMakeNode :: (ToJSON n) => Spider -> n -> IO EID
+getOrMakeNode :: (ToJSON n) => Spider n p -> n -> IO EID
 getOrMakeNode spider nid = do
   mvid <- getNode spider nid
   case mvid of
@@ -125,7 +128,7 @@ getOrMakeNode spider nid = do
 -- This function starts from an arbitrary node, traverses the history
 -- graph using the latest links with unlimited number of hops.
 getLatestSnapshot :: (FromGraphSON n, FromGraphSON p, ToJSON n, Eq n, Eq p, Hashable n, Hashable p)
-                  => Spider -> IO (Vector (SnapshotElement n p))
+                  => Spider n p -> IO (Vector (SnapshotElement n p))
 getLatestSnapshot spider = do
   mstart_nid <- getStartNode
   case mstart_nid of
@@ -140,7 +143,7 @@ getLatestSnapshot spider = do
         binder = return $ gNodeID $. gLimit 1 $. gAllNodes
 
 recurseVisitNodesForSnapshot :: (ToJSON n, Eq n, Hashable n, FromGraphSON n, Eq p, Hashable p, FromGraphSON p)
-                             => Spider
+                             => Spider n p
                              -> IORef (SnapshotState n p)
                              -> IO ()
 recurseVisitNodesForSnapshot spider ref_state = go
@@ -156,7 +159,7 @@ recurseVisitNodesForSnapshot spider ref_state = go
     -- TODO: limit number of steps.
 
 visitNodeForSnapshot :: (ToJSON n, Eq n, Hashable n, FromGraphSON n, Eq p, Hashable p, FromGraphSON p)
-                     => Spider
+                     => Spider n p
                      -> IORef (SnapshotState n p)
                      -> n
                      -> IO ()
@@ -185,7 +188,7 @@ visitNodeForSnapshot spider ref_state visit_nid = do
                  <*.> pure gAllNodes
 
 makeSnapshotLinks :: (FromGraphSON n, FromGraphSON p)
-                  => Spider
+                  => Spider n p
                   -> n -- ^ subject node ID.
                   -> VNeighbors
                   -> IO (Vector (SnapshotLinkID n p, SnapshotLinkSample))

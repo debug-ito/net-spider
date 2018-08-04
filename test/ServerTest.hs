@@ -41,7 +41,7 @@ spec = do
 withServer :: SpecWith (Host,Port) -> Spec
 withServer = before $ needEnvHostPort Need "NET_SPIDER_TEST"
 
-withSpider :: (Spider -> IO ()) -> (Host, Port) -> IO ()
+withSpider :: (Spider n p -> IO ()) -> (Host, Port) -> IO ()
 withSpider action (host, port) = bracket (connectWS host port) close $ \spider -> do
   clearAll spider
   action spider
@@ -55,14 +55,13 @@ spec_getLatestSnapshot = withServer $ describe "getLatestSnapshot" $ do
                            targetPort = "p9",
                            linkState = LinkToTarget
                          }
-        nbs :: Neighbors Text Text
         nbs = Neighbors { subjectNode = "n1",
                           observedTime = fromEpochSecond 100,
                           neighborLinks = return link
                         }
     flip withException showSubmitException $ addNeighbors spider nbs
     got <- flip withException showSubmitException
-           $ fmap (sort . V.toList) $ (getLatestSnapshot spider :: IO (Vector (SnapshotElement Text Text)))
+           $ fmap (sort . V.toList) $ getLatestSnapshot spider
     let (got_n1, got_n2, got_link) = case got of
           [Left a, Left b, Right c] -> (a, b, c)
           _ -> error ("Unexpected result: got = " ++ show got)
@@ -80,7 +79,7 @@ spec_getLatestSnapshot = withServer $ describe "getLatestSnapshot" $ do
                           neighborLinks = mempty
                         }
     addNeighbors spider nbs
-    got <- fmap V.toList $ (getLatestSnapshot spider :: IO (Vector (SnapshotElement Text Int)))
+    got <- fmap V.toList $ getLatestSnapshot spider
     let got_n1 = case got of
           [Left a] -> a
           _ -> error ("Unexpected result: got = " ++ show got)
