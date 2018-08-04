@@ -46,20 +46,24 @@ withSpider action (host, port) = bracket (connectWS host port) close $ \spider -
   clearAll spider
   action spider
 
+makeOneNeighborExample :: Spider Text Text -> IO ()
+makeOneNeighborExample spider = do
+  let link = FoundLink { subjectPort = "p1",
+                         targetNode = "n2",
+                         targetPort = "p9",
+                         linkState = LinkToTarget
+                       }
+      nbs = Neighbors { subjectNode = "n1",
+                        observedTime = fromEpochSecond 100,
+                        neighborLinks = return link
+                      }
+  flip withException showSubmitException $ addNeighbors spider nbs
+  
+
 spec_getLatestSnapshot :: Spec
 spec_getLatestSnapshot = withServer $ describe "getLatestSnapshot" $ do
   specify "one neighbor" $ withSpider $ \spider -> do
-    let link :: FoundLink Text Text
-        link = FoundLink { subjectPort = "p1",
-                           targetNode = "n2",
-                           targetPort = "p9",
-                           linkState = LinkToTarget
-                         }
-        nbs = Neighbors { subjectNode = "n1",
-                          observedTime = fromEpochSecond 100,
-                          neighborLinks = return link
-                        }
-    flip withException showSubmitException $ addNeighbors spider nbs
+    makeOneNeighborExample spider
     got <- flip withException showSubmitException
            $ fmap (sort . V.toList) $ getLatestSnapshot spider "n1"
     let (got_n1, got_n2, got_link) = case got of
@@ -85,6 +89,10 @@ spec_getLatestSnapshot = withServer $ describe "getLatestSnapshot" $ do
           _ -> error ("Unexpected result: got = " ++ show got)
     nodeId got_n1 `shouldBe` "n1"
     isOnBoundary got_n1 `shouldBe` False
+  specify "missing starting node" $ withSpider $ \spider -> do
+    makeOneNeighborExample spider
+    got <- getLatestSnapshot spider "no node"
+    got `shouldBe` mempty
 
 -- TODO: how linkState relates to the property of SnapshotLink ?
 

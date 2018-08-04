@@ -160,11 +160,11 @@ visitNodeForSnapshot :: (ToJSON n, Eq n, Hashable n, FromGraphSON n, Eq p, Hasha
                      -> n
                      -> IO ()
 visitNodeForSnapshot spider ref_state visit_nid = do
-  markAsVisited
   mnode_eid <- getVisitedNodeEID
   case mnode_eid of
    Nothing -> return ()
    Just node_eid -> do
+     markAsVisited
      mnext_neighbors <- getNextNeighbors node_eid
      case mnext_neighbors of
       Nothing -> return ()
