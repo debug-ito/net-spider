@@ -30,7 +30,7 @@ module NetSpider.Spider.Internal.Graph
 
 import Control.Category ((<<<))
 import Control.Monad (void)
-import Data.Aeson (ToJSON, FromJSON)
+import Data.Aeson (ToJSON(..), FromJSON(..), Value(..))
 import Data.Foldable (fold)
 import Data.Greskell
   ( FromGraphSON(..),
@@ -54,7 +54,14 @@ import NetSpider.Timestamp (Timestamp(..), fromEpochSecond)
 
 -- | Generic element ID used in the graph DB.
 newtype EID = EID (Either Int Text)
-            deriving (Show,Eq,Ord,FromGraphSON,ToJSON,FromJSON)
+            deriving (Show,Eq,Ord,FromGraphSON)
+
+instance ToJSON EID where
+  toJSON (EID e) = either toJSON toJSON e
+
+instance FromJSON EID where
+  parseJSON (String s) = return $ EID $ Right s
+  parseJSON v = fmap (EID . Left) $ parseJSON v
 
 
 -- | The \"node\" vertex.
