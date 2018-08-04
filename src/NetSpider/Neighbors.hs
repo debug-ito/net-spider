@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 -- |
 -- Module: NetSpider.Neighbors
 -- Description: Neighbors type
@@ -7,10 +8,15 @@
 module NetSpider.Neighbors
        ( Neighbors(..),
          FoundLink(..),
-         LinkState(..)
+         LinkState(..),
+         linkStateToText,
+         linkStateFromText
        ) where
 
+import Data.Greskell (FromGraphSON(..))
+import Data.Text (Text, unpack)
 import Data.Vector (Vector)
+
 import NetSpider.Timestamp (Timestamp)
 
 -- | State of the found link.
@@ -24,6 +30,28 @@ data LinkState =
   | LinkBidirectional
     -- ^ Link is bidirectional.
   deriving (Show,Eq,Ord,Bounded,Enum)
+
+linkStateToText :: LinkState -> Text
+linkStateToText ls = case ls of
+  LinkUnused -> "unused"
+  LinkToTarget -> "to_target"
+  LinkToSubject -> "to_subject"
+  LinkBidirectional -> "bidirectional"
+
+linkStateFromText :: Text -> Maybe LinkState
+linkStateFromText t = case t of
+  "unused" -> Just LinkUnused
+  "to_target" -> Just LinkToTarget
+  "to_subject" -> Just LinkToSubject
+  "bidirectional" -> Just LinkBidirectional
+  _ -> Nothing
+
+instance FromGraphSON LinkState where
+  parseGraphSON gv = fromText =<< parseGraphSON gv
+    where
+      fromText t = case linkStateFromText t of
+        Just ls -> return ls
+        Nothing -> fail ("Unrecognized LinkState: " ++ unpack t)
 
 -- | A link found in neighbors. The link connects a port in the
 -- subject node with a port in the target node. The link may be

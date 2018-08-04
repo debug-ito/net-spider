@@ -49,7 +49,7 @@ import Data.Text (Text)
 import Data.Traversable (traverse)
 import Data.Vector (Vector)
 
-import NetSpider.Neighbors (FoundLink(..), LinkState(..))
+import NetSpider.Neighbors (FoundLink(..), LinkState(..), linkStateToText)
 import NetSpider.Timestamp (Timestamp(..), fromEpochSecond)
 
 -- | Generic element ID used in the graph DB.
@@ -153,9 +153,11 @@ gMakeNeighbors subject_vid link_pairs timestamp =
       v <- gGetNodeByEID target_vid
       var_sp <- newBind $ subjectPort link
       var_tp <- newBind $ targetPort link
+      var_ls <- newBind $ linkStateToText $ linkState link
       return $ gSideEffect ( emitsAEdge
                              $ gProperty "@target_port" var_tp
                              <<< gProperty "@subject_port" var_sp
+                             <<< gProperty "@link_state" var_ls
                              <<< gAddE "finds" (gTo v)
                              -- TODO: encode LinkState
                            )
@@ -209,7 +211,7 @@ instance FromGraphSON p => FromGraphSON (EFinds p) where
                      <*> (parseOneValue "@subject_port" ps)
                      <*> (parseGraphSON $ aeInV ae)
                      <*> (parseOneValue "@target_port" ps)
-                     <*> pure LinkBidirectional -- TODO: encode and decode LinkState
+                     <*> (parseOneValue "@link_state" ps)
         where
           ps = aeProperties ae
   
