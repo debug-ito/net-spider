@@ -122,25 +122,21 @@ getOrMakeNode spider nid = do
       Nothing -> throwString "Expects at least single result, but got nothing."
       -- TODO: make decent exception spec.
 
--- | Get the latest snapshot graph from the NetSpider database.
+-- | Get the latest snapshot graph from the NetSpider database. It
+-- builds the snapshot graph by traversing the history graph from the
+-- given starting node.
 --
 -- This function is very simple, and should be used only for testing.
 -- This function starts from an arbitrary node, traverses the history
 -- graph using the latest links with unlimited number of hops.
 getLatestSnapshot :: (FromGraphSON n, FromGraphSON p, ToJSON n, Eq n, Eq p, Hashable n, Hashable p)
-                  => Spider n p -> IO (Vector (SnapshotElement n p))
-getLatestSnapshot spider = do
-  mstart_nid <- getStartNode
-  case mstart_nid of
-   Nothing -> return mempty
-   Just start_nid -> do
-     ref_state <- newIORef $ initSnapshotState $ return start_nid
-     recurseVisitNodesForSnapshot spider ref_state
-     fmap makeSnapshot $ readIORef ref_state
-  where
-    getStartNode = fmap vToMaybe $ Gr.slurpResults =<< submitB spider binder
-      where
-        binder = return $ gNodeID $. gLimit 1 $. gAllNodes
+                  => Spider n p
+                  -> n -- ^ ID of the node where it starts traversing.
+                  -> IO (Vector (SnapshotElement n p))
+getLatestSnapshot spider start_nid = do
+  ref_state <- newIORef $ initSnapshotState $ return start_nid
+  recurseVisitNodesForSnapshot spider ref_state
+  fmap makeSnapshot $ readIORef ref_state
 
 recurseVisitNodesForSnapshot :: (ToJSON n, Eq n, Hashable n, FromGraphSON n, Eq p, Hashable p, FromGraphSON p)
                              => Spider n p

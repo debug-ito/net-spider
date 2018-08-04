@@ -61,7 +61,7 @@ spec_getLatestSnapshot = withServer $ describe "getLatestSnapshot" $ do
                         }
     flip withException showSubmitException $ addNeighbors spider nbs
     got <- flip withException showSubmitException
-           $ fmap (sort . V.toList) $ getLatestSnapshot spider
+           $ fmap (sort . V.toList) $ getLatestSnapshot spider "n1"
     let (got_n1, got_n2, got_link) = case got of
           [Left a, Left b, Right c] -> (a, b, c)
           _ -> error ("Unexpected result: got = " ++ show got)
@@ -79,7 +79,7 @@ spec_getLatestSnapshot = withServer $ describe "getLatestSnapshot" $ do
                           neighborLinks = mempty
                         }
     addNeighbors spider nbs
-    got <- fmap V.toList $ getLatestSnapshot spider
+    got <- fmap V.toList $ getLatestSnapshot spider "n1"
     let got_n1 = case got of
           [Left a] -> a
           _ -> error ("Unexpected result: got = " ++ show got)
