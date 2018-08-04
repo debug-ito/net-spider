@@ -75,10 +75,11 @@ test-suite server-test-suite
   hs-source-dirs:       test
   ghc-options:          -Wall -fno-warn-unused-imports "-with-rtsopts=-M512m"
   main-is:              ServerTest.hs
-  build-depends:        base, hspec, net-spider, vector, text,
+  build-depends:        base, hspec, net-spider, vector, text, greskell-websocket,
+                        aeson, unordered-containers, text,
                         safe-exceptions,
                         hspec-need-env
-                        
+
 
 source-repository head
   type:                 git
