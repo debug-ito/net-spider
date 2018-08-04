@@ -47,6 +47,8 @@ data SnapshotLink n p =
 instance (Ord n, Ord p) => Ord (SnapshotLink n p) where
   compare l r = compare (linkTuple l) (linkTuple r)
 
+-- TODO: should linkTuple be (source node, source port, des node, des port) ???
+
 -- | 4-tuple (source node, destination node, source port, destination
 -- port) of the link.
 linkTuple :: SnapshotLink n p -> (n, n, p, p)
