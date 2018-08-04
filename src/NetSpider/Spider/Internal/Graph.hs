@@ -115,7 +115,7 @@ instance FromGraphSON VNeighbors where
     where
       fromAVertex av = do
         eid <- parseGraphSON $ avId av
-        epoch_ts <- parseOneValue "@timestanp" $ avProperties av
+        epoch_ts <- parseOneValue "@timestamp" $ avProperties av
         -- TODO: parse timezone.
         return $ VNeighbors { vnID = eid,
                               vnTimestamp = fromEpochSecond epoch_ts
