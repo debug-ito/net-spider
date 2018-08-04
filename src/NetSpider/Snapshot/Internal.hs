@@ -59,6 +59,8 @@ data SnapshotNode n =
     _isOnBoundary :: !Bool
     
     -- node attributes?
+
+    -- TODO: maybe node should have timestamp? because node can have no links.
   }
   deriving (Show,Eq)
 
