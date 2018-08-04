@@ -159,7 +159,6 @@ gMakeNeighbors subject_vid link_pairs timestamp =
                              <<< gProperty "@subject_port" var_sp
                              <<< gProperty "@link_state" var_ls
                              <<< gAddE "finds" (gTo v)
-                             -- TODO: encode LinkState
                            )
 
 keyTimestamp :: Key VNeighbors Int64
