@@ -57,15 +57,14 @@ makeOneNeighborExample spider = do
                         observedTime = fromEpochSecond 100,
                         neighborLinks = return link
                       }
-  flip withException showSubmitException $ addNeighbors spider nbs
+  debugShowE $ addNeighbors spider nbs
   
 
 spec_getLatestSnapshot :: Spec
 spec_getLatestSnapshot = withServer $ describe "getLatestSnapshot" $ do
   specify "one neighbor" $ withSpider $ \spider -> do
     makeOneNeighborExample spider
-    got <- flip withException showSubmitException
-           $ fmap (sort . V.toList) $ getLatestSnapshot spider "n1"
+    got <- debugShowE $ fmap (sort . V.toList) $ getLatestSnapshot spider "n1"
     let (got_n1, got_n2, got_link) = case got of
           [Left a, Left b, Right c] -> (a, b, c)
           _ -> error ("Unexpected result: got = " ++ show got)
@@ -93,8 +92,44 @@ spec_getLatestSnapshot = withServer $ describe "getLatestSnapshot" $ do
     makeOneNeighborExample spider
     got <- getLatestSnapshot spider "no node"
     got `shouldBe` mempty
+  specify "mutual neighbors" $ withSpider $ \spider -> do
+    let link_12 :: FoundLink Int Int
+        link_12 = FoundLink { subjectPort = 5,
+                              targetNode = 2,
+                              targetPort = 6,
+                              linkState = LinkToSubject
+                            }
+        link_21 = FoundLink { subjectPort = 6,
+                              targetNode = 1,
+                              targetPort = 5,
+                              linkState = LinkToTarget
+                            }
+        nbs1 = Neighbors { subjectNode = 1,
+                           observedTime = fromEpochSecond 100,
+                           neighborLinks = return link_12
+                         }
+        nbs2 = Neighbors { subjectNode = 2,
+                           observedTime = fromEpochSecond 200,
+                           neighborLinks = return link_21
+                         }
+    mapM_ (addNeighbors spider) [nbs1, nbs2]
+    got <- fmap (sort . V.toList) $ getLatestSnapshot spider 1
+    let (got_n1, got_n2, got_l) = case got of
+          [Left a, Left b, Right c] -> (a, b ,c)
+          _ -> error ("Unexpected result: got = " ++ show got)
+    nodeId got_n1 `shouldBe` 1
+    isOnBoundary got_n1 `shouldBe` False
+    nodeId got_n2 `shouldBe` 2
+    isOnBoundary got_n2 `shouldBe` False
+    linkTuple got_l `shouldBe` (2, 1, 6, 5)
+    isDirected got_l `shouldBe` True
+    linkTimestamp got_l `shouldBe` fromEpochSecond 200
+        
 
 -- TODO: how linkState relates to the property of SnapshotLink ?
+
+debugShowE :: IO a -> IO a
+debugShowE act = withException act showSubmitException
 
 showSubmitException :: Gr.SubmitException -> IO ()
 showSubmitException (Gr.ResponseError res) = showResponse res
