@@ -6,7 +6,7 @@ import Control.Monad (mapM_)
 import Data.Aeson (Value(..))
 import qualified Data.HashMap.Strict as HM
 import Data.List (sort)
-import Data.Monoid ((<>))
+import Data.Monoid ((<>), mempty)
 import Data.Text (Text, unpack)
 import qualified Data.Text.IO as TIO
 import Data.Vector (Vector)
@@ -73,6 +73,19 @@ spec_getLatestSnapshot = withServer $ describe "getLatestSnapshot" $ do
     linkTuple got_link `shouldBe` ("n1", "n2", "p1", "p9")
     isDirected got_link `shouldBe` True
     linkTimestamp got_link `shouldBe` fromEpochSecond 100
+  specify "no neighbor" $ withSpider $ \spider -> do
+    let nbs :: Neighbors Text Int
+        nbs = Neighbors { subjectNode = "n1",
+                          observedTime = fromEpochSecond 200,
+                          neighborLinks = mempty
+                        }
+    addNeighbors spider nbs
+    got <- fmap V.toList $ (getLatestSnapshot spider :: IO (Vector (SnapshotElement Text Int)))
+    let got_n1 = case got of
+          [Left a] -> a
+          _ -> error ("Unexpected result: got = " ++ show got)
+    nodeId got_n1 `shouldBe` "n1"
+    isOnBoundary got_n1 `shouldBe` False
 
 -- TODO: how linkState relates to the property of SnapshotLink ?
 
