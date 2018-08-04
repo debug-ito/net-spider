@@ -63,7 +63,9 @@ spec_getLatestSnapshot = withServer $ describe "getLatestSnapshot" $ do
     flip withException showSubmitException $ addNeighbors spider nbs
     got <- flip withException showSubmitException
            $ fmap (sort . V.toList) $ (getLatestSnapshot spider :: IO (Vector (SnapshotElement Text Text)))
-    let [Left got_n1, Left got_n2, Right got_link] = got
+    let (got_n1, got_n2, got_link) = case got of
+          [Left a, Left b, Right c] -> (a, b, c)
+          _ -> error ("Unexpected result: got = " ++ show got)
     nodeId got_n1 `shouldBe` "n1"
     isOnBoundary got_n1 `shouldBe` False
     nodeId got_n2 `shouldBe` "n2"
