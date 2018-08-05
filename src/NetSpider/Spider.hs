@@ -135,6 +135,7 @@ getLatestSnapshot :: (FromGraphSON n, ToJSON n, Eq n, Hashable n)
 getLatestSnapshot spider start_nid = do
   ref_state <- newIORef $ initSnapshotState $ return start_nid
   recurseVisitNodesForSnapshot spider ref_state
+  -- print =<< readIORef ref_state
   fmap makeSnapshot $ readIORef ref_state
 
 recurseVisitNodesForSnapshot :: (ToJSON n, Eq n, Hashable n, FromGraphSON n)
@@ -241,6 +242,7 @@ data SnapshotState n la =
     ssVisitedNodes :: !(HashSet n),
     ssVisitedLinks :: !(HashMap (SnapshotLinkID n) (Vector (SnapshotLinkSample la)))
   }
+  deriving (Show)
 
 emptySnapshotState :: (Eq n, Hashable n) => SnapshotState n la
 emptySnapshotState = SnapshotState
