@@ -168,8 +168,8 @@ visitNodeForSnapshot spider ref_state visit_nid = do
      case mnext_neighbors of
       Nothing -> return ()
       Just next_neighbors -> do
-        slink_entries <- makeSnapshotLinks spider visit_nid next_neighbors
-        modifyIORef ref_state $ addSnapshotSamples slink_entries
+        link_samples <- makeSnapshotLinkSamples spider visit_nid next_neighbors
+        modifyIORef ref_state $ addSnapshotSamples link_samples
   where
     markAsVisited = modifyIORef ref_state $ addVisitedNode visit_nid
     getVisitedNodeEID = fmap vToMaybe $ Gr.slurpResults =<< submitB spider binder
@@ -182,12 +182,12 @@ visitNodeForSnapshot spider ref_state visit_nid = do
                  <$.> gHasNodeEID node_eid
                  <*.> pure gAllNodes
 
-makeSnapshotLinks :: (FromGraphSON n)
-                  => Spider n la
-                  -> n -- ^ subject node ID.
-                  -> VObservedNode
-                  -> IO (Vector (SnapshotLinkID n, SnapshotLinkSample la))
-makeSnapshotLinks spider subject_nid vneighbors = do
+makeSnapshotLinkSamples :: (FromGraphSON n)
+                        => Spider n la
+                        -> n -- ^ subject node ID.
+                        -> VObservedNode
+                        -> IO (Vector (SnapshotLinkSample n la))
+makeSnapshotLinkSamples spider subject_nid vneighbors = do
   finds_edges <- getFinds $ vnID vneighbors
   traverse toSnapshotLinkEntry finds_edges
   where
@@ -196,13 +196,14 @@ makeSnapshotLinks spider subject_nid vneighbors = do
         binder = gFinds <$.> gHasObservedNodeEID neighbors_eid <*.> pure gAllObservedNode
     toSnapshotLinkEntry efinds = do
       target_nid <- getNodeID $ efTargetEID $ efinds
-      return ( SnapshotLinkID { sliSubjectNode = subject_nid,
-                                sliTargetNode = target_nid
-                              },
-               SnapshotLinkSample { slsLinkState = efLinkState efinds,
-                                    slsTimestamp = vnTimestamp vneighbors
-                                  }
-             )
+      let lid = SnapshotLinkID { sliSubjectNode = subject_nid,
+                                 sliTargetNode = target_nid
+                               }
+          lsample = SnapshotLinkSample { slsLinkId = lid,
+                                         slsLinkState = efLinkState efinds,
+                                         slsTimestamp = vnTimestamp vneighbors
+                                       }
+      return lsample
     getNodeID node_eid = expectOne =<< (fmap vToMaybe $ Gr.slurpResults =<< submitB spider binder)
     -- TODO: Using .as and .select steps, we can get EFinds and its destination vertex simultaneously.
       where
@@ -245,9 +246,10 @@ instance (Ord n, Hashable n) => Hashable (SnapshotLinkID n) where
   hashWithSalt s lid = hashWithSalt s $ sortedLinkID lid
 
 -- | Observation sample of a link while making the snapshot graph.
-data SnapshotLinkSample la =
+data SnapshotLinkSample n la =
   SnapshotLinkSample
-  { slsLinkState :: !LinkState,
+  { slsLinkId :: !(SnapshotLinkID n),
+    slsLinkState :: !LinkState,
     slsTimestamp :: !Timestamp
     -- TODO: add link attributes
   }
@@ -258,7 +260,7 @@ data SnapshotState n la =
   SnapshotState
   { ssUnvisitedNodes :: !(Vector n),
     ssVisitedNodes :: !(HashSet n),
-    ssVisitedLinks :: !(HashMap (SnapshotLinkID n) (Vector (SnapshotLinkSample la)))
+    ssVisitedLinks :: !(HashMap (SnapshotLinkID n) (Vector (SnapshotLinkSample n la)))
   }
   deriving (Show)
 
@@ -276,21 +278,22 @@ addVisitedNode :: (Eq n, Hashable n) => n -> SnapshotState n la -> SnapshotState
 addVisitedNode nid state = state { ssVisitedNodes = HS.insert nid $ ssVisitedNodes state }
 
 addSnapshotSample :: (Ord n, Hashable n)
-                  => SnapshotLinkID n -> SnapshotLinkSample la -> SnapshotState n la -> SnapshotState n la
-addSnapshotSample lid ls state = state { ssVisitedLinks = updatedLinks,
-                                         ssUnvisitedNodes = updatedUnvisited
-                                       }
+                  => SnapshotLinkSample n la -> SnapshotState n la -> SnapshotState n la
+addSnapshotSample ls state = state { ssVisitedLinks = updatedLinks,
+                                     ssUnvisitedNodes = updatedUnvisited
+                                   }
   where
-    updatedLinks = HM.insertWith (V.++) lid (return ls) $ ssVisitedLinks state
-    target_nid = sliTargetNode lid
+    link_id = slsLinkId ls
+    updatedLinks = HM.insertWith (V.++) link_id (return ls) $ ssVisitedLinks state
+    target_nid = sliTargetNode link_id
     target_already_visited = HS.member target_nid $ ssVisitedNodes state
     updatedUnvisited = if target_already_visited
                        then ssUnvisitedNodes state
                        else V.snoc (ssUnvisitedNodes state) target_nid
 
 addSnapshotSamples :: (Ord n, Hashable n)
-                   => Vector (SnapshotLinkID n, SnapshotLinkSample la) -> SnapshotState n la -> SnapshotState n la
-addSnapshotSamples links orig_state = foldr' (uncurry addSnapshotSample) orig_state links
+                   => Vector (SnapshotLinkSample n la) -> SnapshotState n la -> SnapshotState n la
+addSnapshotSamples links orig_state = foldr' addSnapshotSample orig_state links
 
 popHeadV :: Vector a -> (Maybe a, Vector a)
 popHeadV v = let mh = v V.!? 0
@@ -314,11 +317,11 @@ makeSnapshot state = (fmap Left nodes) V.++ (fmap Right links)
                    }
     visited_nodes = fmap (makeSnapshotNode False) $ foldr' V.cons mempty $ ssVisitedNodes state
     boundary_nodes = fmap (makeSnapshotNode True) $ ssUnvisitedNodes state
-    links = V.fromList $ catMaybes $ map (uncurry makeSnapshotLink) $ HM.toList $ ssVisitedLinks state
+    links = V.fromList $ catMaybes $ map makeSnapshotLink $ HM.elems $ ssVisitedLinks state
 
-makeSnapshotLink :: SnapshotLinkID n -> Vector (SnapshotLinkSample la) -> Maybe (SnapshotLink n la)
-makeSnapshotLink link_id link_samples = do
-  agg_sample <- aggregateSnapshotLinkSamples link_id link_samples
+makeSnapshotLink :: Vector (SnapshotLinkSample n la) -> Maybe (SnapshotLink n la)
+makeSnapshotLink link_samples = do
+  agg_sample <- aggregateSnapshotLinkSamples link_samples
   case slsLinkState agg_sample of
    LinkUnused -> Nothing
    LinkToTarget -> Just $ aggSampleToLink agg_sample True True
@@ -331,6 +334,8 @@ makeSnapshotLink link_id link_samples = do
                      _isDirected = is_directed,
                      _linkTimestamp = slsTimestamp agg_sample
                    }
+      where
+        link_id = slsLinkId agg_sample
 
 -- | Aggregate 'SnapshotLinkSample's into one.
 --
@@ -338,13 +343,13 @@ makeSnapshotLink link_id link_samples = do
 -- 'Timestamp', so implementation should consider all samples
 -- sufficiently recent. Note that the input 'SnapshotLinkSample's can
 -- be inconsistent with each other.
-aggregateSnapshotLinkSamples :: SnapshotLinkID n -> Vector (SnapshotLinkSample la) -> Maybe (SnapshotLinkSample la)
-aggregateSnapshotLinkSamples _ samples = let (mhead, samples_tail) = popHeadV samples
-                                         in fmap (aggregate samples_tail) mhead
+aggregateSnapshotLinkSamples :: Vector (SnapshotLinkSample n la) -> Maybe (SnapshotLinkSample n la)
+aggregateSnapshotLinkSamples samples = let (mhead, samples_tail) = popHeadV samples
+                                       in fmap (aggregate samples_tail) mhead
   where
     aggregate samples_tail sample_head = foldr' f sample_head samples_tail
       where
-        f :: SnapshotLinkSample la -> SnapshotLinkSample la -> SnapshotLinkSample la
+        f :: SnapshotLinkSample n la -> SnapshotLinkSample n la -> SnapshotLinkSample n la
         f ls rs = if slsTimestamp ls >= slsTimestamp rs -- simply trust the latest sample.
                   then ls
                   else rs
