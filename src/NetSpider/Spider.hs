@@ -169,7 +169,7 @@ visitNodeForSnapshot spider ref_state visit_nid = do
       Nothing -> return ()
       Just next_neighbors -> do
         slink_entries <- makeSnapshotLinks spider visit_nid next_neighbors
-        modifyIORef ref_state $ addSnapshotLinks slink_entries
+        modifyIORef ref_state $ addSnapshotSamples slink_entries
   where
     markAsVisited = modifyIORef ref_state $ addVisitedNode visit_nid
     getVisitedNodeEID = fmap vToMaybe $ Gr.slurpResults =<< submitB spider binder
@@ -255,11 +255,11 @@ initSnapshotState init_unvisited_nodes = emptySnapshotState { ssUnvisitedNodes =
 addVisitedNode :: (Eq n, Hashable n) => n -> SnapshotState n la -> SnapshotState n la
 addVisitedNode nid state = state { ssVisitedNodes = HS.insert nid $ ssVisitedNodes state }
 
-addSnapshotLink :: (Eq n, Hashable n)
-                => SnapshotLinkID n -> SnapshotLinkSample la -> SnapshotState n la -> SnapshotState n la
-addSnapshotLink lid ls state = state { ssVisitedLinks = updatedLinks,
-                                       ssUnvisitedNodes = updatedUnvisited
-                                     }
+addSnapshotSample :: (Eq n, Hashable n)
+                  => SnapshotLinkID n -> SnapshotLinkSample la -> SnapshotState n la -> SnapshotState n la
+addSnapshotSample lid ls state = state { ssVisitedLinks = updatedLinks,
+                                         ssUnvisitedNodes = updatedUnvisited
+                                       }
   where
     updatedLinks = HM.insertWith (V.++) lid (return ls) $ ssVisitedLinks state
     target_nid = sliTargetNode lid
@@ -268,9 +268,9 @@ addSnapshotLink lid ls state = state { ssVisitedLinks = updatedLinks,
                        then ssUnvisitedNodes state
                        else V.snoc (ssUnvisitedNodes state) target_nid
 
-addSnapshotLinks :: (Eq n, Hashable n)
-                 => Vector (SnapshotLinkID n, SnapshotLinkSample la) -> SnapshotState n la -> SnapshotState n la
-addSnapshotLinks links orig_state = foldr' (uncurry addSnapshotLink) orig_state links
+addSnapshotSamples :: (Eq n, Hashable n)
+                   => Vector (SnapshotLinkID n, SnapshotLinkSample la) -> SnapshotState n la -> SnapshotState n la
+addSnapshotSamples links orig_state = foldr' (uncurry addSnapshotSample) orig_state links
 
 popHeadV :: Vector a -> (Maybe a, Vector a)
 popHeadV v = let mh = v V.!? 0
