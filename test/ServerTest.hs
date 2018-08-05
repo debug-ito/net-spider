@@ -92,33 +92,33 @@ spec_getLatestSnapshot = withServer $ describe "getLatestSnapshot" $ do
     got <- getLatestSnapshot spider "no node"
     got `shouldBe` mempty
   specify "mutual neighbors" $ withSpider $ \spider -> do
-    let link_12 :: FoundLink Int ()
-        link_12 = FoundLink { targetNode = 2,
+    let link_12 :: FoundLink Text ()
+        link_12 = FoundLink { targetNode = "n2",
                               linkState = LinkToSubject,
                               linkAttributes = ()
                             }
-        link_21 = FoundLink { targetNode = 1,
+        link_21 = FoundLink { targetNode = "n1",
                               linkState = LinkToTarget,
                               linkAttributes = ()
                             }
-        nbs1 = ObservedNode { subjectNode = 1,
+        nbs1 = ObservedNode { subjectNode = "n1",
                               observedTime = fromEpochSecond 100,
                               neighborLinks = return link_12
                             }
-        nbs2 = ObservedNode { subjectNode = 2,
+        nbs2 = ObservedNode { subjectNode = "n2",
                               observedTime = fromEpochSecond 200,
                               neighborLinks = return link_21
                             }
     mapM_ (addObservedNode spider) [nbs1, nbs2]
-    got <- fmap (sort . V.toList) $ getLatestSnapshot spider 1
+    got <- fmap (sort . V.toList) $ getLatestSnapshot spider "n1"
     let (got_n1, got_n2, got_l) = case got of
           [Left a, Left b, Right c] -> (a, b ,c)
           _ -> error ("Unexpected result: got = " ++ show got)
-    nodeId got_n1 `shouldBe` 1
+    nodeId got_n1 `shouldBe` "n1"
     isOnBoundary got_n1 `shouldBe` False
-    nodeId got_n2 `shouldBe` 2
+    nodeId got_n2 `shouldBe` "n2"
     isOnBoundary got_n2 `shouldBe` False
-    linkNodeTuple got_l `shouldBe` (2, 1)
+    linkNodeTuple got_l `shouldBe` ("n2", "n1")
     isDirected got_l `shouldBe` True
     linkTimestamp got_l `shouldBe` fromEpochSecond 200
         
