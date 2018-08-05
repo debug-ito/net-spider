@@ -135,9 +135,8 @@ gHasObservedNodeEID eid = do
   var_eid <- newBind eid
   return $ gHasId var_eid
 
-gMakeObservedNode :: (ToJSON p)
-                  => EID -- ^ subject node EID
-                  -> Vector (FoundLink n p, EID) -- ^ (link, target node EID)
+gMakeObservedNode :: EID -- ^ subject node EID
+                  -> Vector (FoundLink n la, EID) -- ^ (link, target node EID)
                   -> Timestamp
                   -> Binder (GTraversal SideEffect () VObservedNode)
 gMakeObservedNode subject_vid link_pairs timestamp = 
@@ -148,18 +147,15 @@ gMakeObservedNode subject_vid link_pairs timestamp =
       v <- gGetNodeByEID subject_vid
       return $ gSideEffect $ emitsAEdge $ gAddE "observes" $ gFrom v
     mAddFindsEdges = fmap fold $ traverse mAddFindsEdgeFor link_pairs
-    mAddFindsEdgeFor :: (ToJSON p) => (FoundLink n p, EID) -> Binder (Walk SideEffect VObservedNode VObservedNode)
+    mAddFindsEdgeFor :: (FoundLink n la, EID) -> Binder (Walk SideEffect VObservedNode VObservedNode)
     mAddFindsEdgeFor (link, target_vid) = do
       v <- gGetNodeByEID target_vid
-      var_sp <- newBind $ subjectPort link
-      var_tp <- newBind $ targetPort link
       var_ls <- newBind $ linkStateToText $ linkState link
       return $ gSideEffect ( emitsAEdge
-                             $ gProperty "@target_port" var_tp
-                             <<< gProperty "@subject_port" var_sp
-                             <<< gProperty "@link_state" var_ls
+                             $ gProperty "@link_state" var_ls
                              <<< gAddE "finds" (gTo v)
                            )
+    -- TODO: save link attributes.
 
 keyTimestamp :: Key VObservedNode Int64
 keyTimestamp = "@timestamp"
@@ -182,34 +178,30 @@ gSelectObservedNode filterObservedNode = liftWalk filterObservedNode <<< gOut ["
 gLatestObservedNode :: Walk Transform VObservedNode VObservedNode
 gLatestObservedNode = gLimit 1 <<< gOrder [gBy2 keyTimestamp oDecr]
 
-gFinds :: Walk Transform VObservedNode (EFinds p)
+gFinds :: Walk Transform VObservedNode (EFinds la)
 gFinds = gOutE ["finds"]
 
 -- | \"finds\" edge.
-data EFinds p =
+data EFinds la =
   EFinds
   { efEID :: !EID,
-    efSubjectPort :: !p,
     efTargetEID :: !EID,
-    efTargetPort :: !p,
     efLinkState :: !LinkState
   }
 
-instance Element (EFinds p) where
-  type ElementID (EFinds p) = EID
-  type ElementProperty (EFinds p) = AProperty
+instance Element (EFinds la) where
+  type ElementID (EFinds la) = EID
+  type ElementProperty (EFinds la) = AProperty
 
-instance Edge (EFinds p) where
-  type EdgeVertexID (EFinds p) = EID
+instance Edge (EFinds la) where
+  type EdgeVertexID (EFinds la) = EID
 
-instance FromGraphSON p => FromGraphSON (EFinds p) where
+instance FromGraphSON (EFinds la) where
   parseGraphSON gv = fromAEdge =<< parseGraphSON gv
     where
       fromAEdge ae = EFinds 
                      <$> (parseGraphSON $ aeId ae)
-                     <*> (parseOneValue "@subject_port" ps)
                      <*> (parseGraphSON $ aeInV ae)
-                     <*> (parseOneValue "@target_port" ps)
                      <*> (parseOneValue "@link_state" ps)
         where
           ps = aeProperties ae

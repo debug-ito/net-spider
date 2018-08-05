@@ -22,7 +22,7 @@ import NetSpider.ObservedNode
   )
 import NetSpider.Snapshot
   ( SnapshotElement,
-    nodeId, linkTuple, isDirected, linkTimestamp,
+    nodeId, linkNodeTuple, isDirected, linkTimestamp,
     isOnBoundary
   )
 import NetSpider.Spider
@@ -46,12 +46,11 @@ withSpider action (host, port) = bracket (connectWS host port) close $ \spider -
   clearAll spider
   action spider
 
-makeOneNeighborExample :: Spider Text Text -> IO ()
+makeOneNeighborExample :: Spider Text () -> IO ()
 makeOneNeighborExample spider = do
-  let link = FoundLink { subjectPort = "p1",
-                         targetNode = "n2",
-                         targetPort = "p9",
-                         linkState = LinkToTarget
+  let link = FoundLink { targetNode = "n2",
+                         linkState = LinkToTarget,
+                         linkAttributes = ()
                        }
       nbs = ObservedNode { subjectNode = "n1",
                            observedTime = fromEpochSecond 100,
@@ -72,11 +71,11 @@ spec_getLatestSnapshot = withServer $ describe "getLatestSnapshot" $ do
     isOnBoundary got_n1 `shouldBe` False
     nodeId got_n2 `shouldBe` "n2"
     isOnBoundary got_n2 `shouldBe` False
-    linkTuple got_link `shouldBe` ("n1", "n2", "p1", "p9")
+    linkNodeTuple got_link `shouldBe` ("n1", "n2")
     isDirected got_link `shouldBe` True
     linkTimestamp got_link `shouldBe` fromEpochSecond 100
   specify "no neighbor" $ withSpider $ \spider -> do
-    let nbs :: ObservedNode Text Int
+    let nbs :: ObservedNode Text ()
         nbs = ObservedNode { subjectNode = "n1",
                              observedTime = fromEpochSecond 200,
                              neighborLinks = mempty
@@ -93,16 +92,14 @@ spec_getLatestSnapshot = withServer $ describe "getLatestSnapshot" $ do
     got <- getLatestSnapshot spider "no node"
     got `shouldBe` mempty
   specify "mutual neighbors" $ withSpider $ \spider -> do
-    let link_12 :: FoundLink Int Int
-        link_12 = FoundLink { subjectPort = 5,
-                              targetNode = 2,
-                              targetPort = 6,
-                              linkState = LinkToSubject
+    let link_12 :: FoundLink Int ()
+        link_12 = FoundLink { targetNode = 2,
+                              linkState = LinkToSubject,
+                              linkAttributes = ()
                             }
-        link_21 = FoundLink { subjectPort = 6,
-                              targetNode = 1,
-                              targetPort = 5,
-                              linkState = LinkToTarget
+        link_21 = FoundLink { targetNode = 1,
+                              linkState = LinkToTarget,
+                              linkAttributes = ()
                             }
         nbs1 = ObservedNode { subjectNode = 1,
                               observedTime = fromEpochSecond 100,
@@ -121,7 +118,7 @@ spec_getLatestSnapshot = withServer $ describe "getLatestSnapshot" $ do
     isOnBoundary got_n1 `shouldBe` False
     nodeId got_n2 `shouldBe` 2
     isOnBoundary got_n2 `shouldBe` False
-    linkTuple got_l `shouldBe` (2, 1, 6, 5)
+    linkNodeTuple got_l `shouldBe` (2, 1)
     isDirected got_l `shouldBe` True
     linkTimestamp got_l `shouldBe` fromEpochSecond 200
         

@@ -58,13 +58,12 @@ instance FromGraphSON LinkState where
 -- directional or non-directional.
 --
 -- - type @n@: node ID.
--- - type @p@: port ID.
-data FoundLink n p =
+-- - type @la@: link attributes.
+data FoundLink n la =
   FoundLink
-  { subjectPort :: !p,
-    targetNode :: !n,
-    targetPort :: !p,
-    linkState :: !LinkState
+  { targetNode :: !n,
+    linkState :: !LinkState,
+    linkAttributes :: !la
   }
   deriving (Show,Eq,Ord)
 
@@ -72,11 +71,11 @@ data FoundLink n p =
 -- specific time. It has a set of neighbor links found at the moment.
 --
 -- - type @n@: node ID.
--- - type @p@: port ID.
-data ObservedNode n p =
+-- - type @la@: link attributes.
+data ObservedNode n la =
   ObservedNode
   { subjectNode :: !n,
     observedTime :: !Timestamp,
-    neighborLinks :: !(Vector (FoundLink n p))
+    neighborLinks :: !(Vector (FoundLink n la))
   }
   deriving (Show,Eq)

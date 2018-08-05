@@ -12,10 +12,8 @@ module NetSpider.Snapshot
          -- * SnapshotLink
          SnapshotLink,
          sourceNode,
-         sourcePort,
          destinationNode,
-         destinationPort,
-         linkTuple,
+         linkNodeTuple,
          isDirected,
          linkTimestamp,
          -- * SnapshotElement
@@ -25,7 +23,7 @@ module NetSpider.Snapshot
 import NetSpider.Snapshot.Internal
   ( SnapshotNode(..),
     SnapshotLink(..),
-    linkTuple,
+    linkNodeTuple,
     SnapshotElement
   )
 import NetSpider.Timestamp (Timestamp)
@@ -43,14 +41,8 @@ isOnBoundary = _isOnBoundary
 sourceNode :: SnapshotLink n p -> n
 sourceNode = _sourceNode
 
-sourcePort :: SnapshotLink n p -> p
-sourcePort = _sourcePort
-
 destinationNode :: SnapshotLink n p -> n
 destinationNode = _destinationNode
-
-destinationPort :: SnapshotLink n p -> p
-destinationPort = _destinationPort
 
 isDirected :: SnapshotLink n p -> Bool
 isDirected = _isDirected

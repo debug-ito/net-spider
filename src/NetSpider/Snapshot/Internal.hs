@@ -6,7 +6,7 @@
 -- __this module is internal. End-users should not use this.__
 module NetSpider.Snapshot.Internal
        ( SnapshotLink(..),
-         linkTuple,
+         linkNodeTuple,
          SnapshotNode(..),
          SnapshotElement
        ) where
@@ -27,32 +27,28 @@ import NetSpider.Timestamp (Timestamp)
 -- observations contradict each other.
 --
 -- - type @n@: node ID.
--- - type @p@: port ID.
-data SnapshotLink n p =
+-- - type @la@: link attributes.
+data SnapshotLink n la =
   SnapshotLink
   { _sourceNode :: !n,
-    _sourcePort :: !p,
     _destinationNode :: !n,
-    _destinationPort :: !p,
     _isDirected :: !Bool,
     _linkTimestamp :: !Timestamp
+
+    -- TODO: add link attributes
     
     -- Maybe it's a good idea to include 'observationLogs', which can
     -- contain warnings or other logs about making this SnapshotLink.
   }
   deriving (Show,Eq)
 
--- | Comparison by 4-tuple (source node, destination node, source
--- port, destination port).
-instance (Ord n, Ord p) => Ord (SnapshotLink n p) where
-  compare l r = compare (linkTuple l) (linkTuple r)
+-- | Comparison by node-tuple (source node, destination node).
+instance (Ord n) => Ord (SnapshotLink n la) where
+  compare l r = compare (linkNodeTuple l) (linkNodeTuple r)
 
--- TODO: should linkTuple be (source node, source port, des node, des port) ???
-
--- | 4-tuple (source node, destination node, source port, destination
--- port) of the link.
-linkTuple :: SnapshotLink n p -> (n, n, p, p)
-linkTuple link = (_sourceNode link, _destinationNode link, _sourcePort link, _destinationPort link)
+-- | node-tuple (source node, destination node) of the link.
+linkNodeTuple :: SnapshotLink n la -> (n, n)
+linkNodeTuple link = (_sourceNode link, _destinationNode link)
 
 -- | A node observed at a specific time.
 data SnapshotNode n =
@@ -60,7 +56,7 @@ data SnapshotNode n =
   { _nodeId :: !n,
     _isOnBoundary :: !Bool
     
-    -- node attributes?
+    -- TODO: add node attributes?
 
     -- TODO: maybe node should have timestamp? because node can have no links.
   }
@@ -70,4 +66,4 @@ data SnapshotNode n =
 instance Ord n => Ord (SnapshotNode n) where
   compare l r = compare (_nodeId l) (_nodeId r)
 
-type SnapshotElement n p = Either (SnapshotNode n) (SnapshotLink n p)
+type SnapshotElement n la = Either (SnapshotNode n) (SnapshotLink n la)
