@@ -1,4 +1,4 @@
-{-# LANGUAGE OverloadedStrings, TypeFamilies, DeriveGeneric #-}
+{-# LANGUAGE OverloadedStrings, TypeFamilies #-}
 -- |
 -- Module: NetSpider.Spider
 -- Description: Spider type.
@@ -25,7 +25,7 @@ import Data.Greskell
     Binder, ToGreskell(GreskellReturn), AsIterator(IteratorItem), FromGraphSON,
     liftWalk, gLimit, gIdentity
   )
-import Data.Hashable (Hashable)
+import Data.Hashable (Hashable(hashWithSalt))
 import Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HM
 import Data.HashSet (HashSet)
@@ -35,7 +35,6 @@ import Data.Maybe (catMaybes)
 import Data.Monoid (mempty)
 import Data.Vector (Vector)
 import qualified Data.Vector as V
-import GHC.Generics (Generic)
 import Network.Greskell.WebSocket
   ( Host, Port
   )
@@ -128,7 +127,7 @@ getOrMakeNode spider nid = do
 -- This function is very simple, and should be used only for testing.
 -- This function starts from an arbitrary node, traverses the history
 -- graph using the latest links with unlimited number of hops.
-getLatestSnapshot :: (FromGraphSON n, ToJSON n, Eq n, Hashable n)
+getLatestSnapshot :: (FromGraphSON n, ToJSON n, Ord n, Hashable n)
                   => Spider n la
                   -> n -- ^ ID of the node where it starts traversing.
                   -> IO (Vector (SnapshotElement n la))
@@ -138,7 +137,7 @@ getLatestSnapshot spider start_nid = do
   -- print =<< readIORef ref_state
   fmap makeSnapshot $ readIORef ref_state
 
-recurseVisitNodesForSnapshot :: (ToJSON n, Eq n, Hashable n, FromGraphSON n)
+recurseVisitNodesForSnapshot :: (ToJSON n, Ord n, Hashable n, FromGraphSON n)
                              => Spider n la
                              -> IORef (SnapshotState n la)
                              -> IO ()
@@ -154,7 +153,7 @@ recurseVisitNodesForSnapshot spider ref_state = go
     getNextVisit = atomicModifyIORef' ref_state popUnvisitedNode
     -- TODO: limit number of steps.
 
-visitNodeForSnapshot :: (ToJSON n, Eq n, Hashable n, FromGraphSON n)
+visitNodeForSnapshot :: (ToJSON n, Ord n, Hashable n, FromGraphSON n)
                      => Spider n la
                      -> IORef (SnapshotState n la)
                      -> n
@@ -217,14 +216,33 @@ makeSnapshotLinks spider subject_nid vneighbors = do
 -- but at least we need 'getLatestSnapshot'.
 
 -- | Identitfy of link while making the snapshot graph.
+--
+-- 'SnapshotLinkID' is the unordered pair of nodes. 'Eq', 'Ord' and
+-- 'Hashable' instances treat 'SnapshotLinkID's that have subject and
+-- target nodes swapped as equivalent.
 data SnapshotLinkID n =
   SnapshotLinkID
   { sliSubjectNode :: !n,
     sliTargetNode :: !n
   }
-  deriving (Show,Eq,Ord,Generic)
+  deriving (Show)
 
-instance (Hashable n) => Hashable (SnapshotLinkID n)
+sortedLinkID :: Ord n => SnapshotLinkID n -> (n, n)
+sortedLinkID lid = if sn <= tn
+                   then (sn, tn)
+                   else (tn, sn)
+  where
+    sn = sliSubjectNode lid
+    tn = sliTargetNode lid
+
+instance Ord n => Eq (SnapshotLinkID n) where
+  r == l = sortedLinkID r == sortedLinkID l
+
+instance Ord n => Ord (SnapshotLinkID n) where
+  compare r l = compare (sortedLinkID r) (sortedLinkID l)
+
+instance (Ord n, Hashable n) => Hashable (SnapshotLinkID n) where
+  hashWithSalt s lid = hashWithSalt s $ sortedLinkID lid
 
 -- | Observation sample of a link while making the snapshot graph.
 data SnapshotLinkSample la =
@@ -244,20 +262,20 @@ data SnapshotState n la =
   }
   deriving (Show)
 
-emptySnapshotState :: (Eq n, Hashable n) => SnapshotState n la
+emptySnapshotState :: (Ord n, Hashable n) => SnapshotState n la
 emptySnapshotState = SnapshotState
                      { ssUnvisitedNodes = mempty,
                        ssVisitedNodes = mempty,
                        ssVisitedLinks = mempty
                      }
 
-initSnapshotState :: (Eq n, Hashable n) => Vector n -> SnapshotState n la
+initSnapshotState :: (Ord n, Hashable n) => Vector n -> SnapshotState n la
 initSnapshotState init_unvisited_nodes = emptySnapshotState { ssUnvisitedNodes = init_unvisited_nodes }
 
 addVisitedNode :: (Eq n, Hashable n) => n -> SnapshotState n la -> SnapshotState n la
 addVisitedNode nid state = state { ssVisitedNodes = HS.insert nid $ ssVisitedNodes state }
 
-addSnapshotSample :: (Eq n, Hashable n)
+addSnapshotSample :: (Ord n, Hashable n)
                   => SnapshotLinkID n -> SnapshotLinkSample la -> SnapshotState n la -> SnapshotState n la
 addSnapshotSample lid ls state = state { ssVisitedLinks = updatedLinks,
                                          ssUnvisitedNodes = updatedUnvisited
@@ -270,7 +288,7 @@ addSnapshotSample lid ls state = state { ssVisitedLinks = updatedLinks,
                        then ssUnvisitedNodes state
                        else V.snoc (ssUnvisitedNodes state) target_nid
 
-addSnapshotSamples :: (Eq n, Hashable n)
+addSnapshotSamples :: (Ord n, Hashable n)
                    => Vector (SnapshotLinkID n, SnapshotLinkSample la) -> SnapshotState n la -> SnapshotState n la
 addSnapshotSamples links orig_state = foldr' (uncurry addSnapshotSample) orig_state links
 
