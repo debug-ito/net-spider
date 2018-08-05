@@ -25,7 +25,8 @@ library
                         NetSpider.ObservedNode,
                         NetSpider.Timestamp,
                         NetSpider.Spider,
-                        NetSpider.Snapshot
+                        NetSpider.Snapshot,
+                        NetSpider.Graph
   other-modules:        NetSpider.Snapshot.Internal,
                         NetSpider.Spider.Internal.Graph
   build-depends:        base,

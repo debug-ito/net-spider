@@ -1,4 +1,4 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving, TypeFamilies, OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings #-}
 -- |
 -- Module: NetSpider.Spider.Internal.Graph
 -- Description: 
@@ -33,9 +33,7 @@ import Control.Monad (void)
 import Data.Aeson (ToJSON(..), FromJSON(..), Value(..))
 import Data.Foldable (fold)
 import Data.Greskell
-  ( FromGraphSON(..),
-    Element(..), Vertex, Edge(..), WalkType,
-    AVertexProperty, AProperty, AEdge(..), AVertex(..), parseOneValue,
+  ( WalkType, AEdge,
     GTraversal, Filter, Transform, SideEffect, Walk, liftWalk,
     Binder, newBind,
     source, sV, sV', sAddV, gHasLabel, gHasId, gHas2, gId, gProperty, gPropertyV, gV,
@@ -49,29 +47,10 @@ import Data.Text (Text)
 import Data.Traversable (traverse)
 import Data.Vector (Vector)
 
+import NetSpider.Graph (EID, VNode, VObservedNode(..), EFinds(..))
 import NetSpider.ObservedNode (FoundLink(..), LinkState(..), linkStateToText)
 import NetSpider.Timestamp (Timestamp(..), fromEpochSecond)
 
--- | Generic element ID used in the graph DB.
-newtype EID = EID (Either Int Text)
-            deriving (Show,Eq,Ord,FromGraphSON)
-
-instance ToJSON EID where
-  toJSON (EID e) = either toJSON toJSON e
-
-instance FromJSON EID where
-  parseJSON (String s) = return $ EID $ Right s
-  parseJSON v = fmap (EID . Left) $ parseJSON v
-
-
--- | The \"node\" vertex.
-data VNode
-
-instance Element VNode where
-  type ElementID VNode = EID
-  type ElementProperty VNode = AVertexProperty
-
-instance Vertex VNode
 
 gNodeEID :: Walk Transform VNode EID
 gNodeEID = gId
@@ -96,30 +75,6 @@ gMakeNode :: ToJSON n => n -> Binder (GTraversal SideEffect () VNode)
 gMakeNode nid = do
   var_nid <- newBind nid
   return $ gProperty "@node_id" var_nid $. sAddV "node" $ source "g"
-
--- | The \"observed_node\" vertex.
-data VObservedNode =
-  VObservedNode
-  { vnID :: !EID,
-    vnTimestamp :: !Timestamp
-  }
-
-instance Element VObservedNode where
-  type ElementID VObservedNode = EID
-  type ElementProperty VObservedNode = AVertexProperty
-
-instance Vertex VObservedNode
-
-instance FromGraphSON VObservedNode where
-  parseGraphSON gv = fromAVertex =<< parseGraphSON gv
-    where
-      fromAVertex av = do
-        eid <- parseGraphSON $ avId av
-        epoch_ts <- parseOneValue "@timestamp" $ avProperties av
-        -- TODO: parse timezone.
-        return $ VObservedNode { vnID = eid,
-                                 vnTimestamp = fromEpochSecond epoch_ts
-                               }
 
 gGetNodeByEID :: EID -> Binder (Walk Transform s VNode)
 gGetNodeByEID vid = do
@@ -181,29 +136,5 @@ gLatestObservedNode = gLimit 1 <<< gOrder [gBy2 keyTimestamp oDecr]
 gFinds :: Walk Transform VObservedNode (EFinds la)
 gFinds = gOutE ["finds"]
 
--- | \"finds\" edge.
-data EFinds la =
-  EFinds
-  { efEID :: !EID,
-    efTargetEID :: !EID,
-    efLinkState :: !LinkState
-  }
-
-instance Element (EFinds la) where
-  type ElementID (EFinds la) = EID
-  type ElementProperty (EFinds la) = AProperty
-
-instance Edge (EFinds la) where
-  type EdgeVertexID (EFinds la) = EID
-
-instance FromGraphSON (EFinds la) where
-  parseGraphSON gv = fromAEdge =<< parseGraphSON gv
-    where
-      fromAEdge ae = EFinds 
-                     <$> (parseGraphSON $ aeId ae)
-                     <*> (parseGraphSON $ aeInV ae)
-                     <*> (parseOneValue "@link_state" ps)
-        where
-          ps = aeProperties ae
   
         
