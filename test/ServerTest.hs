@@ -17,8 +17,8 @@ import System.IO (stderr)
 import Test.Hspec
 import Test.Hspec.NeedEnv (needEnvHostPort, EnvMode(Need))
 
-import NetSpider.Neighbors
-  ( FoundLink(..), LinkState(..), Neighbors(..)
+import NetSpider.ObservedNode
+  ( FoundLink(..), LinkState(..), ObservedNode(..)
   )
 import NetSpider.Snapshot
   ( SnapshotElement,
@@ -27,7 +27,7 @@ import NetSpider.Snapshot
   )
 import NetSpider.Spider
   ( Host, Port, Spider,
-    connectWS, close, clearAll, addNeighbors, getLatestSnapshot
+    connectWS, close, clearAll, addObservedNode, getLatestSnapshot
   )
 import NetSpider.Timestamp (fromEpochSecond)
 
@@ -53,11 +53,11 @@ makeOneNeighborExample spider = do
                          targetPort = "p9",
                          linkState = LinkToTarget
                        }
-      nbs = Neighbors { subjectNode = "n1",
-                        observedTime = fromEpochSecond 100,
-                        neighborLinks = return link
-                      }
-  debugShowE $ addNeighbors spider nbs
+      nbs = ObservedNode { subjectNode = "n1",
+                           observedTime = fromEpochSecond 100,
+                           neighborLinks = return link
+                         }
+  debugShowE $ addObservedNode spider nbs
   
 
 spec_getLatestSnapshot :: Spec
@@ -76,12 +76,12 @@ spec_getLatestSnapshot = withServer $ describe "getLatestSnapshot" $ do
     isDirected got_link `shouldBe` True
     linkTimestamp got_link `shouldBe` fromEpochSecond 100
   specify "no neighbor" $ withSpider $ \spider -> do
-    let nbs :: Neighbors Text Int
-        nbs = Neighbors { subjectNode = "n1",
-                          observedTime = fromEpochSecond 200,
-                          neighborLinks = mempty
-                        }
-    addNeighbors spider nbs
+    let nbs :: ObservedNode Text Int
+        nbs = ObservedNode { subjectNode = "n1",
+                             observedTime = fromEpochSecond 200,
+                             neighborLinks = mempty
+                           }
+    addObservedNode spider nbs
     got <- fmap V.toList $ getLatestSnapshot spider "n1"
     let got_n1 = case got of
           [Left a] -> a
@@ -104,15 +104,15 @@ spec_getLatestSnapshot = withServer $ describe "getLatestSnapshot" $ do
                               targetPort = 5,
                               linkState = LinkToTarget
                             }
-        nbs1 = Neighbors { subjectNode = 1,
-                           observedTime = fromEpochSecond 100,
-                           neighborLinks = return link_12
-                         }
-        nbs2 = Neighbors { subjectNode = 2,
-                           observedTime = fromEpochSecond 200,
-                           neighborLinks = return link_21
-                         }
-    mapM_ (addNeighbors spider) [nbs1, nbs2]
+        nbs1 = ObservedNode { subjectNode = 1,
+                              observedTime = fromEpochSecond 100,
+                              neighborLinks = return link_12
+                            }
+        nbs2 = ObservedNode { subjectNode = 2,
+                              observedTime = fromEpochSecond 200,
+                              neighborLinks = return link_21
+                            }
+    mapM_ (addObservedNode spider) [nbs1, nbs2]
     got <- fmap (sort . V.toList) $ getLatestSnapshot spider 1
     let (got_n1, got_n2, got_l) = case got of
           [Left a, Left b, Right c] -> (a, b ,c)

@@ -11,7 +11,7 @@ module NetSpider.Spider
          Host,
          Port,
          close,
-         addNeighbors,
+         addObservedNode,
          getLatestSnapshot,
          clearAll
        ) where
@@ -41,14 +41,14 @@ import Network.Greskell.WebSocket
   )
 import qualified Network.Greskell.WebSocket as Gr
 
-import NetSpider.Neighbors (Neighbors(..), FoundLink(..), LinkState(..))
+import NetSpider.ObservedNode (ObservedNode(..), FoundLink(..), LinkState(..))
 import NetSpider.Snapshot (SnapshotElement)
 import NetSpider.Snapshot.Internal (SnapshotNode(..), SnapshotLink(..))
 import NetSpider.Timestamp (Timestamp(..))
 import NetSpider.Spider.Internal.Graph
-  ( EID, gMakeNeighbors, gAllNodes, gHasNodeID, gHasNodeEID, gNodeEID, gNodeID, gMakeNode, gClearAll,
-    gLatestNeighbors, gSelectNeighbors, gFinds, gHasNeighborsEID, gAllNeighbors,
-    VNeighbors(..), EFinds(..)
+  ( EID, gMakeObservedNode, gAllNodes, gHasNodeID, gHasNodeEID, gNodeEID, gNodeID, gMakeNode, gClearAll,
+    gLatestObservedNode, gSelectObservedNode, gFinds, gHasObservedNodeEID, gAllObservedNode,
+    VObservedNode(..), EFinds(..)
   )
 
 -- | An IO agent of the NetSpider database.
@@ -81,25 +81,25 @@ submitB sp b = Gr.submit (spiderClient sp) script mbs
 clearAll :: Spider n p -> IO ()
 clearAll spider = Gr.drainResults =<< submitB spider (return gClearAll)
 
--- | Add an observation of 'Neighbors' to the NetSpider database.
-addNeighbors :: (ToJSON n, ToJSON p) => Spider n p -> Neighbors n p -> IO ()
-addNeighbors spider nbs = do
+-- | Add an observation of 'ObservedNode' to the NetSpider database.
+addObservedNode :: (ToJSON n, ToJSON p) => Spider n p -> ObservedNode n p -> IO ()
+addObservedNode spider nbs = do
   subject_vid <- getOrMakeNode spider $ subjectNode nbs
   link_pairs <- traverse linkAndTargetVID $ neighborLinks nbs
-  makeNeighborsVertex spider subject_vid link_pairs $ observedTime nbs
+  makeObservedNodeVertex spider subject_vid link_pairs $ observedTime nbs
   where
     linkAndTargetVID link = do
       target_vid <- getOrMakeNode spider $ targetNode link
       return (link, target_vid)
 
-makeNeighborsVertex :: (ToJSON p)
-                    => Spider n p
-                    -> EID -- ^ subject node vertex ID
-                    -> Vector (FoundLink n p, EID) -- ^ (link, target node vertex ID)
-                    -> Timestamp
-                    -> IO ()
-makeNeighborsVertex spider subject_vid link_pairs timestamp =
-  Gr.drainResults =<< submitB spider (fmap void $ gMakeNeighbors subject_vid link_pairs timestamp)
+makeObservedNodeVertex :: (ToJSON p)
+                       => Spider n p
+                       -> EID -- ^ subject node vertex ID
+                       -> Vector (FoundLink n p, EID) -- ^ (link, target node vertex ID)
+                       -> Timestamp
+                       -> IO ()
+makeObservedNodeVertex spider subject_vid link_pairs timestamp =
+  Gr.drainResults =<< submitB spider (fmap void $ gMakeObservedNode subject_vid link_pairs timestamp)
 
 vToMaybe :: Vector a -> Maybe a
 vToMaybe v = v V.!? 0
@@ -165,7 +165,7 @@ visitNodeForSnapshot spider ref_state visit_nid = do
    Nothing -> return ()
    Just node_eid -> do
      markAsVisited
-     mnext_neighbors <- getNextNeighbors node_eid
+     mnext_neighbors <- getNextObservedNode node_eid
      case mnext_neighbors of
       Nothing -> return ()
       Just next_neighbors -> do
@@ -176,17 +176,17 @@ visitNodeForSnapshot spider ref_state visit_nid = do
     getVisitedNodeEID = fmap vToMaybe $ Gr.slurpResults =<< submitB spider binder
       where
         binder = gNodeEID <$.> gHasNodeID visit_nid <*.> pure gAllNodes
-    getNextNeighbors node_eid = fmap vToMaybe $ Gr.slurpResults =<< submitB spider binder
+    getNextObservedNode node_eid = fmap vToMaybe $ Gr.slurpResults =<< submitB spider binder
       where
-        binder = gLatestNeighbors
-                 <$.> gSelectNeighbors gIdentity -- TODO: select Neighbors to consider
+        binder = gLatestObservedNode
+                 <$.> gSelectObservedNode gIdentity -- TODO: select ObservedNode to consider
                  <$.> gHasNodeEID node_eid
                  <*.> pure gAllNodes
 
 makeSnapshotLinks :: (FromGraphSON n, FromGraphSON p)
                   => Spider n p
                   -> n -- ^ subject node ID.
-                  -> VNeighbors
+                  -> VObservedNode
                   -> IO (Vector (SnapshotLinkID n p, SnapshotLinkSample))
 makeSnapshotLinks spider subject_nid vneighbors = do
   finds_edges <- getFinds $ vnID vneighbors
@@ -194,7 +194,7 @@ makeSnapshotLinks spider subject_nid vneighbors = do
   where
     getFinds neighbors_eid = Gr.slurpResults =<< submitB spider binder
       where
-        binder = gFinds <$.> gHasNeighborsEID neighbors_eid <*.> pure gAllNeighbors
+        binder = gFinds <$.> gHasObservedNodeEID neighbors_eid <*.> pure gAllObservedNode
     toSnapshotLinkEntry efinds = do
       target_nid <- getNodeID $ efTargetEID $ efinds
       return ( SnapshotLinkID { sliSubjectNode = subject_nid,

@@ -16,13 +16,13 @@ module NetSpider.Spider.Internal.Graph
          gNodeEID,
          gNodeID,
          gMakeNode,
-         -- * VNeighbors
-         VNeighbors(..),
-         gAllNeighbors,
-         gHasNeighborsEID,
-         gMakeNeighbors,
-         gSelectNeighbors,
-         gLatestNeighbors,
+         -- * VObservedNode
+         VObservedNode(..),
+         gAllObservedNode,
+         gHasObservedNodeEID,
+         gMakeObservedNode,
+         gSelectObservedNode,
+         gLatestObservedNode,
          -- * EFinds
          EFinds(..),
          gFinds
@@ -49,7 +49,7 @@ import Data.Text (Text)
 import Data.Traversable (traverse)
 import Data.Vector (Vector)
 
-import NetSpider.Neighbors (FoundLink(..), LinkState(..), linkStateToText)
+import NetSpider.ObservedNode (FoundLink(..), LinkState(..), linkStateToText)
 import NetSpider.Timestamp (Timestamp(..), fromEpochSecond)
 
 -- | Generic element ID used in the graph DB.
@@ -97,29 +97,29 @@ gMakeNode nid = do
   var_nid <- newBind nid
   return $ gProperty "@node_id" var_nid $. sAddV "node" $ source "g"
 
--- | The \"neighbors\" vertex.
-data VNeighbors =
-  VNeighbors
+-- | The \"observed_node\" vertex.
+data VObservedNode =
+  VObservedNode
   { vnID :: !EID,
     vnTimestamp :: !Timestamp
   }
 
-instance Element VNeighbors where
-  type ElementID VNeighbors = EID
-  type ElementProperty VNeighbors = AVertexProperty
+instance Element VObservedNode where
+  type ElementID VObservedNode = EID
+  type ElementProperty VObservedNode = AVertexProperty
 
-instance Vertex VNeighbors
+instance Vertex VObservedNode
 
-instance FromGraphSON VNeighbors where
+instance FromGraphSON VObservedNode where
   parseGraphSON gv = fromAVertex =<< parseGraphSON gv
     where
       fromAVertex av = do
         eid <- parseGraphSON $ avId av
         epoch_ts <- parseOneValue "@timestamp" $ avProperties av
         -- TODO: parse timezone.
-        return $ VNeighbors { vnID = eid,
-                              vnTimestamp = fromEpochSecond epoch_ts
-                            }
+        return $ VObservedNode { vnID = eid,
+                                 vnTimestamp = fromEpochSecond epoch_ts
+                               }
 
 gGetNodeByEID :: EID -> Binder (Walk Transform s VNode)
 gGetNodeByEID vid = do
@@ -127,28 +127,28 @@ gGetNodeByEID vid = do
   return (f <<< gV [])
 
 
-gAllNeighbors :: GTraversal Transform () VNeighbors
-gAllNeighbors = gHasLabel "neighbors" $. sV [] $ source "g"
+gAllObservedNode :: GTraversal Transform () VObservedNode
+gAllObservedNode = gHasLabel "observed_node" $. sV [] $ source "g"
 
-gHasNeighborsEID :: WalkType c => EID -> Binder (Walk c VNeighbors VNeighbors)
-gHasNeighborsEID eid = do
+gHasObservedNodeEID :: WalkType c => EID -> Binder (Walk c VObservedNode VObservedNode)
+gHasObservedNodeEID eid = do
   var_eid <- newBind eid
   return $ gHasId var_eid
 
-gMakeNeighbors :: (ToJSON p)
-               => EID -- ^ subject node EID
-               -> Vector (FoundLink n p, EID) -- ^ (link, target node EID)
-               -> Timestamp
-               -> Binder (GTraversal SideEffect () VNeighbors)
-gMakeNeighbors subject_vid link_pairs timestamp = 
-  mAddFindsEdges <*.> gSetTimestamp timestamp <*.> mAddObservesEdge <*.> pure $ sAddV "neighbors" $ source "g"
+gMakeObservedNode :: (ToJSON p)
+                  => EID -- ^ subject node EID
+                  -> Vector (FoundLink n p, EID) -- ^ (link, target node EID)
+                  -> Timestamp
+                  -> Binder (GTraversal SideEffect () VObservedNode)
+gMakeObservedNode subject_vid link_pairs timestamp = 
+  mAddFindsEdges <*.> gSetTimestamp timestamp <*.> mAddObservesEdge <*.> pure $ sAddV "observed_node" $ source "g"
   where
-    mAddObservesEdge :: Binder (Walk SideEffect VNeighbors VNeighbors)
+    mAddObservesEdge :: Binder (Walk SideEffect VObservedNode VObservedNode)
     mAddObservesEdge = do
       v <- gGetNodeByEID subject_vid
       return $ gSideEffect $ emitsAEdge $ gAddE "observes" $ gFrom v
     mAddFindsEdges = fmap fold $ traverse mAddFindsEdgeFor link_pairs
-    mAddFindsEdgeFor :: (ToJSON p) => (FoundLink n p, EID) -> Binder (Walk SideEffect VNeighbors VNeighbors)
+    mAddFindsEdgeFor :: (ToJSON p) => (FoundLink n p, EID) -> Binder (Walk SideEffect VObservedNode VObservedNode)
     mAddFindsEdgeFor (link, target_vid) = do
       v <- gGetNodeByEID target_vid
       var_sp <- newBind $ subjectPort link
@@ -161,10 +161,10 @@ gMakeNeighbors subject_vid link_pairs timestamp =
                              <<< gAddE "finds" (gTo v)
                            )
 
-keyTimestamp :: Key VNeighbors Int64
+keyTimestamp :: Key VObservedNode Int64
 keyTimestamp = "@timestamp"
   
-gSetTimestamp :: Timestamp -> Binder (Walk SideEffect VNeighbors VNeighbors)
+gSetTimestamp :: Timestamp -> Binder (Walk SideEffect VObservedNode VObservedNode)
 gSetTimestamp ts = do
   var_epoch <- newBind $ epochTime ts
   return $ gPropertyV Nothing keyTimestamp var_epoch []
@@ -176,13 +176,13 @@ emitsAEdge = id
 gClearAll :: GTraversal SideEffect () ()
 gClearAll = void $ gDrop $. liftWalk $ sV' [] $ source "g"
 
-gSelectNeighbors :: Walk Filter VNeighbors VNeighbors -> Walk Transform VNode VNeighbors
-gSelectNeighbors filterNeighbors = liftWalk filterNeighbors <<< gOut ["observes"]
+gSelectObservedNode :: Walk Filter VObservedNode VObservedNode -> Walk Transform VNode VObservedNode
+gSelectObservedNode filterObservedNode = liftWalk filterObservedNode <<< gOut ["observes"]
 
-gLatestNeighbors :: Walk Transform VNeighbors VNeighbors
-gLatestNeighbors = gLimit 1 <<< gOrder [gBy2 keyTimestamp oDecr]
+gLatestObservedNode :: Walk Transform VObservedNode VObservedNode
+gLatestObservedNode = gLimit 1 <<< gOrder [gBy2 keyTimestamp oDecr]
 
-gFinds :: Walk Transform VNeighbors (EFinds p)
+gFinds :: Walk Transform VObservedNode (EFinds p)
 gFinds = gOutE ["finds"]
 
 -- | \"finds\" edge.

@@ -1,12 +1,12 @@
 {-# LANGUAGE OverloadedStrings #-}
 -- |
--- Module: NetSpider.Neighbors
--- Description: Neighbors type
+-- Module: NetSpider.ObservedNode
+-- Description: ObservedNode type
 -- Maintainer: Toshio Ito <debug.ito@gmail.com>
 --
 -- 
-module NetSpider.Neighbors
-       ( Neighbors(..),
+module NetSpider.ObservedNode
+       ( ObservedNode(..),
          FoundLink(..),
          LinkState(..),
          linkStateToText,
@@ -68,13 +68,13 @@ data FoundLink n p =
   }
   deriving (Show,Eq,Ord)
 
--- | 'Neighbors' is a set of neighbor links connected to a specific
--- node (the subject node) observed at a specific time.
+-- | 'ObservedNode' is a node (the subject node) observed at a
+-- specific time. It has a set of neighbor links found at the moment.
 --
 -- - type @n@: node ID.
 -- - type @p@: port ID.
-data Neighbors n p =
-  Neighbors
+data ObservedNode n p =
+  ObservedNode
   { subjectNode :: !n,
     observedTime :: !Timestamp,
     neighborLinks :: !(Vector (FoundLink n p))

@@ -23,7 +23,7 @@ library
                         TypeFamilies,
                         DeriveGeneric
   exposed-modules:      NetSpider,
-                        NetSpider.Neighbors,
+                        NetSpider.ObservedNode,
                         NetSpider.Timestamp,
                         NetSpider.Spider,
                         NetSpider.Snapshot
