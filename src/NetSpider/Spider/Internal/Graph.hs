@@ -47,7 +47,10 @@ import Data.Text (Text)
 import Data.Traversable (traverse)
 import Data.Vector (Vector)
 
-import NetSpider.Graph (EID, VNode, VObservedNode(..), EFinds(..))
+import NetSpider.Graph
+  ( EID, VNode, VObservedNode(..), EFinds(..),
+    LinkAttributes(..)
+  )
 import NetSpider.ObservedNode (FoundLink(..), LinkState(..), linkStateToText)
 import NetSpider.Timestamp (Timestamp(..), fromEpochSecond)
 
@@ -90,7 +93,8 @@ gHasObservedNodeEID eid = do
   var_eid <- newBind eid
   return $ gHasId var_eid
 
-gMakeObservedNode :: EID -- ^ subject node EID
+gMakeObservedNode :: LinkAttributes la
+                  => EID -- ^ subject node EID
                   -> Vector (FoundLink n la, EID) -- ^ (link, target node EID)
                   -> Timestamp
                   -> Binder (GTraversal SideEffect () VObservedNode)
@@ -102,15 +106,15 @@ gMakeObservedNode subject_vid link_pairs timestamp =
       v <- gGetNodeByEID subject_vid
       return $ gSideEffect $ emitsAEdge $ gAddE "observes" $ gFrom v
     mAddFindsEdges = fmap fold $ traverse mAddFindsEdgeFor link_pairs
-    mAddFindsEdgeFor :: (FoundLink n la, EID) -> Binder (Walk SideEffect VObservedNode VObservedNode)
+    mAddFindsEdgeFor :: LinkAttributes la => (FoundLink n la, EID) -> Binder (Walk SideEffect VObservedNode VObservedNode)
     mAddFindsEdgeFor (link, target_vid) = do
       v <- gGetNodeByEID target_vid
       var_ls <- newBind $ linkStateToText $ linkState link
-      return $ gSideEffect ( emitsAEdge
-                             $ gProperty "@link_state" var_ls
+      addAttrs <- writeLinkAttributes $ linkAttributes link
+      return $ gSideEffect ( addAttrs
+                             <<< gProperty "@link_state" var_ls
                              <<< gAddE "finds" (gTo v)
                            )
-    -- TODO: save link attributes.
 
 keyTimestamp :: Key VObservedNode Int64
 keyTimestamp = "@timestamp"

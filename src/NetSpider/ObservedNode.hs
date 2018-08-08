@@ -63,7 +63,7 @@ data FoundLink n la =
   FoundLink
   { targetNode :: !n,
     linkState :: !LinkState,
-    linkAttributes :: !la
+    linkAttributes :: !la -- TODO: name collision with SnapshotLink.
   }
   deriving (Show,Eq,Ord)
 

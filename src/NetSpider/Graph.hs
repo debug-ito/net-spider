@@ -5,6 +5,9 @@
 -- Maintainer: Toshio Ito <debug.ito@gmail.com>
 --
 -- 
+
+-- TODO: maybe this (public) module is not necessary. Putting the content into Spider.Internal.Graph, and
+-- expose NodeProperties, LinkProperties, type constructors of VObservedNode and EFinds from Spider module is enough.
 module NetSpider.Graph
        ( -- * EID
          EID,
@@ -12,15 +15,20 @@ module NetSpider.Graph
          VNode,
          -- * VObservedNode
          VObservedNode(..),
+         NodeAttributes(..),
          -- * EFinds
-         EFinds(..)
+         EFinds(..),
+         LinkAttributes(..)
        ) where
 
 import Data.Aeson (ToJSON(..), FromJSON(..), Value(..))
 import Data.Greskell
   ( FromGraphSON(..), parseOneValue,
     Element(..), Vertex, Edge(..),
-    AVertexProperty, AVertex(..), AProperty, AEdge(..)
+    AVertexProperty, AVertex(..), AProperty, AEdge(..),
+    Walk, SideEffect,
+    Binder, Parser, PropertyMapList, PropertyMapSingle, GValue,
+    gIdentity
   )
 import Data.Text (Text)
 
@@ -77,7 +85,8 @@ data EFinds la =
   EFinds
   { efId :: !EID,
     efTargetId :: !EID,
-    efLinkState :: !LinkState
+    efLinkState :: !LinkState,
+    efLinkAttributes :: !la
   }
 
 instance Element (EFinds la) where
@@ -87,12 +96,36 @@ instance Element (EFinds la) where
 instance Edge (EFinds la) where
   type EdgeVertexID (EFinds la) = EID
 
-instance FromGraphSON (EFinds la) where
+instance LinkAttributes la => FromGraphSON (EFinds la) where
   parseGraphSON gv = fromAEdge =<< parseGraphSON gv
     where
       fromAEdge ae = EFinds 
                      <$> (parseGraphSON $ aeId ae)
                      <*> (parseGraphSON $ aeInV ae)
                      <*> (parseOneValue "@link_state" ps)
+                     <*> (parseLinkAttributes ps)
         where
           ps = aeProperties ae
+
+-- | Class of user-defined types for node attributes. Its content is
+-- stored in the NetSpider database.
+class NodeAttributes ps where
+  writeNodeAttributes :: ps -> Binder (Walk SideEffect VObservedNode VObservedNode)
+  parseNodeAttributes :: PropertyMapList AVertexProperty GValue -> Parser ps
+
+-- | No attributes.
+instance NodeAttributes () where
+  writeNodeAttributes _ = return gIdentity
+  parseNodeAttributes _ = return ()
+
+-- | Class of user-defined types for link attributes. Its content is
+-- stored in the NetSpider database.
+class LinkAttributes ps where
+  writeLinkAttributes :: ps -> Binder (Walk SideEffect (EFinds ps) (EFinds ps))
+  parseLinkAttributes :: PropertyMapSingle AProperty GValue -> Parser ps
+
+-- | No attributes.
+instance LinkAttributes () where
+  writeLinkAttributes _ = return gIdentity
+  parseLinkAttributes _ = return ()
+  

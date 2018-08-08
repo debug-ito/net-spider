@@ -33,9 +33,8 @@ data SnapshotLink n la =
   { _sourceNode :: !n,
     _destinationNode :: !n,
     _isDirected :: !Bool,
-    _linkTimestamp :: !Timestamp
-
-    -- TODO: add link attributes
+    _linkTimestamp :: !Timestamp,
+    _linkAttributes :: !la
     
     -- Maybe it's a good idea to include 'observationLogs', which can
     -- contain warnings or other logs about making this SnapshotLink.
@@ -43,7 +42,7 @@ data SnapshotLink n la =
   deriving (Show,Eq)
 
 -- | Comparison by node-tuple (source node, destination node).
-instance (Ord n) => Ord (SnapshotLink n la) where
+instance (Ord n, Eq la) => Ord (SnapshotLink n la) where
   compare l r = compare (linkNodeTuple l) (linkNodeTuple r)
 
 -- | node-tuple (source node, destination node) of the link.

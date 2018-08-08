@@ -40,6 +40,7 @@ import Network.Greskell.WebSocket
   )
 import qualified Network.Greskell.WebSocket as Gr
 
+import NetSpider.Graph (LinkAttributes)
 import NetSpider.ObservedNode (ObservedNode(..), FoundLink(..), LinkState(..))
 import NetSpider.Snapshot (SnapshotElement)
 import NetSpider.Snapshot.Internal (SnapshotNode(..), SnapshotLink(..))
@@ -81,7 +82,7 @@ clearAll :: Spider n la -> IO ()
 clearAll spider = Gr.drainResults =<< submitB spider (return gClearAll)
 
 -- | Add an observation of 'ObservedNode' to the NetSpider database.
-addObservedNode :: (ToJSON n) => Spider n la -> ObservedNode n la -> IO ()
+addObservedNode :: (ToJSON n, LinkAttributes la) => Spider n la -> ObservedNode n la -> IO ()
 addObservedNode spider nbs = do
   subject_vid <- getOrMakeNode spider $ subjectNode nbs
   link_pairs <- traverse linkAndTargetVID $ neighborLinks nbs
@@ -91,7 +92,8 @@ addObservedNode spider nbs = do
       target_vid <- getOrMakeNode spider $ targetNode link
       return (link, target_vid)
 
-makeObservedNodeVertex :: Spider n la
+makeObservedNodeVertex :: LinkAttributes la
+                       => Spider n la
                        -> EID -- ^ subject node vertex ID
                        -> Vector (FoundLink n la, EID) -- ^ (link, target node vertex ID)
                        -> Timestamp
@@ -127,7 +129,7 @@ getOrMakeNode spider nid = do
 -- This function is very simple, and should be used only for testing.
 -- This function starts from an arbitrary node, traverses the history
 -- graph using the latest links with unlimited number of hops.
-getLatestSnapshot :: (FromGraphSON n, ToJSON n, Ord n, Hashable n)
+getLatestSnapshot :: (FromGraphSON n, ToJSON n, Ord n, Hashable n, LinkAttributes la)
                   => Spider n la
                   -> n -- ^ ID of the node where it starts traversing.
                   -> IO (Vector (SnapshotElement n la))
@@ -137,7 +139,7 @@ getLatestSnapshot spider start_nid = do
   -- print =<< readIORef ref_state
   fmap makeSnapshot $ readIORef ref_state
 
-recurseVisitNodesForSnapshot :: (ToJSON n, Ord n, Hashable n, FromGraphSON n)
+recurseVisitNodesForSnapshot :: (ToJSON n, Ord n, Hashable n, FromGraphSON n, LinkAttributes la)
                              => Spider n la
                              -> IORef (SnapshotState n la)
                              -> IO ()
@@ -153,7 +155,7 @@ recurseVisitNodesForSnapshot spider ref_state = go
     getNextVisit = atomicModifyIORef' ref_state popUnvisitedNode
     -- TODO: limit number of steps.
 
-visitNodeForSnapshot :: (ToJSON n, Ord n, Hashable n, FromGraphSON n)
+visitNodeForSnapshot :: (ToJSON n, Ord n, Hashable n, FromGraphSON n, LinkAttributes la)
                      => Spider n la
                      -> IORef (SnapshotState n la)
                      -> n
@@ -182,7 +184,7 @@ visitNodeForSnapshot spider ref_state visit_nid = do
                  <$.> gHasNodeEID node_eid
                  <*.> pure gAllNodes
 
-makeSnapshotLinkSamples :: (FromGraphSON n)
+makeSnapshotLinkSamples :: (FromGraphSON n, LinkAttributes la)
                         => Spider n la
                         -> n -- ^ subject node ID.
                         -> VObservedNode
@@ -201,7 +203,8 @@ makeSnapshotLinkSamples spider subject_nid vneighbors = do
                                }
           lsample = SnapshotLinkSample { slsLinkId = lid,
                                          slsLinkState = efLinkState efinds,
-                                         slsTimestamp = vonTimestamp vneighbors
+                                         slsTimestamp = vonTimestamp vneighbors,
+                                         slsLinkAttributes = efLinkAttributes efinds
                                        }
       return lsample
     getNodeID node_eid = expectOne =<< (fmap vToMaybe $ Gr.slurpResults =<< submitB spider binder)
@@ -250,8 +253,8 @@ data SnapshotLinkSample n la =
   SnapshotLinkSample
   { slsLinkId :: !(SnapshotLinkID n),
     slsLinkState :: !LinkState,
-    slsTimestamp :: !Timestamp
-    -- TODO: add link attributes
+    slsTimestamp :: !Timestamp,
+    slsLinkAttributes :: !la
   }
   deriving (Show,Eq)
 
@@ -332,7 +335,8 @@ makeSnapshotLink link_samples = do
       SnapshotLink { _sourceNode = (if to_target then sliSubjectNode else sliTargetNode) link_id,
                      _destinationNode = (if to_target then sliTargetNode else sliSubjectNode) link_id,
                      _isDirected = is_directed,
-                     _linkTimestamp = slsTimestamp agg_sample
+                     _linkTimestamp = slsTimestamp agg_sample,
+                     _linkAttributes = slsLinkAttributes agg_sample
                    }
       where
         link_id = slsLinkId agg_sample

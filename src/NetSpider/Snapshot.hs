@@ -16,6 +16,7 @@ module NetSpider.Snapshot
          linkNodeTuple,
          isDirected,
          linkTimestamp,
+         linkAttributes,
          -- * SnapshotElement
          SnapshotElement
        ) where
@@ -38,14 +39,17 @@ nodeId = _nodeId
 isOnBoundary :: SnapshotNode n -> Bool
 isOnBoundary = _isOnBoundary
 
-sourceNode :: SnapshotLink n p -> n
+sourceNode :: SnapshotLink n la -> n
 sourceNode = _sourceNode
 
-destinationNode :: SnapshotLink n p -> n
+destinationNode :: SnapshotLink n la -> n
 destinationNode = _destinationNode
 
-isDirected :: SnapshotLink n p -> Bool
+isDirected :: SnapshotLink n la -> Bool
 isDirected = _isDirected
 
-linkTimestamp :: SnapshotLink n p -> Timestamp
+linkTimestamp :: SnapshotLink n la -> Timestamp
 linkTimestamp = _linkTimestamp
+
+linkAttributes :: SnapshotLink n la -> la
+linkAttributes = _linkAttributes
