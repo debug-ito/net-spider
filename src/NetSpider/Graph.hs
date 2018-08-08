@@ -51,8 +51,8 @@ instance Vertex VNode
 -- | The \"observed_node\" vertex.
 data VObservedNode =
   VObservedNode
-  { vnID :: !EID,
-    vnTimestamp :: !Timestamp
+  { vonId :: !EID,
+    vonTimestamp :: !Timestamp
   }
 
 instance Element VObservedNode where
@@ -68,15 +68,15 @@ instance FromGraphSON VObservedNode where
         eid <- parseGraphSON $ avId av
         epoch_ts <- parseOneValue "@timestamp" $ avProperties av
         -- TODO: parse timezone.
-        return $ VObservedNode { vnID = eid,
-                                 vnTimestamp = fromEpochSecond epoch_ts
+        return $ VObservedNode { vonId = eid,
+                                 vonTimestamp = fromEpochSecond epoch_ts
                                }
 
 -- | \"finds\" edge.
 data EFinds la =
   EFinds
-  { efEID :: !EID,
-    efTargetEID :: !EID,
+  { efId :: !EID,
+    efTargetId :: !EID,
     efLinkState :: !LinkState
   }
 

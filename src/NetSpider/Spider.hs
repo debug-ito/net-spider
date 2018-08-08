@@ -188,20 +188,20 @@ makeSnapshotLinkSamples :: (FromGraphSON n)
                         -> VObservedNode
                         -> IO (Vector (SnapshotLinkSample n la))
 makeSnapshotLinkSamples spider subject_nid vneighbors = do
-  finds_edges <- getFinds $ vnID vneighbors
+  finds_edges <- getFinds $ vonId vneighbors
   traverse toSnapshotLinkEntry finds_edges
   where
     getFinds neighbors_eid = Gr.slurpResults =<< submitB spider binder
       where
         binder = gFinds <$.> gHasObservedNodeEID neighbors_eid <*.> pure gAllObservedNode
     toSnapshotLinkEntry efinds = do
-      target_nid <- getNodeID $ efTargetEID $ efinds
+      target_nid <- getNodeID $ efTargetId $ efinds
       let lid = SnapshotLinkID { sliSubjectNode = subject_nid,
                                  sliTargetNode = target_nid
                                }
           lsample = SnapshotLinkSample { slsLinkId = lid,
                                          slsLinkState = efLinkState efinds,
-                                         slsTimestamp = vnTimestamp vneighbors
+                                         slsTimestamp = vonTimestamp vneighbors
                                        }
       return lsample
     getNodeID node_eid = expectOne =<< (fmap vToMaybe $ Gr.slurpResults =<< submitB spider binder)
