@@ -72,10 +72,14 @@ data FoundLink n la =
 --
 -- - type @n@: node ID.
 -- - type @la@: link attributes.
-data ObservedNode n la =
+-- - type @na@: node attributes.
+data ObservedNode n la na =
   ObservedNode
   { subjectNode :: !n,
     observedTime :: !Timestamp,
-    neighborLinks :: !(Vector (FoundLink n la))
+    neighborLinks :: !(Vector (FoundLink n la)),
+    nodeAttributes :: !na
   }
   deriving (Show,Eq)
+
+-- TODO: maybe it's a good idea to use "Found" consistently. FoundNode and FoundLink.

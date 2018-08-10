@@ -85,28 +85,30 @@ gGetNodeByEID vid = do
   return (f <<< gV [])
 
 
-gAllObservedNode :: GTraversal Transform () VObservedNode
+gAllObservedNode :: GTraversal Transform () (VObservedNode na)
 gAllObservedNode = gHasLabel "observed_node" $. sV [] $ source "g"
 
-gHasObservedNodeEID :: WalkType c => EID -> Binder (Walk c VObservedNode VObservedNode)
+gHasObservedNodeEID :: WalkType c => EID -> Binder (Walk c (VObservedNode na) (VObservedNode na))
 gHasObservedNodeEID eid = do
   var_eid <- newBind eid
   return $ gHasId var_eid
+
+-- TODO: write node attributes.
 
 gMakeObservedNode :: LinkAttributes la
                   => EID -- ^ subject node EID
                   -> Vector (FoundLink n la, EID) -- ^ (link, target node EID)
                   -> Timestamp
-                  -> Binder (GTraversal SideEffect () VObservedNode)
+                  -> Binder (GTraversal SideEffect () (VObservedNode na))
 gMakeObservedNode subject_vid link_pairs timestamp = 
   mAddFindsEdges <*.> gSetTimestamp timestamp <*.> mAddObservesEdge <*.> pure $ sAddV "observed_node" $ source "g"
   where
-    mAddObservesEdge :: Binder (Walk SideEffect VObservedNode VObservedNode)
+    mAddObservesEdge :: Binder (Walk SideEffect (VObservedNode na) (VObservedNode na))
     mAddObservesEdge = do
       v <- gGetNodeByEID subject_vid
       return $ gSideEffect $ emitsAEdge $ gAddE "observes" $ gFrom v
     mAddFindsEdges = fmap fold $ traverse mAddFindsEdgeFor link_pairs
-    mAddFindsEdgeFor :: LinkAttributes la => (FoundLink n la, EID) -> Binder (Walk SideEffect VObservedNode VObservedNode)
+    mAddFindsEdgeFor :: LinkAttributes la => (FoundLink n la, EID) -> Binder (Walk SideEffect (VObservedNode na) (VObservedNode na))
     mAddFindsEdgeFor (link, target_vid) = do
       v <- gGetNodeByEID target_vid
       var_ls <- newBind $ linkStateToText $ linkState link
@@ -116,10 +118,10 @@ gMakeObservedNode subject_vid link_pairs timestamp =
                              <<< gAddE "finds" (gTo v)
                            )
 
-keyTimestamp :: Key VObservedNode Int64
+keyTimestamp :: Key (VObservedNode na) Int64
 keyTimestamp = "@timestamp"
   
-gSetTimestamp :: Timestamp -> Binder (Walk SideEffect VObservedNode VObservedNode)
+gSetTimestamp :: Timestamp -> Binder (Walk SideEffect (VObservedNode na) (VObservedNode na))
 gSetTimestamp ts = do
   var_epoch <- newBind $ epochTime ts
   return $ gPropertyV Nothing keyTimestamp var_epoch []
@@ -131,13 +133,13 @@ emitsAEdge = id
 gClearAll :: GTraversal SideEffect () ()
 gClearAll = void $ gDrop $. liftWalk $ sV' [] $ source "g"
 
-gSelectObservedNode :: Walk Filter VObservedNode VObservedNode -> Walk Transform VNode VObservedNode
+gSelectObservedNode :: Walk Filter (VObservedNode na) (VObservedNode na) -> Walk Transform VNode (VObservedNode na)
 gSelectObservedNode filterObservedNode = liftWalk filterObservedNode <<< gOut ["observes"]
 
-gLatestObservedNode :: Walk Transform VObservedNode VObservedNode
+gLatestObservedNode :: Walk Transform (VObservedNode na) (VObservedNode na)
 gLatestObservedNode = gLimit 1 <<< gOrder [gBy2 keyTimestamp oDecr]
 
-gFinds :: Walk Transform VObservedNode (EFinds la)
+gFinds :: Walk Transform (VObservedNode na) (EFinds la)
 gFinds = gOutE ["finds"]
 
   

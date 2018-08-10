@@ -41,12 +41,12 @@ spec = do
 withServer :: SpecWith (Host,Port) -> Spec
 withServer = before $ needEnvHostPort Need "NET_SPIDER_TEST"
 
-withSpider :: (Spider n p -> IO ()) -> (Host, Port) -> IO ()
+withSpider :: (Spider n la na -> IO ()) -> (Host, Port) -> IO ()
 withSpider action (host, port) = bracket (connectWS host port) close $ \spider -> do
   clearAll spider
   action spider
 
-makeOneNeighborExample :: Spider Text () -> IO ()
+makeOneNeighborExample :: Spider Text () () -> IO ()
 makeOneNeighborExample spider = do
   let link = FoundLink { targetNode = "n2",
                          linkState = LinkToTarget,
@@ -54,7 +54,8 @@ makeOneNeighborExample spider = do
                        }
       nbs = ObservedNode { subjectNode = "n1",
                            observedTime = fromEpochSecond 100,
-                           neighborLinks = return link
+                           neighborLinks = return link,
+                           nodeAttributes = ()
                          }
   debugShowE $ addObservedNode spider nbs
   
@@ -75,10 +76,11 @@ spec_getLatestSnapshot = withServer $ describe "getLatestSnapshot" $ do
     isDirected got_link `shouldBe` True
     linkTimestamp got_link `shouldBe` fromEpochSecond 100
   specify "no neighbor" $ withSpider $ \spider -> do
-    let nbs :: ObservedNode Text ()
+    let nbs :: ObservedNode Text () ()
         nbs = ObservedNode { subjectNode = "n1",
                              observedTime = fromEpochSecond 200,
-                             neighborLinks = mempty
+                             neighborLinks = mempty,
+                             nodeAttributes = ()
                            }
     addObservedNode spider nbs
     got <- fmap V.toList $ getLatestSnapshot spider "n1"
@@ -103,11 +105,13 @@ spec_getLatestSnapshot = withServer $ describe "getLatestSnapshot" $ do
                             }
         nbs1 = ObservedNode { subjectNode = "n1",
                               observedTime = fromEpochSecond 100,
-                              neighborLinks = return link_12
+                              neighborLinks = return link_12,
+                              nodeAttributes = ()
                             }
         nbs2 = ObservedNode { subjectNode = "n2",
                               observedTime = fromEpochSecond 200,
-                              neighborLinks = return link_21
+                              neighborLinks = return link_21,
+                              nodeAttributes = ()
                             }
     mapM_ (addObservedNode spider) [nbs1, nbs2]
     got <- fmap (sort . V.toList) $ getLatestSnapshot spider "n1"

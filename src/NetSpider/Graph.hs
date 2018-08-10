@@ -57,27 +57,30 @@ instance Element VNode where
 instance Vertex VNode
 
 -- | The \"observed_node\" vertex.
-data VObservedNode =
+data VObservedNode na =
   VObservedNode
   { vonId :: !EID,
-    vonTimestamp :: !Timestamp
+    vonTimestamp :: !Timestamp,
+    vonAttributes :: !na
   }
 
-instance Element VObservedNode where
-  type ElementID VObservedNode = EID
-  type ElementProperty VObservedNode = AVertexProperty
+instance Element (VObservedNode na) where
+  type ElementID (VObservedNode na) = EID
+  type ElementProperty (VObservedNode na) = AVertexProperty
 
-instance Vertex VObservedNode
+instance Vertex (VObservedNode na)
 
-instance FromGraphSON VObservedNode where
+instance NodeAttributes na => FromGraphSON (VObservedNode na) where
   parseGraphSON gv = fromAVertex =<< parseGraphSON gv
     where
       fromAVertex av = do
         eid <- parseGraphSON $ avId av
         epoch_ts <- parseOneValue "@timestamp" $ avProperties av
         -- TODO: parse timezone.
+        attrs <- parseNodeAttributes $ avProperties av
         return $ VObservedNode { vonId = eid,
-                                 vonTimestamp = fromEpochSecond epoch_ts
+                                 vonTimestamp = fromEpochSecond epoch_ts,
+                                 vonAttributes = attrs
                                }
 
 -- | \"finds\" edge.
@@ -110,7 +113,7 @@ instance LinkAttributes la => FromGraphSON (EFinds la) where
 -- | Class of user-defined types for node attributes. Its content is
 -- stored in the NetSpider database.
 class NodeAttributes ps where
-  writeNodeAttributes :: ps -> Binder (Walk SideEffect VObservedNode VObservedNode)
+  writeNodeAttributes :: ps -> Binder (Walk SideEffect (VObservedNode ps) (VObservedNode ps))
   parseNodeAttributes :: PropertyMapList AVertexProperty GValue -> Parser ps
 
 -- | No attributes.

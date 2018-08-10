@@ -50,19 +50,20 @@ linkNodeTuple :: SnapshotLink n la -> (n, n)
 linkNodeTuple link = (_sourceNode link, _destinationNode link)
 
 -- | A node observed at a specific time.
-data SnapshotNode n =
+data SnapshotNode n na =
   SnapshotNode
   { _nodeId :: !n,
-    _isOnBoundary :: !Bool
+    _isOnBoundary :: !Bool,
+    _nodeAttributes :: !(Maybe na)
+    -- ^ If a node is found, but no observation is done for it, its
+    -- node attributes is 'Nothing'.
     
-    -- TODO: add node attributes?
-
     -- TODO: maybe node should have timestamp? because node can have no links.
   }
   deriving (Show,Eq)
 
 -- | Comparison by node ID.
-instance Ord n => Ord (SnapshotNode n) where
+instance (Ord n, Eq na) => Ord (SnapshotNode n na) where
   compare l r = compare (_nodeId l) (_nodeId r)
 
-type SnapshotElement n la = Either (SnapshotNode n) (SnapshotLink n la)
+type SnapshotElement n la na = Either (SnapshotNode n na) (SnapshotLink n la)

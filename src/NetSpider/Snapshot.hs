@@ -30,13 +30,13 @@ import NetSpider.Snapshot.Internal
 import NetSpider.Timestamp (Timestamp)
 
 
-nodeId :: SnapshotNode n -> n
+nodeId :: SnapshotNode n na -> n
 nodeId = _nodeId
 
 -- | This property is 'True' if the node is on the boundary of the
 -- query. This means that nodes adjacent to this node may not be
 -- included in the query result.
-isOnBoundary :: SnapshotNode n -> Bool
+isOnBoundary :: SnapshotNode n na -> Bool
 isOnBoundary = _isOnBoundary
 
 sourceNode :: SnapshotLink n la -> n
