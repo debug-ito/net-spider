@@ -71,9 +71,9 @@ data FoundLink n la =
 -- time. It has a set of neighbor links found at the moment.
 --
 -- - type @n@: node ID.
--- - type @la@: link attributes.
 -- - type @na@: node attributes.
-data FoundNode n la na =
+-- - type @la@: link attributes.
+data FoundNode n na la =
   FoundNode
   { subjectNode :: !n,
     observationTime :: !Timestamp,

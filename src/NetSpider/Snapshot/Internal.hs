@@ -59,4 +59,4 @@ data SnapshotNode n na =
 instance (Ord n, Eq na) => Ord (SnapshotNode n na) where
   compare l r = compare (_nodeId l) (_nodeId r)
 
-type SnapshotElement n la na = Either (SnapshotNode n na) (SnapshotLink n la)
+type SnapshotElement n na la = Either (SnapshotNode n na) (SnapshotLink n la)
