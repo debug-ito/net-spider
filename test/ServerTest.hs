@@ -53,7 +53,7 @@ makeOneNeighborExample spider = do
                          linkAttributes = ()
                        }
       nbs = FoundNode { subjectNode = "n1",
-                        observedTime = fromEpochSecond 100,
+                        observationTime = fromEpochSecond 100,
                         neighborLinks = return link,
                         nodeAttributes = ()
                       }
@@ -78,7 +78,7 @@ spec_getLatestSnapshot = withServer $ describe "getLatestSnapshot" $ do
   specify "no neighbor" $ withSpider $ \spider -> do
     let nbs :: FoundNode Text () ()
         nbs = FoundNode { subjectNode = "n1",
-                          observedTime = fromEpochSecond 200,
+                          observationTime = fromEpochSecond 200,
                           neighborLinks = mempty,
                           nodeAttributes = ()
                         }
@@ -104,12 +104,12 @@ spec_getLatestSnapshot = withServer $ describe "getLatestSnapshot" $ do
                               linkAttributes = ()
                             }
         nbs1 = FoundNode { subjectNode = "n1",
-                           observedTime = fromEpochSecond 100,
+                           observationTime = fromEpochSecond 100,
                            neighborLinks = return link_12,
                            nodeAttributes = ()
                          }
         nbs2 = FoundNode { subjectNode = "n2",
-                           observedTime = fromEpochSecond 200,
+                           observationTime = fromEpochSecond 200,
                            neighborLinks = return link_21,
                            nodeAttributes = ()
                          }

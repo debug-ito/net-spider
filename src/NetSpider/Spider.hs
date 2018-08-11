@@ -84,12 +84,13 @@ submitB sp b = Gr.submit (spiderClient sp) script mbs
 clearAll :: Spider n la na -> IO ()
 clearAll spider = Gr.drainResults =<< submitB spider (return gClearAll)
 
--- | Add an observation of 'FoundNode' to the NetSpider database.
+-- | Add a 'FoundNode' (observation of a node) to the NetSpider
+-- database.
 addFoundNode :: (ToJSON n, LinkAttributes la) => Spider n la na -> FoundNode n la na -> IO ()
-addFoundNode spider nbs = do
-  subject_vid <- getOrMakeNode spider $ subjectNode nbs
-  link_pairs <- traverse linkAndTargetVID $ neighborLinks nbs
-  makeFoundNodeVertex spider subject_vid link_pairs $ observedTime nbs
+addFoundNode spider found_node = do
+  subject_vid <- getOrMakeNode spider $ subjectNode found_node
+  link_pairs <- traverse linkAndTargetVID $ neighborLinks found_node
+  makeFoundNodeVertex spider subject_vid link_pairs $ observationTime found_node
   where
     linkAndTargetVID link = do
       target_vid <- getOrMakeNode spider $ targetNode link
@@ -168,12 +169,12 @@ visitNodeForSnapshot spider ref_state visit_nid = do
   case mnode_eid of
    Nothing -> return ()
    Just node_eid -> do
-     mnext_observed <- getNextFoundNode node_eid
-     markAsVisited $ fmap vfnAttributes $ mnext_observed
-     case mnext_observed of
+     mnext_found <- getNextFoundNode node_eid
+     markAsVisited $ fmap vfnAttributes $ mnext_found
+     case mnext_found of
       Nothing -> return ()
-      Just next_observed -> do
-        link_samples <- makeSnapshotLinkSamples spider visit_nid next_observed
+      Just next_found -> do
+        link_samples <- makeSnapshotLinkSamples spider visit_nid next_found
         modifyIORef ref_state $ addSnapshotSamples link_samples
   where
     markAsVisited mnattrs = modifyIORef ref_state $ addVisitedNode visit_nid mnattrs

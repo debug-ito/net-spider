@@ -13,7 +13,7 @@ import Data.Int (Int64)
 import Data.Time.LocalTime (TimeZone)
 import Foreign.C.Types (CTime(CTime))
 
--- | Timestamp when the snapshot is observed.
+-- | Timestamp when graph elements are observed.
 data Timestamp =
   Timestamp
   { epochTime :: !Int64,

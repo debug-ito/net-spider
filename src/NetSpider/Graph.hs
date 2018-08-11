@@ -53,7 +53,7 @@ instance Element VNode where
 
 instance Vertex VNode
 
--- | The \"observed_node\" vertex.
+-- | The \"found_node\" vertex.
 data VFoundNode na =
   VFoundNode
   { vfnId :: !EID,
