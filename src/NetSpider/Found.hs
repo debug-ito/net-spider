@@ -1,12 +1,12 @@
 {-# LANGUAGE OverloadedStrings #-}
 -- |
--- Module: NetSpider.ObservedNode
--- Description: ObservedNode type
+-- Module: NetSpider.Found
+-- Description: Found (observed) elements
 -- Maintainer: Toshio Ito <debug.ito@gmail.com>
 --
 -- 
-module NetSpider.ObservedNode
-       ( ObservedNode(..),
+module NetSpider.Found
+       ( FoundNode(..),
          FoundLink(..),
          LinkState(..),
          linkStateToText,
@@ -53,8 +53,8 @@ instance FromGraphSON LinkState where
         Just ls -> return ls
         Nothing -> fail ("Unrecognized LinkState: " ++ unpack t)
 
--- | A link found in neighbors. The link connects a port in the
--- subject node with a port in the target node. The link may be
+-- | A link found for a found node. The link connects from the subject
+-- node (the found node) to the target node. The link may be
 -- directional or non-directional.
 --
 -- - type @n@: node ID.
@@ -67,19 +67,17 @@ data FoundLink n la =
   }
   deriving (Show,Eq,Ord)
 
--- | 'ObservedNode' is a node (the subject node) observed at a
--- specific time. It has a set of neighbor links found at the moment.
+-- | 'FoundNode' is a node (the subject node) observed at a specific
+-- time. It has a set of neighbor links found at the moment.
 --
 -- - type @n@: node ID.
 -- - type @la@: link attributes.
 -- - type @na@: node attributes.
-data ObservedNode n la na =
-  ObservedNode
+data FoundNode n la na =
+  FoundNode
   { subjectNode :: !n,
     observedTime :: !Timestamp,
     neighborLinks :: !(Vector (FoundLink n la)),
     nodeAttributes :: !na
   }
   deriving (Show,Eq)
-
--- TODO: maybe it's a good idea to use "Found" consistently. FoundNode and FoundLink.

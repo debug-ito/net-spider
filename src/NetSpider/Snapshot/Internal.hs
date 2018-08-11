@@ -13,14 +13,7 @@ module NetSpider.Snapshot.Internal
 
 import NetSpider.Timestamp (Timestamp)
 
--- data ObservedLink n p =
---   ObservedLink
---   { observeTime :: Timestamp,
---     observeSubjectNode :: n,
---     observeFoundLink :: FoundLink n p
---   }
-
--- | A link observed at a specific time.
+-- | A link in the snapshot graph.
 --
 -- Basically 'SnapshotLink' is summary of one or more link
 -- observations by different subject nodes. It is possible that those
@@ -49,7 +42,7 @@ instance (Ord n, Eq la) => Ord (SnapshotLink n la) where
 linkNodeTuple :: SnapshotLink n la -> (n, n)
 linkNodeTuple link = (_sourceNode link, _destinationNode link)
 
--- | A node observed at a specific time.
+-- | A node in the snapshot graph.
 data SnapshotNode n na =
   SnapshotNode
   { _nodeId :: !n,

@@ -22,7 +22,7 @@ library
                         GeneralizedNewtypeDeriving,
                         TypeFamilies
   exposed-modules:      NetSpider,
-                        NetSpider.ObservedNode,
+                        NetSpider.Found,
                         NetSpider.Timestamp,
                         NetSpider.Spider,
                         NetSpider.Snapshot,

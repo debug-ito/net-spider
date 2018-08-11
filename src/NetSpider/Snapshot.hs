@@ -3,7 +3,8 @@
 -- Description: Types about snapshot graph
 -- Maintainer: Toshio Ito <debug.ito@gmail.com>
 --
--- 
+-- A snapshot graph is a graph constructed from the NetSpider
+-- database. It reprensents a graph at specific time.
 module NetSpider.Snapshot
        ( -- * SnapshotNode
          SnapshotNode,

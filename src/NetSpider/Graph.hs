@@ -10,8 +10,8 @@ module NetSpider.Graph
          EID,
          -- * VNode
          VNode,
-         -- * VObservedNode
-         VObservedNode(..),
+         -- * VFoundNode
+         VFoundNode(..),
          NodeAttributes(..),
          -- * EFinds
          EFinds(..),
@@ -30,7 +30,7 @@ import Data.Greskell
 import Data.Text (Text)
 
 import NetSpider.Timestamp (Timestamp, fromEpochSecond)
-import NetSpider.ObservedNode (LinkState)
+import NetSpider.Found (LinkState)
 
 -- | Generic element ID used in the graph DB.
 newtype EID = EID (Either Int Text)
@@ -54,20 +54,20 @@ instance Element VNode where
 instance Vertex VNode
 
 -- | The \"observed_node\" vertex.
-data VObservedNode na =
-  VObservedNode
-  { vonId :: !EID,
-    vonTimestamp :: !Timestamp,
-    vonAttributes :: !na
+data VFoundNode na =
+  VFoundNode
+  { vfnId :: !EID,
+    vfnTimestamp :: !Timestamp,
+    vfnAttributes :: !na
   }
 
-instance Element (VObservedNode na) where
-  type ElementID (VObservedNode na) = EID
-  type ElementProperty (VObservedNode na) = AVertexProperty
+instance Element (VFoundNode na) where
+  type ElementID (VFoundNode na) = EID
+  type ElementProperty (VFoundNode na) = AVertexProperty
 
-instance Vertex (VObservedNode na)
+instance Vertex (VFoundNode na)
 
-instance NodeAttributes na => FromGraphSON (VObservedNode na) where
+instance NodeAttributes na => FromGraphSON (VFoundNode na) where
   parseGraphSON gv = fromAVertex =<< parseGraphSON gv
     where
       fromAVertex av = do
@@ -75,10 +75,10 @@ instance NodeAttributes na => FromGraphSON (VObservedNode na) where
         epoch_ts <- parseOneValue "@timestamp" $ avProperties av
         -- TODO: parse timezone.
         attrs <- parseNodeAttributes $ avProperties av
-        return $ VObservedNode { vonId = eid,
-                                 vonTimestamp = fromEpochSecond epoch_ts,
-                                 vonAttributes = attrs
-                               }
+        return $ VFoundNode { vfnId = eid,
+                              vfnTimestamp = fromEpochSecond epoch_ts,
+                              vfnAttributes = attrs
+                            }
 
 -- | \"finds\" edge.
 data EFinds la =
@@ -110,7 +110,7 @@ instance LinkAttributes la => FromGraphSON (EFinds la) where
 -- | Class of user-defined types for node attributes. Its content is
 -- stored in the NetSpider database.
 class NodeAttributes ps where
-  writeNodeAttributes :: ps -> Binder (Walk SideEffect (VObservedNode ps) (VObservedNode ps))
+  writeNodeAttributes :: ps -> Binder (Walk SideEffect (VFoundNode ps) (VFoundNode ps))
   parseNodeAttributes :: PropertyMapList AVertexProperty GValue -> Parser ps
 
 -- | No attributes.
