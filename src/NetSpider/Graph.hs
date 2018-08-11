@@ -5,6 +5,8 @@
 -- Maintainer: Toshio Ito <debug.ito@gmail.com>
 --
 -- 
+
+-- TODO: we don't need to expose data constructors of VFoundNode and EFinds.
 module NetSpider.Graph
        ( -- * EID
          EID,
