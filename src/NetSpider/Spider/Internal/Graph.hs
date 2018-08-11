@@ -1,15 +1,13 @@
 {-# LANGUAGE OverloadedStrings #-}
 -- |
 -- Module: NetSpider.Spider.Internal.Graph
--- Description: 
+-- Description: Graph (greskell) operation for Spider
 -- Maintainer: Toshio Ito <debug.ito@gmail.com>
 --
 -- __this module is internal. End-users should not use it.__
 module NetSpider.Spider.Internal.Graph
-       ( EID,
-         gClearAll,
+       ( gClearAll,
          -- * VNode
-         VNode,
          gAllNodes,
          gHasNodeID,
          gHasNodeEID,
@@ -17,14 +15,12 @@ module NetSpider.Spider.Internal.Graph
          gNodeID,
          gMakeNode,
          -- * VFoundNode
-         VFoundNode(..),
          gAllFoundNode,
          gHasFoundNodeEID,
          gMakeFoundNode,
          gSelectFoundNode,
          gLatestFoundNode,
          -- * EFinds
-         EFinds(..),
          gFinds
        ) where
 
@@ -48,7 +44,7 @@ import Data.Traversable (traverse)
 import Data.Vector (Vector)
 
 import NetSpider.Graph
-  ( EID, VNode, VFoundNode(..), EFinds(..),
+  ( EID, VNode, VFoundNode, EFinds,
     LinkAttributes(..)
   )
 import NetSpider.Found (FoundLink(..), LinkState(..), linkStateToText)

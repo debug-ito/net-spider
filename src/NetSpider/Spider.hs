@@ -40,15 +40,15 @@ import Network.Greskell.WebSocket
   )
 import qualified Network.Greskell.WebSocket as Gr
 
-import NetSpider.Graph (LinkAttributes, NodeAttributes)
+import NetSpider.Graph (EID, LinkAttributes, NodeAttributes)
+import NetSpider.Graph.Internal (VFoundNode(..), EFinds(..))
 import NetSpider.Found (FoundNode(..), FoundLink(..), LinkState(..))
 import NetSpider.Snapshot (SnapshotElement)
 import NetSpider.Snapshot.Internal (SnapshotNode(..), SnapshotLink(..))
 import NetSpider.Timestamp (Timestamp(..))
 import NetSpider.Spider.Internal.Graph
-  ( EID, gMakeFoundNode, gAllNodes, gHasNodeID, gHasNodeEID, gNodeEID, gNodeID, gMakeNode, gClearAll,
-    gLatestFoundNode, gSelectFoundNode, gFinds, gHasFoundNodeEID, gAllFoundNode,
-    VFoundNode(..), EFinds(..)
+  ( gMakeFoundNode, gAllNodes, gHasNodeID, gHasNodeEID, gNodeEID, gNodeID, gMakeNode, gClearAll,
+    gLatestFoundNode, gSelectFoundNode, gFinds, gHasFoundNodeEID, gAllFoundNode
   )
 
 -- | An IO agent of the NetSpider database.
