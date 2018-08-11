@@ -5,9 +5,6 @@
 -- Maintainer: Toshio Ito <debug.ito@gmail.com>
 --
 -- 
-
--- TODO: maybe this (public) module is not necessary. Putting the content into Spider.Internal.Graph, and
--- expose NodeProperties, LinkProperties, type constructors of VObservedNode and EFinds from Spider module is enough.
 module NetSpider.Graph
        ( -- * EID
          EID,
