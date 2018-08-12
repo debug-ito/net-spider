@@ -10,6 +10,7 @@ module NetSpider.Snapshot
          SnapshotNode,
          nodeId,
          isOnBoundary,
+         nodeAttributes,
          -- * SnapshotLink
          SnapshotLink,
          sourceNode,
@@ -39,6 +40,11 @@ nodeId = _nodeId
 -- included in the query result.
 isOnBoundary :: SnapshotNode n na -> Bool
 isOnBoundary = _isOnBoundary
+
+-- | If a node is found, but no observation is done for it, its node
+-- attributes is 'Nothing'.
+nodeAttributes :: SnapshotNode n na -> (Maybe na)
+nodeAttributes = _nodeAttributes
 
 sourceNode :: SnapshotLink n la -> n
 sourceNode = _sourceNode
