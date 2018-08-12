@@ -25,6 +25,7 @@ import NetSpider.Snapshot
     nodeId, linkNodeTuple, isDirected, linkTimestamp,
     isOnBoundary
   )
+import qualified NetSpider.Snapshot as S (nodeAttributes, linkAttributes)
 import NetSpider.Spider
   ( Host, Port, Spider,
     connectWS, close, clearAll, addFoundNode, getLatestSnapshot
@@ -70,11 +71,14 @@ spec_getLatestSnapshot = withServer $ describe "getLatestSnapshot" $ do
           _ -> error ("Unexpected result: got = " ++ show got)
     nodeId got_n1 `shouldBe` "n1"
     isOnBoundary got_n1 `shouldBe` False
+    S.nodeAttributes got_n1 `shouldBe` Just ()
     nodeId got_n2 `shouldBe` "n2"
     isOnBoundary got_n2 `shouldBe` False
+    S.nodeAttributes got_n2 `shouldBe` Nothing -- n1 is not observed.
     linkNodeTuple got_link `shouldBe` ("n1", "n2")
     isDirected got_link `shouldBe` True
     linkTimestamp got_link `shouldBe` fromEpochSecond 100
+    S.linkAttributes got_link `shouldBe` ()
   specify "no neighbor" $ withSpider $ \spider -> do
     let nbs :: FoundNode Text () ()
         nbs = FoundNode { subjectNode = "n1",
@@ -89,6 +93,7 @@ spec_getLatestSnapshot = withServer $ describe "getLatestSnapshot" $ do
           _ -> error ("Unexpected result: got = " ++ show got)
     nodeId got_n1 `shouldBe` "n1"
     isOnBoundary got_n1 `shouldBe` False
+    S.nodeAttributes got_n1 `shouldBe` Just ()
   specify "missing starting node" $ withSpider $ \spider -> do
     makeOneNeighborExample spider
     got <- getLatestSnapshot spider "no node"
@@ -120,11 +125,14 @@ spec_getLatestSnapshot = withServer $ describe "getLatestSnapshot" $ do
           _ -> error ("Unexpected result: got = " ++ show got)
     nodeId got_n1 `shouldBe` "n1"
     isOnBoundary got_n1 `shouldBe` False
+    S.nodeAttributes got_n1 `shouldBe` Just ()
     nodeId got_n2 `shouldBe` "n2"
     isOnBoundary got_n2 `shouldBe` False
+    S.nodeAttributes got_n2 `shouldBe` Just ()
     linkNodeTuple got_l `shouldBe` ("n2", "n1")
     isDirected got_l `shouldBe` True
     linkTimestamp got_l `shouldBe` fromEpochSecond 200
+    S.linkAttributes got_l `shouldBe` ()
         
 
 -- TODO: how linkState relates to the property of SnapshotLink ?
