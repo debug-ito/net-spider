@@ -14,7 +14,7 @@ import ServerTest.Common (withServer, withSpider, toSortedList)
 
 import NetSpider.Found (FoundNode(..), FoundLink(..), LinkState(..))
 import NetSpider.Graph (NodeAttributes(..), LinkAttributes(..))
-import NetSpider.Spider (addFoundNode, getLatestSnapshot)
+import NetSpider.Spider (Host, Port, addFoundNode, getLatestSnapshot)
 import qualified NetSpider.Snapshot as S (nodeAttributes, linkAttributes)
 import NetSpider.Timestamp (fromEpochSecond)
 
@@ -32,26 +32,33 @@ instance LinkAttributes AText where
   writeLinkAttributes (AText t) = gProperty "text" <$> newBind t
   parseLinkAttributes ps = AText <$> parseOneValue "text" ps
 
-
-spec :: Spec
-spec = withServer $ describe "node and link attributes" $ do
-  specify "Text attribute" $ withSpider $ \spider -> do
-    let n1 :: FoundNode Text AText AText
-        n1 = FoundNode { subjectNode = "n1",
+attributeTestCase :: (NodeAttributes na, Eq na, Show na, LinkAttributes la, Eq la, Show la)
+                  => String
+                  -> na
+                  -> la
+                  -> SpecWith (Host,Port)
+attributeTestCase type_label node_attrs link_attrs =
+  specify (type_label ++ " attribute") $ withSpider $ \spider -> do
+    let n1 = FoundNode { subjectNode = ("n1" :: Text),
                          observationTime = fromEpochSecond 128,
                          neighborLinks = return link1,
-                         nodeAttributes = AText "node attrs"
+                         nodeAttributes = node_attrs
                        }
-        link1 = FoundLink { targetNode = "n2",
+        link1 = FoundLink { targetNode = ("n2" :: Text),
                             linkState = LinkToSubject,
-                            linkAttributes = AText "link attrs"
+                            linkAttributes = link_attrs
                           }
     addFoundNode spider n1
     got <- fmap toSortedList $ getLatestSnapshot spider "n1"
     let (got_n1, got_n2, got_l) = case got of
           [Left a, Left b, Right c] -> (a,b,c)
           _ -> error ("Unexpected pattern: got = " ++ show got)
-    S.nodeAttributes got_n1 `shouldBe` Just (AText "node attrs")
+    S.nodeAttributes got_n1 `shouldBe` Just node_attrs
     S.nodeAttributes got_n2 `shouldBe` Nothing
-    S.linkAttributes got_l `shouldBe` (AText "link attrs")
-    
+    S.linkAttributes got_l `shouldBe` link_attrs
+  
+
+
+spec :: Spec
+spec = withServer $ describe "node and link attributes" $ do
+  attributeTestCase "Text" (AText "node attrs") (AText "link attrs")
