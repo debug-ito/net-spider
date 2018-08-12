@@ -77,8 +77,9 @@ test-suite server-test-suite
   ghc-options:          -Wall -fno-warn-unused-imports "-with-rtsopts=-M512m"
   main-is:              ServerTest.hs
   other-modules:        ServerTest.Common,
-                        ServerTest.Snapshot
-  build-depends:        base, hspec, net-spider, vector, text, greskell-websocket,
+                        ServerTest.Snapshot,
+                        ServerTest.Attributes
+  build-depends:        base, hspec, net-spider, vector, text, greskell-websocket, greskell,
                         aeson, unordered-containers, text,
                         safe-exceptions,
                         hspec-need-env
