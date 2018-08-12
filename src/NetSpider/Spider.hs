@@ -161,14 +161,14 @@ visitNodeForSnapshot spider ref_state visit_nid = do
    Nothing -> return ()
    Just node_eid -> do
      mnext_found <- getNextFoundNode node_eid
-     markAsVisited $ fmap vfnAttributes $ mnext_found
+     markAsVisited mnext_found
      case mnext_found of
       Nothing -> return ()
       Just next_found -> do
         link_samples <- makeSnapshotLinkSamples spider visit_nid next_found
         modifyIORef ref_state $ addSnapshotSamples link_samples
   where
-    markAsVisited mnattrs = modifyIORef ref_state $ addVisitedNode visit_nid mnattrs
+    markAsVisited mvfn = modifyIORef ref_state $ addVisitedNode visit_nid mvfn
     getVisitedNodeEID = fmap vToMaybe $ Gr.slurpResults =<< submitB spider binder
       where
         binder = gNodeEID <$.> gHasNodeID visit_nid <*.> pure gAllNodes
@@ -257,7 +257,7 @@ data SnapshotLinkSample n la =
 data SnapshotState n na la =
   SnapshotState
   { ssUnvisitedNodes :: !(Vector n),
-    ssVisitedNodes :: !(HashMap n (Maybe na)),
+    ssVisitedNodes :: !(HashMap n (Maybe (VFoundNode na))),
     -- ^ If the visited node has no observation yet, its node
     -- attributes 'Nothing'.
     ssVisitedLinks :: !(HashMap (SnapshotLinkID n) (Vector (SnapshotLinkSample n la)))
@@ -274,8 +274,8 @@ emptySnapshotState = SnapshotState
 initSnapshotState :: (Ord n, Hashable n) => Vector n -> SnapshotState n na la
 initSnapshotState init_unvisited_nodes = emptySnapshotState { ssUnvisitedNodes = init_unvisited_nodes }
 
-addVisitedNode :: (Eq n, Hashable n) => n -> Maybe na -> SnapshotState n na la -> SnapshotState n na la
-addVisitedNode nid mnattrs state = state { ssVisitedNodes = HM.insert nid mnattrs $ ssVisitedNodes state }
+addVisitedNode :: (Eq n, Hashable n) => n -> Maybe (VFoundNode na) -> SnapshotState n na la -> SnapshotState n na la
+addVisitedNode nid mv state = state { ssVisitedNodes = HM.insert nid mv $ ssVisitedNodes state }
 
 addSnapshotSample :: (Ord n, Hashable n)
                   => SnapshotLinkSample n la -> SnapshotState n na la -> SnapshotState n na la
@@ -311,10 +311,11 @@ makeSnapshot :: SnapshotState n na la -> Vector (SnapshotElement n na la)
 makeSnapshot state = (fmap Left nodes) V.++ (fmap Right links)
   where
     nodes = visited_nodes V.++ boundary_nodes
-    makeSnapshotNode on_boundary nid mnattrs =
+    makeSnapshotNode on_boundary nid mvfn =
       SnapshotNode { _nodeId = nid,
                      _isOnBoundary = on_boundary,
-                     _nodeAttributes = mnattrs
+                     _nodeTimestamp = fmap vfnTimestamp $ mvfn,
+                     _nodeAttributes = fmap vfnAttributes $ mvfn
                    }
     visited_nodes = foldr' V.cons mempty $ map (uncurry $ makeSnapshotNode False) $ HM.toList $ ssVisitedNodes state
     boundary_nodes = fmap (\nid -> makeSnapshotNode True nid Nothing) $ ssUnvisitedNodes state

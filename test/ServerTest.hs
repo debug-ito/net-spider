@@ -23,7 +23,7 @@ import NetSpider.Found
 import NetSpider.Snapshot
   ( SnapshotElement,
     nodeId, linkNodeTuple, isDirected, linkTimestamp,
-    isOnBoundary
+    isOnBoundary, nodeTimestamp
   )
 import qualified NetSpider.Snapshot as S (nodeAttributes, linkAttributes)
 import NetSpider.Spider
@@ -71,9 +71,11 @@ spec_getLatestSnapshot = withServer $ describe "getLatestSnapshot" $ do
           _ -> error ("Unexpected result: got = " ++ show got)
     nodeId got_n1 `shouldBe` "n1"
     isOnBoundary got_n1 `shouldBe` False
+    nodeTimestamp got_n1 `shouldBe` Just (fromEpochSecond 100)
     S.nodeAttributes got_n1 `shouldBe` Just ()
     nodeId got_n2 `shouldBe` "n2"
     isOnBoundary got_n2 `shouldBe` False
+    nodeTimestamp got_n2 `shouldBe` Nothing -- n1 is not observed.
     S.nodeAttributes got_n2 `shouldBe` Nothing -- n1 is not observed.
     linkNodeTuple got_link `shouldBe` ("n1", "n2")
     isDirected got_link `shouldBe` True
@@ -93,6 +95,7 @@ spec_getLatestSnapshot = withServer $ describe "getLatestSnapshot" $ do
           _ -> error ("Unexpected result: got = " ++ show got)
     nodeId got_n1 `shouldBe` "n1"
     isOnBoundary got_n1 `shouldBe` False
+    nodeTimestamp got_n1 `shouldBe` Just (fromEpochSecond 200)
     S.nodeAttributes got_n1 `shouldBe` Just ()
   specify "missing starting node" $ withSpider $ \spider -> do
     makeOneNeighborExample spider
@@ -125,9 +128,11 @@ spec_getLatestSnapshot = withServer $ describe "getLatestSnapshot" $ do
           _ -> error ("Unexpected result: got = " ++ show got)
     nodeId got_n1 `shouldBe` "n1"
     isOnBoundary got_n1 `shouldBe` False
+    nodeTimestamp got_n1 `shouldBe` Just (fromEpochSecond 100)
     S.nodeAttributes got_n1 `shouldBe` Just ()
     nodeId got_n2 `shouldBe` "n2"
     isOnBoundary got_n2 `shouldBe` False
+    nodeTimestamp got_n2 `shouldBe` Just (fromEpochSecond 200)
     S.nodeAttributes got_n2 `shouldBe` Just ()
     linkNodeTuple got_l `shouldBe` ("n2", "n1")
     isDirected got_l `shouldBe` True

@@ -60,6 +60,7 @@ data VFoundNode na =
     vfnTimestamp :: !Timestamp,
     vfnAttributes :: !na
   }
+  deriving (Show)
 
 instance Element (VFoundNode na) where
   type ElementID (VFoundNode na) = EID
@@ -88,6 +89,7 @@ data EFinds la =
     efLinkState :: !LinkState,
     efLinkAttributes :: !la
   }
+  deriving (Show)
 
 instance Element (EFinds la) where
   type ElementID (EFinds la) = EID

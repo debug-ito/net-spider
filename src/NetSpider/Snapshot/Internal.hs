@@ -47,11 +47,8 @@ data SnapshotNode n na =
   SnapshotNode
   { _nodeId :: !n,
     _isOnBoundary :: !Bool,
+    _nodeTimestamp :: !(Maybe Timestamp),
     _nodeAttributes :: !(Maybe na)
-    -- ^ If a node is found, but no observation is done for it, its
-    -- node attributes is 'Nothing'.
-    
-    -- TODO: maybe node should have timestamp? because node can have no links.
   }
   deriving (Show,Eq)
 
