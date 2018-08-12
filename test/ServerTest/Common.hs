@@ -1,9 +1,13 @@
 module ServerTest.Common
        ( withServer,
-         withSpider
+         withSpider,
+         toSortedList
        ) where
 
 import Control.Exception.Safe (bracket, withException)
+import Data.List (sort)
+import Data.Vector (Vector)
+import qualified Data.Vector as V
 import Test.Hspec
 import Test.Hspec.NeedEnv (needEnvHostPort, EnvMode(Need))
 
@@ -19,3 +23,6 @@ withSpider :: (Spider n la na -> IO ()) -> (Host, Port) -> IO ()
 withSpider action (host, port) = bracket (connectWS host port) close $ \spider -> do
   clearAll spider
   action spider
+
+toSortedList :: Ord a => Vector a -> [a]
+toSortedList = sort . V.toList

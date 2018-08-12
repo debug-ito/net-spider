@@ -5,18 +5,16 @@ import Control.Exception.Safe (withException)
 import Control.Monad (mapM_)
 import Data.Aeson (Value(..))
 import qualified Data.HashMap.Strict as HM
-import Data.List (sort)
 import Data.Monoid ((<>), mempty)
 import Data.Text (Text, unpack)
 import qualified Data.Text.IO as TIO
 import Data.Vector (Vector)
-import qualified Data.Vector as V
 import qualified Network.Greskell.WebSocket as Gr
 import qualified Network.Greskell.WebSocket.Response as Res
 import System.IO (stderr)
 import Test.Hspec
 
-import ServerTest.Common (withServer, withSpider)
+import ServerTest.Common (withServer, withSpider, toSortedList)
 
 import NetSpider.Found
   ( FoundLink(..), LinkState(..), FoundNode(..)
@@ -57,7 +55,7 @@ spec_getLatestSnapshot :: Spec
 spec_getLatestSnapshot = withServer $ describe "getLatestSnapshot" $ do
   specify "one neighbor" $ withSpider $ \spider -> do
     makeOneNeighborExample spider
-    got <- debugShowE $ fmap (sort . V.toList) $ getLatestSnapshot spider "n1"
+    got <- debugShowE $ fmap toSortedList $ getLatestSnapshot spider "n1"
     let (got_n1, got_n2, got_link) = case got of
           [Left a, Left b, Right c] -> (a, b, c)
           _ -> error ("Unexpected result: got = " ++ show got)
@@ -81,7 +79,7 @@ spec_getLatestSnapshot = withServer $ describe "getLatestSnapshot" $ do
                           nodeAttributes = ()
                         }
     addFoundNode spider nbs
-    got <- fmap V.toList $ getLatestSnapshot spider "n1"
+    got <- fmap toSortedList $ getLatestSnapshot spider "n1"
     let got_n1 = case got of
           [Left a] -> a
           _ -> error ("Unexpected result: got = " ++ show got)
@@ -114,7 +112,7 @@ spec_getLatestSnapshot = withServer $ describe "getLatestSnapshot" $ do
                            nodeAttributes = ()
                          }
     mapM_ (addFoundNode spider) [nbs1, nbs2]
-    got <- fmap (sort . V.toList) $ getLatestSnapshot spider "n1"
+    got <- fmap toSortedList $ getLatestSnapshot spider "n1"
     let (got_n1, got_n2, got_l) = case got of
           [Left a, Left b, Right c] -> (a, b ,c)
           _ -> error ("Unexpected result: got = " ++ show got)
