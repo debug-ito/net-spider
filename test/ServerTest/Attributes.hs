@@ -93,3 +93,5 @@ spec = withServer $ do
   describe "nodeId" $ do
     nodeIdTestCase "Text" ("n1" :: Text) ("n2" :: Text)
     nodeIdTestCase "Int" (100 :: Int) (255 :: Int)
+    -- TODO: it seems .values() step drops type information?? it seems
+    -- to preserve type information in Vertex type.
