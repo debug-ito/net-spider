@@ -81,9 +81,15 @@ attributeTestCase :: (NodeAttributes na, Eq na, Show na, LinkAttributes la, Eq l
 attributeTestCase type_label na la = typeTestCase (type_label ++ " attributes")
                                      ("n1" :: Text) ("n2" :: Text) na la
 
+nodeIdTestCase :: (FromGraphSON n, ToJSON n, Ord n, Hashable n, Show n)
+               => String -> n -> n -> SpecWith (Host,Port)
+nodeIdTestCase label n1 n2 = typeTestCase (label ++ " nodeID") n1 n2 () ()
 
 spec :: Spec
 spec = withServer $ do
   describe "node and link attributes" $ do
     attributeTestCase "Text" (AText "node attrs") (AText "link attrs")
     attributeTestCase "Int" (AInt 128) (AInt 64)
+  describe "nodeId" $ do
+    nodeIdTestCase "Text" ("n1" :: Text) ("n2" :: Text)
+    nodeIdTestCase "Int" (100 :: Int) (255 :: Int)
