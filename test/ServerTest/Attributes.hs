@@ -32,6 +32,18 @@ instance LinkAttributes AText where
   writeLinkAttributes (AText t) = gProperty "text" <$> newBind t
   parseLinkAttributes ps = AText <$> parseOneValue "text" ps
 
+newtype AInt = AInt Int
+             deriving (Show,Eq,Ord)
+
+instance NodeAttributes AInt where
+  writeNodeAttributes (AInt n) = gProperty "integer" <$> newBind n
+  parseNodeAttributes ps = AInt <$> parseOneValue "integer" ps
+
+instance LinkAttributes AInt where
+  writeLinkAttributes (AInt n) = gProperty "integer" <$> newBind n
+  parseLinkAttributes ps = AInt <$> parseOneValue "integer" ps
+
+
 attributeTestCase :: (NodeAttributes na, Eq na, Show na, LinkAttributes la, Eq la, Show la)
                   => String
                   -> na
@@ -62,3 +74,4 @@ attributeTestCase type_label node_attrs link_attrs =
 spec :: Spec
 spec = withServer $ describe "node and link attributes" $ do
   attributeTestCase "Text" (AText "node attrs") (AText "link attrs")
+  attributeTestCase "Int" (AInt 128) (AInt 64)
