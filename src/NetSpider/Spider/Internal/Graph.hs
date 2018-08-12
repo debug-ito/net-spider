@@ -45,9 +45,9 @@ import Data.Vector (Vector)
 
 import NetSpider.Graph
   ( EID, VNode, VFoundNode, EFinds,
-    LinkAttributes(..)
+    LinkAttributes(..), NodeAttributes(..)
   )
-import NetSpider.Found (FoundLink(..), LinkState(..), linkStateToText)
+import NetSpider.Found (FoundLink(..), LinkState(..), FoundNode(..), linkStateToText)
 import NetSpider.Timestamp (Timestamp(..), fromEpochSecond)
 
 
@@ -89,15 +89,17 @@ gHasFoundNodeEID eid = do
   var_eid <- newBind eid
   return $ gHasId var_eid
 
--- TODO: write node attributes.
-
-gMakeFoundNode :: LinkAttributes la
+gMakeFoundNode :: (LinkAttributes la, NodeAttributes na)
                => EID -- ^ subject node EID
                -> Vector (FoundLink n la, EID) -- ^ (link, target node EID)
-               -> Timestamp
+               -> FoundNode n na la
                -> Binder (GTraversal SideEffect () (VFoundNode na))
-gMakeFoundNode subject_vid link_pairs timestamp = 
-  mAddFindsEdges <*.> gSetTimestamp timestamp <*.> mAddObservedEdge <*.> pure $ sAddV "found_node" $ source "g"
+gMakeFoundNode subject_vid link_pairs fnode = 
+  mAddFindsEdges
+  <*.> writeNodeAttributes (nodeAttributes fnode)
+  <*.> gSetTimestamp (observationTime fnode)
+  <*.> mAddObservedEdge
+  <*.> pure $ sAddV "found_node" $ source "g"
   where
     mAddObservedEdge :: Binder (Walk SideEffect (VFoundNode na) (VFoundNode na))
     mAddObservedEdge = do

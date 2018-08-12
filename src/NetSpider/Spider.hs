@@ -84,25 +84,18 @@ clearAll spider = Gr.drainResults =<< submitB spider (return gClearAll)
 
 -- | Add a 'FoundNode' (observation of a node) to the NetSpider
 -- database.
-addFoundNode :: (ToJSON n, LinkAttributes la) => Spider n na la -> FoundNode n na la -> IO ()
+addFoundNode :: (ToJSON n, LinkAttributes la, NodeAttributes na) => Spider n na la -> FoundNode n na la -> IO ()
 addFoundNode spider found_node = do
   subject_vid <- getOrMakeNode spider $ subjectNode found_node
   link_pairs <- traverse linkAndTargetVID $ neighborLinks found_node
-  makeFoundNodeVertex spider subject_vid link_pairs $ observationTime found_node
+  makeFoundNodeVertex subject_vid link_pairs
   where
     linkAndTargetVID link = do
       target_vid <- getOrMakeNode spider $ targetNode link
       return (link, target_vid)
-
-makeFoundNodeVertex :: LinkAttributes la
-                    => Spider n na la
-                    -> EID -- ^ subject node vertex ID
-                    -> Vector (FoundLink n la, EID) -- ^ (link, target node vertex ID)
-                    -> Timestamp
-                    -> IO ()
-makeFoundNodeVertex spider subject_vid link_pairs timestamp =
-  Gr.drainResults =<< submitB spider (fmap void $ gMakeFoundNode subject_vid link_pairs timestamp)
-
+    makeFoundNodeVertex subject_vid link_pairs =
+      Gr.drainResults =<< submitB spider (fmap void $ gMakeFoundNode subject_vid link_pairs found_node)
+  
 vToMaybe :: Vector a -> Maybe a
 vToMaybe v = v V.!? 0
 
