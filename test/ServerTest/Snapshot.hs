@@ -279,9 +279,21 @@ spec_getLatestSnapshot = withServer $ describe "getLatestSnapshot" $ do
     linkTimestamp (got_ls V.! 3) `shouldBe` fromEpochSecond 200
     S.linkAttributes (got_ls V.! 3) `shouldBe` AText "n4 to next"
     V.length got_ls `shouldBe` 4
+  specify "loop network" $ withSpider $ \spider -> do
+    True `shouldBe` False
+    -- TODO: Come to think of it, in order to make multiple links
+    -- between the same pair of nodes, we need concept of ports. Link
+    -- attributes do not help, because they are not used for
+    -- LinkID. One problem about port type is that the type () is
+    -- difficult for empty port type, because `ToJSON ()` encodes it
+    -- to [] (empty array). Extending Node ID with port ID is not so
+    -- useful, because network connectivity of the snapshot graph is
+    -- not maintained. Or we can make use of aggregation mechanism??
+    -- Maybe that will be the easiest way.
 
 
 -- TODO: how linkState relates to the property of SnapshotLink ?
+-- especially Bidirectional links?
 
 debugShowE :: IO a -> IO a
 debugShowE act = withException act showSubmitException
