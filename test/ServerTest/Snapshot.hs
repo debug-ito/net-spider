@@ -6,7 +6,7 @@ import Control.Monad (mapM_)
 import Data.Aeson (Value(..))
 import qualified Data.HashMap.Strict as HM
 import Data.Monoid ((<>), mempty)
-import Data.Text (Text, unpack)
+import Data.Text (Text, unpack, pack)
 import qualified Data.Text.IO as TIO
 import Data.Vector (Vector)
 import qualified Data.Vector as V
@@ -16,7 +16,7 @@ import System.IO (stderr)
 import Test.Hspec
 
 import ServerTest.Common
-  ( withServer, withSpider, toSortedList,
+  ( withServer, withSpider, toSortedList, sortSnapshotElements,
     AText(..)
   )
 
@@ -191,7 +191,95 @@ spec_getLatestSnapshot = withServer $ describe "getLatestSnapshot" $ do
     linkNodeTuple got_l31 `shouldBe` ("n3", "n1")
     isDirected got_l31 `shouldBe` True
     linkTimestamp got_l31 `shouldBe` fromEpochSecond 200
-        
+  specify "multi-hop neighbors" $ withSpider $ \spider -> do
+    let fns :: [FoundNode Text () AText]
+        fns = [ FoundNode
+                { subjectNode = intToNodeId 1,
+                  observationTime = fromEpochSecond 100,
+                  neighborLinks = return $ FoundLink
+                                  { targetNode = intToNodeId 2,
+                                    linkState = LinkToTarget,
+                                    linkAttributes = AText "first"
+                                  },
+                  nodeAttributes = ()
+                },
+                middleNode 2 $ fromEpochSecond 50,
+                middleNode 3 $ fromEpochSecond 150,
+                middleNode 4 $ fromEpochSecond 200,
+                FoundNode
+                { subjectNode = intToNodeId 5,
+                  observationTime = fromEpochSecond 150,
+                  neighborLinks = return $ FoundLink
+                                  { targetNode = intToNodeId 4,
+                                    linkState = LinkToSubject,
+                                    linkAttributes = AText "last"
+                                  },
+                  nodeAttributes = ()
+                }
+              ]
+        intToNodeId :: Int -> Text
+        intToNodeId i = pack ("n" ++ show i)
+        middleNode node_i time =
+          FoundNode
+          { subjectNode = sub_nid,
+            observationTime = time,
+            neighborLinks = V.fromList
+                            [ FoundLink
+                              { targetNode = intToNodeId (node_i - 1),
+                                linkState = LinkToSubject,
+                                linkAttributes = AText (sub_nid <> " to prev")
+                              },
+                              FoundLink
+                              { targetNode = intToNodeId (node_i + 1),
+                                linkState = LinkToTarget,
+                                linkAttributes = AText (sub_nid <> " to next")
+                              }
+                            ],
+            nodeAttributes = ()
+          }
+          where
+            sub_nid = intToNodeId node_i
+    mapM_ (addFoundNode spider) fns
+    (got_ns, got_ls) <- fmap sortSnapshotElements $ getLatestSnapshot spider "n1"
+    nodeId (got_ns V.! 0) `shouldBe` "n1"
+    isOnBoundary (got_ns V.! 0) `shouldBe` False
+    nodeTimestamp (got_ns V.! 0) `shouldBe` Just (fromEpochSecond 100)
+    S.nodeAttributes (got_ns V.! 0) `shouldBe` Just ()
+    nodeId (got_ns V.! 1) `shouldBe` "n2"
+    isOnBoundary (got_ns V.! 1) `shouldBe` False
+    nodeTimestamp (got_ns V.! 1) `shouldBe` Just (fromEpochSecond 50)
+    S.nodeAttributes (got_ns V.! 1) `shouldBe` Just ()
+    nodeId (got_ns V.! 2) `shouldBe` "n3"
+    isOnBoundary (got_ns V.! 2) `shouldBe` False
+    nodeTimestamp (got_ns V.! 2) `shouldBe` Just (fromEpochSecond 150)
+    S.nodeAttributes (got_ns V.! 2) `shouldBe` Just ()
+    nodeId (got_ns V.! 3) `shouldBe` "n4"
+    isOnBoundary (got_ns V.! 3) `shouldBe` False
+    nodeTimestamp (got_ns V.! 3) `shouldBe` Just (fromEpochSecond 200)
+    S.nodeAttributes (got_ns V.! 3) `shouldBe` Just ()
+    nodeId (got_ns V.! 4) `shouldBe` "n5"
+    isOnBoundary (got_ns V.! 4) `shouldBe` False
+    nodeTimestamp (got_ns V.! 4) `shouldBe` Just (fromEpochSecond 150)
+    S.nodeAttributes (got_ns V.! 4) `shouldBe` Just ()
+    V.length got_ns `shouldBe` 5
+    linkNodeTuple (got_ls V.! 0) `shouldBe` ("n1", "n2")
+    isDirected (got_ls V.! 0) `shouldBe` True
+    linkTimestamp (got_ls V.! 0) `shouldBe` fromEpochSecond 100
+    S.linkAttributes (got_ls V.! 0) `shouldBe` AText "first"
+    linkNodeTuple (got_ls V.! 1) `shouldBe` ("n2", "n3")
+    isDirected (got_ls V.! 1) `shouldBe` True
+    linkTimestamp (got_ls V.! 1) `shouldBe` fromEpochSecond 150
+    S.linkAttributes (got_ls V.! 1) `shouldBe` AText "n3 to prev"
+    linkNodeTuple (got_ls V.! 2) `shouldBe` ("n3", "n4")
+    isDirected (got_ls V.! 2) `shouldBe` True
+    linkTimestamp (got_ls V.! 2) `shouldBe` fromEpochSecond 200
+    S.linkAttributes (got_ls V.! 2) `shouldBe` AText "n4 to prev"
+    linkNodeTuple (got_ls V.! 3) `shouldBe` ("n4", "n5")
+    isDirected (got_ls V.! 3) `shouldBe` True
+    linkTimestamp (got_ls V.! 3) `shouldBe` fromEpochSecond 200
+    S.linkAttributes (got_ls V.! 3) `shouldBe` AText "n4 to next"
+    V.length got_ls `shouldBe` 4
+
 
 -- TODO: how linkState relates to the property of SnapshotLink ?
 

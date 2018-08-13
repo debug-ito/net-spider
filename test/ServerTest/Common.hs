@@ -4,6 +4,7 @@ module ServerTest.Common
          withSpider,
          withSpider',
          toSortedList,
+         sortSnapshotElements,
          AText(..),
          AInt(..)
        ) where
@@ -24,6 +25,9 @@ import NetSpider.Spider
     connectWith, close, clearAll,
     Config(..), defConfig
   )
+import NetSpider.Snapshot
+  ( SnapshotElement, SnapshotNode, SnapshotLink
+  )
 
 withServer :: SpecWith (Host,Port) -> Spec
 withServer = before $ needEnvHostPort Need "NET_SPIDER_TEST"
@@ -43,6 +47,13 @@ withSpider' orig_conf action (host, port) = bracket (connectWith conf) close $ \
 toSortedList :: Ord a => Vector a -> [a]
 toSortedList = sort . V.toList
 
+sortSnapshotElements :: (Ord n, Eq na, Eq la)
+                     => Vector (SnapshotElement n na la)
+                     -> (Vector (SnapshotNode n na), Vector (SnapshotLink n la))
+sortSnapshotElements es = foldr f mempty $ toSortedList es
+  where
+    f (Left n)  (ns, ls) = (V.cons n ns, ls)
+    f (Right l) (ns, ls) = (ns, V.cons l ls)
 
 
 newtype AText = AText Text
