@@ -1,6 +1,7 @@
 module ServerTest.Common
        ( withServer,
          withSpider,
+         withSpider',
          toSortedList
        ) where
 
@@ -13,16 +14,24 @@ import Test.Hspec.NeedEnv (needEnvHostPort, EnvMode(Need))
 
 import NetSpider.Spider
   ( Host, Port, Spider,
-    connectWS, close, clearAll
+    connectWith, close, clearAll,
+    Config(..), defConfig
   )
 
 withServer :: SpecWith (Host,Port) -> Spec
 withServer = before $ needEnvHostPort Need "NET_SPIDER_TEST"
 
 withSpider :: (Spider n la na -> IO ()) -> (Host, Port) -> IO ()
-withSpider action (host, port) = bracket (connectWS host port) close $ \spider -> do
+withSpider = withSpider' defConfig
+
+withSpider' :: Config n la na -> (Spider n la na -> IO ()) -> (Host, Port) -> IO ()
+withSpider' orig_conf action (host, port) = bracket (connectWith conf) close $ \spider -> do
   clearAll spider
   action spider
+    where
+      conf = orig_conf { wsHost = host,
+                         wsPort = port
+                       }
 
 toSortedList :: Ord a => Vector a -> [a]
 toSortedList = sort . V.toList

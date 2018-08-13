@@ -8,16 +8,20 @@ import Data.Greskell
   ( gProperty,
     newBind,
     parseOneValue,
-    FromGraphSON
+    FromGraphSON,
+    Key
   )
 import Data.Text (Text)
 import Test.Hspec
 
-import ServerTest.Common (withServer, withSpider, toSortedList)
+import ServerTest.Common (withServer, withSpider', toSortedList)
 
 import NetSpider.Found (FoundNode(..), FoundLink(..), LinkState(..))
-import NetSpider.Graph (NodeAttributes(..), LinkAttributes(..))
-import NetSpider.Spider (Host, Port, addFoundNode, getLatestSnapshot)
+import NetSpider.Graph (NodeAttributes(..), LinkAttributes(..), VNode)
+import NetSpider.Spider
+  ( Host, Port, addFoundNode, getLatestSnapshot,
+    Config(..), defConfig
+  )
 import qualified NetSpider.Snapshot as S (nodeAttributes, linkAttributes)
 import NetSpider.Timestamp (fromEpochSecond)
 
@@ -48,13 +52,14 @@ instance LinkAttributes AInt where
 
 typeTestCase :: (FromGraphSON n, ToJSON n, Ord n, Hashable n, Show n, NodeAttributes na, Eq na, Show na, LinkAttributes la, Eq la, Show la)
              => String
+             -> Config n na la
              -> n
              -> n
              -> na
              -> la
              -> SpecWith (Host,Port)
-typeTestCase test_label n1_id n2_id node_attrs link_attrs =
-  specify test_label $ withSpider $ \spider -> do
+typeTestCase test_label conf n1_id n2_id node_attrs link_attrs =
+  specify test_label $ withSpider' conf $ \spider -> do
     let n1 = FoundNode { subjectNode = n1_id,
                          observationTime = fromEpochSecond 128,
                          neighborLinks = return link1,
@@ -78,12 +83,17 @@ attributeTestCase :: (NodeAttributes na, Eq na, Show na, LinkAttributes la, Eq l
                   -> na
                   -> la
                   -> SpecWith (Host,Port)
-attributeTestCase type_label na la = typeTestCase (type_label ++ " attributes")
+attributeTestCase type_label na la = typeTestCase (type_label ++ " attributes") defConfig
                                      ("n1" :: Text) ("n2" :: Text) na la
 
 nodeIdTestCase :: (FromGraphSON n, ToJSON n, Ord n, Hashable n, Show n)
-               => String -> n -> n -> SpecWith (Host,Port)
-nodeIdTestCase label n1 n2 = typeTestCase (label ++ " nodeID") n1 n2 () ()
+               => String
+               -> Key VNode n
+               -> n -> n -> SpecWith (Host,Port)
+nodeIdTestCase label node_id_key n1 n2 = typeTestCase (label ++ " nodeID") conf n1 n2 () ()
+  where
+    conf = defConfig { nodeIdKey = node_id_key
+                     }
 
 spec :: Spec
 spec = withServer $ do
@@ -91,7 +101,10 @@ spec = withServer $ do
     attributeTestCase "Text" (AText "node attrs") (AText "link attrs")
     attributeTestCase "Int" (AInt 128) (AInt 64)
   describe "nodeId" $ do
-    nodeIdTestCase "Text" ("n1" :: Text) ("n2" :: Text)
-    nodeIdTestCase "Int" (100 :: Int) (255 :: Int)
-    -- TODO: it seems .values() step drops type information?? it seems
-    -- to preserve type information in Vertex type.
+    nodeIdTestCase "Text" "@node_id_text" ("n1" :: Text) ("n2" :: Text)
+    nodeIdTestCase "Int" "@node_id_int" (100 :: Int) (255 :: Int)
+    -- We need to use different property keys for different NodeID
+    -- types, because the graph database (at least JanusGraph)
+    -- automatically fixes the schema (internal data type) for a
+    -- property key when some data is given for it for the first time.
+  
