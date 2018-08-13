@@ -202,14 +202,17 @@ makeSnapshotLinkSamples spider subject_nid vneighbors = do
                                          slsLinkAttributes = efLinkAttributes efinds
                                        }
       return lsample
-    getNodeID node_eid = expectOne =<< (fmap vToMaybe $ Gr.slurpResults =<< submitB spider binder)
+    getNodeID node_eid = expectOne =<< tryGetNodeID spider node_eid
     -- TODO: Using .as and .select steps, we can get EFinds and its destination vertex simultaneously.
       where
-        binder = gNodeID <$.> gHasNodeEID node_eid <*.> pure gAllNodes
         expectOne (Just r) = return r
         expectOne Nothing = throwString "Expects a Vertex for a NodeID, but nothing found."
         -- TODO: better exception spec.
-    
+
+tryGetNodeID :: FromGraphSON n => Spider n na la -> EID -> IO (Maybe n)
+tryGetNodeID spider node_eid = fmap vToMaybe $ Gr.slurpResults =<< submitB spider binder
+  where
+    binder = gNodeID <$.> gHasNodeEID node_eid <*.> pure gAllNodes
 
 -- We can create much more complex function to query snapshot graphs,
 -- but at least we need 'getLatestSnapshot'.
