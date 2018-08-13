@@ -8,8 +8,11 @@
 module NetSpider.Spider
        ( Spider,
          connectWS,
+         connectWith,
          Host,
          Port,
+         Config(..),
+         defConfig,
          close,
          addFoundNode,
          getLatestSnapshot,
@@ -50,13 +53,23 @@ import NetSpider.Spider.Internal.Graph
   ( gMakeFoundNode, gAllNodes, gHasNodeID, gHasNodeEID, gNodeEID, gNodeID, gMakeNode, gClearAll,
     gLatestFoundNode, gSelectFoundNode, gFinds, gHasFoundNodeEID, gAllFoundNode
   )
-import NetSpider.Spider.Internal.Type (Spider(..))
+import NetSpider.Spider.Internal.Type (Spider(..), Config(..), defConfig)
 
 -- | Connect to the WebSocket endpoint of Tinkerpop Gremlin Server
 -- that hosts the NetSpider database.
 connectWS :: Host -> Port -> IO (Spider n na la)
-connectWS host port = fmap Spider $ Gr.connect host port
+connectWS host port = connectWith $ defConfig { wsHost = host,
+                                                wsPort = port
+                                              }
 
+-- | Connect to the server with the given 'Config'.
+connectWith :: Config n na la -> IO (Spider n na la)
+connectWith conf = do
+  client <- Gr.connect (wsHost conf) (wsPort conf)
+  return $ Spider { spiderConfig = conf,
+                    spiderClient = client
+                  }
+  
 -- | Close and release the 'Spider' object.
 close :: Spider n na la -> IO ()
 close sp = Gr.close $ spiderClient sp
