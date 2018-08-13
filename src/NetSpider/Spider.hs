@@ -170,7 +170,7 @@ visitNodeForSnapshot spider ref_state visit_nid = do
       Nothing -> return ()
       Just next_found -> do
         link_samples <- makeSnapshotLinkSamples spider visit_nid next_found
-        modifyIORef ref_state $ addSnapshotSamples link_samples
+        modifyIORef ref_state $ addSnapshotLinkSamples link_samples
   where
     markAsVisited mvfn = modifyIORef ref_state $ addVisitedNode visit_nid mvfn
     getVisitedNodeEID = fmap vToMaybe $ Gr.slurpResults =<< submitB spider binder
@@ -284,9 +284,9 @@ initSnapshotState init_unvisited_nodes = emptySnapshotState { ssUnvisitedNodes =
 addVisitedNode :: (Eq n, Hashable n) => n -> Maybe (VFoundNode na) -> SnapshotState n na la -> SnapshotState n na la
 addVisitedNode nid mv state = state { ssVisitedNodes = HM.insert nid mv $ ssVisitedNodes state }
 
-addSnapshotSample :: (Ord n, Hashable n)
-                  => SnapshotLinkSample n la -> SnapshotState n na la -> SnapshotState n na la
-addSnapshotSample ls state = state { ssVisitedLinks = updatedLinks,
+addSnapshotLinkSample :: (Ord n, Hashable n)
+                      => SnapshotLinkSample n la -> SnapshotState n na la -> SnapshotState n na la
+addSnapshotLinkSample ls state = state { ssVisitedLinks = updatedLinks,
                                      ssUnvisitedNodes = updatedUnvisited
                                    }
   where
@@ -298,9 +298,9 @@ addSnapshotSample ls state = state { ssVisitedLinks = updatedLinks,
                        then ssUnvisitedNodes state
                        else V.snoc (ssUnvisitedNodes state) target_nid
 
-addSnapshotSamples :: (Ord n, Hashable n)
-                   => Vector (SnapshotLinkSample n la) -> SnapshotState n na la -> SnapshotState n na la
-addSnapshotSamples links orig_state = foldr' addSnapshotSample orig_state links
+addSnapshotLinkSamples :: (Ord n, Hashable n)
+                       => Vector (SnapshotLinkSample n la) -> SnapshotState n na la -> SnapshotState n na la
+addSnapshotLinkSamples links orig_state = foldr' addSnapshotLinkSample orig_state links
 
 popHeadV :: Vector a -> (Maybe a, Vector a)
 popHeadV v = let mh = v V.!? 0
@@ -328,9 +328,11 @@ makeSnapshot state = (fmap Left nodes) V.++ (fmap Right links)
     boundary_nodes = fmap (\nid -> makeSnapshotNode True nid Nothing) $ ssUnvisitedNodes state
     links = V.fromList $ catMaybes $ map makeSnapshotLink $ HM.elems $ ssVisitedLinks state
 
+-- | The input 'SnapshotLinkSample's must be for the equivalent
+-- 'SnapshotLinkID'.
 makeSnapshotLink :: Vector (SnapshotLinkSample n la) -> Maybe (SnapshotLink n la)
 makeSnapshotLink link_samples = do
-  agg_sample <- aggregateSnapshotLinkSamples link_samples
+  agg_sample <- latestSnapshotLinkSample link_samples
   case slsLinkState agg_sample of
    LinkUnused -> Nothing
    LinkToTarget -> Just $ aggSampleToLink agg_sample True True
@@ -347,19 +349,15 @@ makeSnapshotLink link_samples = do
       where
         link_id = slsLinkId agg_sample
 
--- | Aggregate 'SnapshotLinkSample's into one.
---
--- Input 'SnapshotLinkSample's are already filtered in terms of
--- 'Timestamp', so implementation should consider all samples
--- sufficiently recent. Note that the input 'SnapshotLinkSample's can
--- be inconsistent with each other.
-aggregateSnapshotLinkSamples :: Vector (SnapshotLinkSample n la) -> Maybe (SnapshotLinkSample n la)
-aggregateSnapshotLinkSamples samples = let (mhead, samples_tail) = popHeadV samples
-                                       in fmap (aggregate samples_tail) mhead
+-- | Get the 'SnapshotLinkSample' that has the latest (biggest)
+-- timestamp.
+latestSnapshotLinkSample :: Vector (SnapshotLinkSample n la) -> Maybe (SnapshotLinkSample n la)
+latestSnapshotLinkSample samples = let (mhead, samples_tail) = popHeadV samples
+                                   in fmap (aggregate samples_tail) mhead
   where
     aggregate samples_tail sample_head = foldr' f sample_head samples_tail
       where
         f :: SnapshotLinkSample n la -> SnapshotLinkSample n la -> SnapshotLinkSample n la
-        f ls rs = if slsTimestamp ls >= slsTimestamp rs -- simply trust the latest sample.
+        f ls rs = if slsTimestamp ls >= slsTimestamp rs
                   then ls
                   else rs
