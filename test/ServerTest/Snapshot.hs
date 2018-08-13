@@ -9,12 +9,16 @@ import Data.Monoid ((<>), mempty)
 import Data.Text (Text, unpack)
 import qualified Data.Text.IO as TIO
 import Data.Vector (Vector)
+import qualified Data.Vector as V
 import qualified Network.Greskell.WebSocket as Gr
 import qualified Network.Greskell.WebSocket.Response as Res
 import System.IO (stderr)
 import Test.Hspec
 
-import ServerTest.Common (withServer, withSpider, toSortedList)
+import ServerTest.Common
+  ( withServer, withSpider, toSortedList,
+    AText(..)
+  )
 
 import NetSpider.Found
   ( FoundLink(..), LinkState(..), FoundNode(..)
@@ -128,6 +132,65 @@ spec_getLatestSnapshot = withServer $ describe "getLatestSnapshot" $ do
     isDirected got_l `shouldBe` True
     linkTimestamp got_l `shouldBe` fromEpochSecond 200
     S.linkAttributes got_l `shouldBe` ()
+  specify "multiple findings for a single node" $ withSpider $ \spider -> do
+    let fns :: [FoundNode Text AText ()]
+        fns = [ FoundNode
+                { subjectNode = "n1",
+                  observationTime = fromEpochSecond 200,
+                  neighborLinks = V.fromList
+                                  [ FoundLink
+                                    { targetNode = "n2",
+                                      linkState = LinkToTarget,
+                                      linkAttributes = ()
+                                    },
+                                    FoundLink
+                                    { targetNode = "n3",
+                                      linkState = LinkToSubject,
+                                      linkAttributes = ()
+                                    }
+                                  ],
+                  nodeAttributes = AText "at 200"
+                },
+                FoundNode
+                { subjectNode = "n1",
+                  observationTime = fromEpochSecond 100,
+                  neighborLinks = mempty,
+                  nodeAttributes = AText "at 100"
+                },
+                FoundNode
+                { subjectNode = "n1",
+                  observationTime = fromEpochSecond 150,
+                  neighborLinks = return $ FoundLink
+                                  { targetNode = "n2",
+                                    linkState = LinkToTarget,
+                                    linkAttributes = ()
+                                  },
+                  nodeAttributes = AText "at 150"
+                }
+              ]
+    mapM_ (addFoundNode spider) fns
+    got <- fmap toSortedList $ getLatestSnapshot spider "n1"
+    let (got_n1, got_n2, got_n3, got_l12, got_l31) = case got of
+          [Left g1, Left g2, Left g3, Right g4, Right g5] -> (g1, g2, g3, g4, g5)
+          _ -> error ("Unexpected patter: got = " ++ show got)
+    nodeId got_n1 `shouldBe` "n1"
+    isOnBoundary got_n1 `shouldBe` False
+    nodeTimestamp got_n1 `shouldBe` Just (fromEpochSecond 200)
+    S.nodeAttributes got_n1 `shouldBe` Just (AText "at 200")
+    nodeId got_n2 `shouldBe` "n2"
+    isOnBoundary got_n2 `shouldBe` False
+    nodeTimestamp got_n2 `shouldBe` Nothing
+    S.nodeAttributes got_n2 `shouldBe` Nothing
+    nodeId got_n3 `shouldBe` "n3"
+    isOnBoundary got_n3 `shouldBe` False
+    nodeTimestamp got_n3 `shouldBe` Nothing
+    S.nodeAttributes got_n3 `shouldBe` Nothing
+    linkNodeTuple got_l12 `shouldBe` ("n1", "n2")
+    isDirected got_l12 `shouldBe` True
+    linkTimestamp got_l12 `shouldBe` fromEpochSecond 200
+    linkNodeTuple got_l31 `shouldBe` ("n3", "n1")
+    isDirected got_l31 `shouldBe` True
+    linkTimestamp got_l31 `shouldBe` fromEpochSecond 200
         
 
 -- TODO: how linkState relates to the property of SnapshotLink ?
