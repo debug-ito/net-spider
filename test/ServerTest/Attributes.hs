@@ -1,20 +1,19 @@
 {-# LANGUAGE OverloadedStrings #-}
 module ServerTest.Attributes (main,spec) where
 
-import Control.Applicative ((<$>))
 import Data.Aeson (ToJSON)
 import Data.Hashable (Hashable)
 import Data.Greskell
-  ( gProperty,
-    newBind,
-    parseOneValue,
-    FromGraphSON,
+  ( FromGraphSON,
     Key
   )
 import Data.Text (Text)
 import Test.Hspec
 
-import ServerTest.Common (withServer, withSpider', toSortedList)
+import ServerTest.Common
+  ( withServer, withSpider', toSortedList,
+    AText(..), AInt(..)
+  )
 
 import NetSpider.Found (FoundNode(..), FoundLink(..), LinkState(..))
 import NetSpider.Graph (NodeAttributes(..), LinkAttributes(..), VNode)
@@ -28,27 +27,6 @@ import NetSpider.Timestamp (fromEpochSecond)
 main :: IO ()
 main = hspec spec
 
-newtype AText = AText Text
-              deriving (Show,Eq,Ord)
-
-instance NodeAttributes AText where
-  writeNodeAttributes (AText t) = gProperty "text" <$> newBind t
-  parseNodeAttributes ps = AText <$> parseOneValue "text" ps
-
-instance LinkAttributes AText where
-  writeLinkAttributes (AText t) = gProperty "text" <$> newBind t
-  parseLinkAttributes ps = AText <$> parseOneValue "text" ps
-
-newtype AInt = AInt Int
-             deriving (Show,Eq,Ord)
-
-instance NodeAttributes AInt where
-  writeNodeAttributes (AInt n) = gProperty "integer" <$> newBind n
-  parseNodeAttributes ps = AInt <$> parseOneValue "integer" ps
-
-instance LinkAttributes AInt where
-  writeLinkAttributes (AInt n) = gProperty "integer" <$> newBind n
-  parseLinkAttributes ps = AInt <$> parseOneValue "integer" ps
 
 typeTestCase :: (FromGraphSON n, ToJSON n, Ord n, Hashable n, Show n, NodeAttributes na, Eq na, Show na, LinkAttributes la, Eq la, Show la)
              => String
