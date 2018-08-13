@@ -50,16 +50,7 @@ import NetSpider.Spider.Internal.Graph
   ( gMakeFoundNode, gAllNodes, gHasNodeID, gHasNodeEID, gNodeEID, gNodeID, gMakeNode, gClearAll,
     gLatestFoundNode, gSelectFoundNode, gFinds, gHasFoundNodeEID, gAllFoundNode
   )
-
--- | An IO agent of the NetSpider database.
---
--- - type @n@: node ID.
--- - type @na@: node attributes
--- - type @la@: link attributes
-data Spider n na la =
-  Spider
-  { spiderClient :: Gr.Client
-  }
+import NetSpider.Spider.Internal.Type (Spider(..))
 
 -- | Connect to the WebSocket endpoint of Tinkerpop Gremlin Server
 -- that hosts the NetSpider database.
@@ -102,7 +93,7 @@ vToMaybe v = v V.!? 0
 getNode :: (ToJSON n) => Spider n na la -> n -> IO (Maybe EID)
 getNode spider nid = fmap vToMaybe $ Gr.slurpResults =<< submitB spider gt
   where
-    gt = gNodeEID <$.> gHasNodeID nid <*.> pure gAllNodes
+    gt = gNodeEID <$.> gHasNodeID spider nid <*.> pure gAllNodes
 
 getOrMakeNode :: (ToJSON n) => Spider n na la -> n -> IO EID
 getOrMakeNode spider nid = do
@@ -111,7 +102,7 @@ getOrMakeNode spider nid = do
    Just vid -> return vid
    Nothing -> makeNode
   where
-    makeNode = expectOne =<< Gr.slurpResults =<< submitB spider (liftWalk gNodeEID <$.> gMakeNode nid)
+    makeNode = expectOne =<< Gr.slurpResults =<< submitB spider (liftWalk gNodeEID <$.> gMakeNode spider nid)
     expectOne v = case vToMaybe v of
       Just e -> return e
       Nothing -> throwString "Expects at least single result, but got nothing."
@@ -171,7 +162,7 @@ visitNodeForSnapshot spider ref_state visit_nid = do
     markAsVisited mvfn = modifyIORef ref_state $ addVisitedNode visit_nid mvfn
     getVisitedNodeEID = fmap vToMaybe $ Gr.slurpResults =<< submitB spider binder
       where
-        binder = gNodeEID <$.> gHasNodeID visit_nid <*.> pure gAllNodes
+        binder = gNodeEID <$.> gHasNodeID spider visit_nid <*.> pure gAllNodes
     getNextFoundNode node_eid = fmap vToMaybe $ Gr.slurpResults =<< submitB spider binder
       where
         binder = gLatestFoundNode
@@ -212,7 +203,7 @@ makeSnapshotLinkSamples spider subject_nid vneighbors = do
 tryGetNodeID :: FromGraphSON n => Spider n na la -> EID -> IO (Maybe n)
 tryGetNodeID spider node_eid = fmap vToMaybe $ Gr.slurpResults =<< submitB spider binder
   where
-    binder = gNodeID <$.> gHasNodeEID node_eid <*.> pure gAllNodes
+    binder = gNodeID spider <$.> gHasNodeEID node_eid <*.> pure gAllNodes
 
 -- We can create much more complex function to query snapshot graphs,
 -- but at least we need 'getLatestSnapshot'.

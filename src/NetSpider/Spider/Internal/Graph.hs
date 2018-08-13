@@ -49,19 +49,20 @@ import NetSpider.Graph
   )
 import NetSpider.Found (FoundLink(..), LinkState(..), FoundNode(..), linkStateToText)
 import NetSpider.Timestamp (Timestamp(..), fromEpochSecond)
+import NetSpider.Spider.Internal.Type (Spider(..))
 
 
 gNodeEID :: Walk Transform VNode EID
 gNodeEID = gId
 
-gNodeID :: Walk Transform VNode n
-gNodeID = gValues ["@node_id"]
+gNodeID :: Spider n na la -> Walk Transform VNode n
+gNodeID _ = gValues ["@node_id"]
 
 gAllNodes :: GTraversal Transform () VNode
 gAllNodes = gHasLabel "node" $. sV [] $ source "g"
 
-gHasNodeID :: (ToJSON n, WalkType c) => n -> Binder (Walk c VNode VNode)
-gHasNodeID nid = do
+gHasNodeID :: (ToJSON n, WalkType c) => Spider n na la -> n -> Binder (Walk c VNode VNode)
+gHasNodeID _ nid = do
   var_nid <- newBind nid
   return $ gHas2 "@node_id" var_nid
 
@@ -70,8 +71,8 @@ gHasNodeEID eid = do
   var_eid <- newBind eid
   return $ gHasId var_eid
 
-gMakeNode :: ToJSON n => n -> Binder (GTraversal SideEffect () VNode)
-gMakeNode nid = do
+gMakeNode :: ToJSON n => Spider n na la -> n -> Binder (GTraversal SideEffect () VNode)
+gMakeNode _ nid = do
   var_nid <- newBind nid
   return $ gProperty "@node_id" var_nid $. sAddV "node" $ source "g"
 
