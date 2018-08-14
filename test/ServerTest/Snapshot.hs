@@ -9,7 +9,7 @@ import Data.List (sortOn)
 import Data.Monoid ((<>), mempty)
 import Data.Text (Text, unpack, pack)
 import qualified Data.Text.IO as TIO
-import Data.Vector (Vector)
+import Data.Vector (Vector, (!))
 import qualified Data.Vector as V
 import qualified Network.Greskell.WebSocket as Gr
 import qualified Network.Greskell.WebSocket.Response as Res
@@ -243,43 +243,43 @@ spec_getLatestSnapshot = withServer $ describe "getLatestSnapshot" $ do
             sub_nid = intToNodeId node_i
     mapM_ (addFoundNode spider) fns
     (got_ns, got_ls) <- fmap sortSnapshotElements $ getLatestSnapshot spider "n1"
-    nodeId (got_ns V.! 0) `shouldBe` "n1"
-    isOnBoundary (got_ns V.! 0) `shouldBe` False
-    nodeTimestamp (got_ns V.! 0) `shouldBe` Just (fromEpochSecond 100)
-    S.nodeAttributes (got_ns V.! 0) `shouldBe` Just ()
-    nodeId (got_ns V.! 1) `shouldBe` "n2"
-    isOnBoundary (got_ns V.! 1) `shouldBe` False
-    nodeTimestamp (got_ns V.! 1) `shouldBe` Just (fromEpochSecond 50)
-    S.nodeAttributes (got_ns V.! 1) `shouldBe` Just ()
-    nodeId (got_ns V.! 2) `shouldBe` "n3"
-    isOnBoundary (got_ns V.! 2) `shouldBe` False
-    nodeTimestamp (got_ns V.! 2) `shouldBe` Just (fromEpochSecond 150)
-    S.nodeAttributes (got_ns V.! 2) `shouldBe` Just ()
-    nodeId (got_ns V.! 3) `shouldBe` "n4"
-    isOnBoundary (got_ns V.! 3) `shouldBe` False
-    nodeTimestamp (got_ns V.! 3) `shouldBe` Just (fromEpochSecond 200)
-    S.nodeAttributes (got_ns V.! 3) `shouldBe` Just ()
-    nodeId (got_ns V.! 4) `shouldBe` "n5"
-    isOnBoundary (got_ns V.! 4) `shouldBe` False
-    nodeTimestamp (got_ns V.! 4) `shouldBe` Just (fromEpochSecond 150)
-    S.nodeAttributes (got_ns V.! 4) `shouldBe` Just ()
+    nodeId (got_ns ! 0) `shouldBe` "n1"
+    isOnBoundary (got_ns ! 0) `shouldBe` False
+    nodeTimestamp (got_ns ! 0) `shouldBe` Just (fromEpochSecond 100)
+    S.nodeAttributes (got_ns ! 0) `shouldBe` Just ()
+    nodeId (got_ns ! 1) `shouldBe` "n2"
+    isOnBoundary (got_ns ! 1) `shouldBe` False
+    nodeTimestamp (got_ns ! 1) `shouldBe` Just (fromEpochSecond 50)
+    S.nodeAttributes (got_ns ! 1) `shouldBe` Just ()
+    nodeId (got_ns ! 2) `shouldBe` "n3"
+    isOnBoundary (got_ns ! 2) `shouldBe` False
+    nodeTimestamp (got_ns ! 2) `shouldBe` Just (fromEpochSecond 150)
+    S.nodeAttributes (got_ns ! 2) `shouldBe` Just ()
+    nodeId (got_ns ! 3) `shouldBe` "n4"
+    isOnBoundary (got_ns ! 3) `shouldBe` False
+    nodeTimestamp (got_ns ! 3) `shouldBe` Just (fromEpochSecond 200)
+    S.nodeAttributes (got_ns ! 3) `shouldBe` Just ()
+    nodeId (got_ns ! 4) `shouldBe` "n5"
+    isOnBoundary (got_ns ! 4) `shouldBe` False
+    nodeTimestamp (got_ns ! 4) `shouldBe` Just (fromEpochSecond 150)
+    S.nodeAttributes (got_ns ! 4) `shouldBe` Just ()
     V.length got_ns `shouldBe` 5
-    linkNodeTuple (got_ls V.! 0) `shouldBe` ("n1", "n2")
-    isDirected (got_ls V.! 0) `shouldBe` True
-    linkTimestamp (got_ls V.! 0) `shouldBe` fromEpochSecond 100
-    S.linkAttributes (got_ls V.! 0) `shouldBe` AText "first"
-    linkNodeTuple (got_ls V.! 1) `shouldBe` ("n2", "n3")
-    isDirected (got_ls V.! 1) `shouldBe` True
-    linkTimestamp (got_ls V.! 1) `shouldBe` fromEpochSecond 150
-    S.linkAttributes (got_ls V.! 1) `shouldBe` AText "n3 to prev"
-    linkNodeTuple (got_ls V.! 2) `shouldBe` ("n3", "n4")
-    isDirected (got_ls V.! 2) `shouldBe` True
-    linkTimestamp (got_ls V.! 2) `shouldBe` fromEpochSecond 200
-    S.linkAttributes (got_ls V.! 2) `shouldBe` AText "n4 to prev"
-    linkNodeTuple (got_ls V.! 3) `shouldBe` ("n4", "n5")
-    isDirected (got_ls V.! 3) `shouldBe` True
-    linkTimestamp (got_ls V.! 3) `shouldBe` fromEpochSecond 200
-    S.linkAttributes (got_ls V.! 3) `shouldBe` AText "n4 to next"
+    linkNodeTuple (got_ls ! 0) `shouldBe` ("n1", "n2")
+    isDirected (got_ls ! 0) `shouldBe` True
+    linkTimestamp (got_ls ! 0) `shouldBe` fromEpochSecond 100
+    S.linkAttributes (got_ls ! 0) `shouldBe` AText "first"
+    linkNodeTuple (got_ls ! 1) `shouldBe` ("n2", "n3")
+    isDirected (got_ls ! 1) `shouldBe` True
+    linkTimestamp (got_ls ! 1) `shouldBe` fromEpochSecond 150
+    S.linkAttributes (got_ls ! 1) `shouldBe` AText "n3 to prev"
+    linkNodeTuple (got_ls ! 2) `shouldBe` ("n3", "n4")
+    isDirected (got_ls ! 2) `shouldBe` True
+    linkTimestamp (got_ls ! 2) `shouldBe` fromEpochSecond 200
+    S.linkAttributes (got_ls ! 2) `shouldBe` AText "n4 to prev"
+    linkNodeTuple (got_ls ! 3) `shouldBe` ("n4", "n5")
+    isDirected (got_ls ! 3) `shouldBe` True
+    linkTimestamp (got_ls ! 3) `shouldBe` fromEpochSecond 200
+    S.linkAttributes (got_ls ! 3) `shouldBe` AText "n4 to next"
     V.length got_ls `shouldBe` 4
   specify "loop network" $ withSpider $ \spider -> do
     let fns :: [FoundNode Text () ()]
@@ -332,25 +332,25 @@ spec_getLatestSnapshot = withServer $ describe "getLatestSnapshot" $ do
               ]
     mapM_ (addFoundNode spider) fns
     (got_ns, got_ls) <- fmap sortSnapshotElements $ getLatestSnapshot spider "n1"
-    nodeId (got_ns V.! 0) `shouldBe` "n1"
-    isOnBoundary (got_ns V.! 0) `shouldBe` False
-    nodeTimestamp (got_ns V.! 0) `shouldBe` Just (fromEpochSecond 100)
-    nodeId (got_ns V.! 1) `shouldBe` "n2"
-    isOnBoundary (got_ns V.! 1) `shouldBe` False
-    nodeTimestamp (got_ns V.! 1) `shouldBe` Just (fromEpochSecond 150)
-    nodeId (got_ns V.! 2) `shouldBe` "n3"
-    isOnBoundary (got_ns V.! 2) `shouldBe` False
-    nodeTimestamp (got_ns V.! 2) `shouldBe` Just (fromEpochSecond 100)
+    nodeId (got_ns ! 0) `shouldBe` "n1"
+    isOnBoundary (got_ns ! 0) `shouldBe` False
+    nodeTimestamp (got_ns ! 0) `shouldBe` Just (fromEpochSecond 100)
+    nodeId (got_ns ! 1) `shouldBe` "n2"
+    isOnBoundary (got_ns ! 1) `shouldBe` False
+    nodeTimestamp (got_ns ! 1) `shouldBe` Just (fromEpochSecond 150)
+    nodeId (got_ns ! 2) `shouldBe` "n3"
+    isOnBoundary (got_ns ! 2) `shouldBe` False
+    nodeTimestamp (got_ns ! 2) `shouldBe` Just (fromEpochSecond 100)
     V.length got_ns `shouldBe` 3
-    linkNodeTuple (got_ls V.! 0) `shouldBe` ("n1", "n2")
-    isDirected (got_ls V.! 0) `shouldBe` True
-    linkTimestamp (got_ls V.! 0) `shouldBe` fromEpochSecond 150
-    linkNodeTuple (got_ls V.! 1) `shouldBe` ("n2", "n3")
-    isDirected (got_ls V.! 1) `shouldBe` False
-    linkTimestamp (got_ls V.! 1) `shouldBe` fromEpochSecond 150
-    linkNodeTuple (got_ls V.! 2) `shouldBe` ("n3", "n1")
-    isDirected (got_ls V.! 2) `shouldBe` True
-    linkTimestamp (got_ls V.! 2) `shouldBe` fromEpochSecond 100
+    linkNodeTuple (got_ls ! 0) `shouldBe` ("n1", "n2")
+    isDirected (got_ls ! 0) `shouldBe` True
+    linkTimestamp (got_ls ! 0) `shouldBe` fromEpochSecond 150
+    linkNodeTuple (got_ls ! 1) `shouldBe` ("n2", "n3")
+    isDirected (got_ls ! 1) `shouldBe` False
+    linkTimestamp (got_ls ! 1) `shouldBe` fromEpochSecond 150
+    linkNodeTuple (got_ls ! 2) `shouldBe` ("n3", "n1")
+    isDirected (got_ls ! 2) `shouldBe` True
+    linkTimestamp (got_ls ! 2) `shouldBe` fromEpochSecond 100
   let confWithAPorts :: Config Text () APorts
       confWithAPorts = defConfig { subgroupSnapshotLinkSamples = subgroupByLinkAttributes id
                                  }
@@ -398,8 +398,8 @@ spec_getLatestSnapshot = withServer $ describe "getLatestSnapshot" $ do
               ]
     mapM_ (addFoundNode spider) fns
     (got_ns, got_ls_v) <- fmap sortSnapshotElements $ getLatestSnapshot spider "n1"
-    nodeId (got_ns V.! 0) `shouldBe` "n1"
-    nodeId (got_ns V.! 1) `shouldBe` "n2"
+    nodeId (got_ns ! 0) `shouldBe` "n1"
+    nodeId (got_ns ! 1) `shouldBe` "n2"
     V.length got_ns `shouldBe` 2
     let got_ls = sortOn (\l -> (linkNodeTuple l, S.linkAttributes l)) $ V.toList got_ls_v
     linkNodeTuple (got_ls !! 0) `shouldBe` ("n1", "n2")
