@@ -15,9 +15,9 @@ import NetSpider.Timestamp (Timestamp)
 
 -- | A link in the snapshot graph.
 --
--- Basically 'SnapshotLink' is summary of one or more link
--- observations by different subject nodes. It is possible that those
--- observations contradict each other.
+-- 'SnapshotLink' is summary of one or more link observations by
+-- different subject nodes. Basically the latest of these observations
+-- is used to make 'SnapshotLink'.
 --
 -- - type @n@: node ID.
 -- - type @la@: link attributes.

@@ -49,11 +49,11 @@ data Config n na la =
     -- \"@node_id\".
     subgroupSnapshotLinkSamples :: Vector (SnapshotLinkSample n la) -> Vector (Vector (SnapshotLinkSample n la))
     -- ^ Function to partition 'SnapshotLinkSample's into
-    -- subgroups. This functions is used by the 'Spider' when it makes
+    -- subgroups. This function is used by the 'Spider' when it makes
     -- the snapshot graph.
     --
     -- The input is the 'SnapshotLinkSample's collected for a single
-    -- pair of nodes. The function is supposed to partition them into
+    -- pair of nodes. This function is supposed to partition them into
     -- subgroups, where each subgroup represents a physical link. If
     -- your network can have multiple physical links between the same
     -- pair of nodes, you should customize this function.
@@ -70,6 +70,9 @@ defConfig =
     subgroupSnapshotLinkSamples = \s -> return s
   }
 
+-- | Partition 'SnapshotLinkSample's using their link attributes. You
+-- can use this function for 'subgroupSnapshotLinkSamples' config
+-- field.
 subgroupByLinkAttributes :: Ord b => (la -> b) -> Vector (SnapshotLinkSample n la) -> Vector (Vector (SnapshotLinkSample n la))
 subgroupByLinkAttributes getKey = groupWith (getKey . slsLinkAttributes)
 

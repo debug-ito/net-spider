@@ -11,18 +11,20 @@ module NetSpider.Spider
          -- * Make Spider
          connectWS,
          connectWith,
-         -- ** configuration
-         Host,
-         Port,
-         Config(..),
-         defConfig,
-         subgroupByLinkAttributes,
          -- * Close Spider
          close,
          -- * Graph operations
          addFoundNode,
          getLatestSnapshot,
-         clearAll
+         clearAll,
+         -- * Spider configuration
+         Host,
+         Port,
+         Config(..),
+         defConfig,
+         subgroupByLinkAttributes,
+         SnapshotLinkID(..),
+         SnapshotLinkSample(..)
        ) where
 
 import Control.Exception.Safe (throwString)
@@ -133,9 +135,9 @@ getOrMakeNode spider nid = do
 -- builds the snapshot graph by traversing the history graph from the
 -- given starting node.
 --
--- This function is very simple, and should be used only for testing.
--- This function starts from an arbitrary node, traverses the history
--- graph using the latest links with unlimited number of hops.
+-- This function is very simple, and should be used only for small
+-- graphs.  This function starts from an arbitrary node, traverses the
+-- history graph using the latest links with unlimited number of hops.
 getLatestSnapshot :: (FromGraphSON n, ToJSON n, Ord n, Hashable n, LinkAttributes la, NodeAttributes na)
                   => Spider n na la
                   -> n -- ^ ID of the node where it starts traversing.

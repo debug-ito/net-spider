@@ -42,13 +42,13 @@ nodeId = _nodeId
 isOnBoundary :: SnapshotNode n na -> Bool
 isOnBoundary = _isOnBoundary
 
--- | If the node is found, but no observation is done on it, its
+-- | If the node is not observed yet or 'isOnBoundary' is 'True', its
 -- timestamp is 'Nothing'.
 nodeTimestamp :: SnapshotNode n na -> Maybe Timestamp
 nodeTimestamp = _nodeTimestamp
 
--- | If the node is found, but no observation is done on it, its node
--- attributes is 'Nothing'.
+-- | If the node is not observed yet or 'isOnBoundary' is 'True', its
+-- node attributes is 'Nothing'.
 nodeAttributes :: SnapshotNode n na -> Maybe na
 nodeAttributes = _nodeAttributes
 
