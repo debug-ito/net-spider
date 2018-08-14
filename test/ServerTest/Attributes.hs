@@ -8,10 +8,11 @@ import Data.Greskell
     Key
   )
 import Data.Text (Text)
+import Data.Time.LocalTime (TimeZone(..))
 import Test.Hspec
 
 import ServerTest.Common
-  ( withServer, withSpider', toSortedList,
+  ( withServer, withSpider', withSpider, toSortedList,
     AText(..), AInt(..)
   )
 
@@ -21,8 +22,9 @@ import NetSpider.Spider
   ( Host, Port, addFoundNode, getLatestSnapshot,
     Config(..), defConfig
   )
+import NetSpider.Snapshot (nodeTimestamp, linkTimestamp)
 import qualified NetSpider.Snapshot as S (nodeAttributes, linkAttributes)
-import NetSpider.Timestamp (fromEpochSecond)
+import NetSpider.Timestamp (Timestamp(..), fromEpochSecond)
 
 main :: IO ()
 main = hspec spec
@@ -73,6 +75,28 @@ nodeIdTestCase label node_id_key n1 n2 = typeTestCase (label ++ " nodeID") conf 
     conf = defConfig { nodeIdKey = node_id_key
                      }
 
+timestampTestCase :: String -> Timestamp -> SpecWith (Host, Port)
+timestampTestCase label ts = specify label $ withSpider $ \spider -> do
+  let fn :: FoundNode Text () ()
+      fn = FoundNode
+           { subjectNode = "n1",
+             observationTime = ts,
+             nodeAttributes = (),
+             neighborLinks = return $ FoundLink
+                             { targetNode = "n2",
+                               linkState = LinkToTarget,
+                               linkAttributes = ()
+                             }
+           }
+  addFoundNode spider fn
+  got <- fmap toSortedList $ getLatestSnapshot spider "n1"
+  let (got_n1, got_n2, got_l) = case got of
+        [Left a, Left b, Right c] -> (a,b,c)
+        _ -> error ("Unexpected pattern: got = " ++ show got)
+  nodeTimestamp got_n1 `shouldBe` Just ts
+  nodeTimestamp got_n2 `shouldBe` Nothing
+  linkTimestamp got_l `shouldBe` ts
+
 spec :: Spec
 spec = withServer $ do
   describe "node and link attributes" $ do
@@ -85,4 +109,21 @@ spec = withServer $ do
     -- types, because the graph database (at least JanusGraph)
     -- automatically fixes the schema (internal data type) for a
     -- property key when some data is given for it for the first time.
+  describe "timestamp with timezone" $ do
+    timestampTestCase "positive timezone"
+      $ Timestamp { epochTime = 200,
+                    timeZone = Just $ TimeZone
+                               { timeZoneMinutes = 9*60,
+                                 timeZoneSummerOnly = False,
+                                 timeZoneName = "Asia/Tokyo"
+                               }
+                  }
+    timestampTestCase "negative timezone"
+      $ Timestamp { epochTime = 150,
+                    timeZone = Just $ TimeZone
+                               { timeZoneMinutes = (-5)*60,
+                                 timeZoneSummerOnly = True,
+                                 timeZoneName = "America/Chicago"
+                               }
+                  }
   

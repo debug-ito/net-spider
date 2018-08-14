@@ -20,6 +20,7 @@ data Timestamp =
   }
   deriving (Show,Eq)
 
+-- | Compare by 'epochTime' only. 'timeZone' is not used.
 instance Ord Timestamp where
   compare l r = compare (epochTime l) (epochTime r)
 

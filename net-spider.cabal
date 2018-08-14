@@ -83,7 +83,7 @@ test-suite server-test-suite
                         ServerTest.Snapshot,
                         ServerTest.Attributes
   build-depends:        base, hspec, net-spider, vector, text, greskell-websocket, greskell,
-                        aeson, unordered-containers, text, hashable,
+                        aeson, unordered-containers, text, hashable, time,
                         safe-exceptions,
                         hspec-need-env
 
