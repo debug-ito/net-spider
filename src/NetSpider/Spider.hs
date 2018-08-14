@@ -138,7 +138,7 @@ getLatestSnapshot spider start_nid = do
   ref_state <- newIORef $ initSnapshotState $ return start_nid
   recurseVisitNodesForSnapshot spider ref_state
   -- print =<< readIORef ref_state
-  fmap makeSnapshot $ readIORef ref_state
+  fmap (makeSnapshot spider) $ readIORef ref_state
 
 -- TODO: We can create much more complex function to query snapshot
 -- graphs, but at least we need 'getLatestSnapshot'.
@@ -279,8 +279,8 @@ popUnvisitedNode state = (updated, popped)
     updated = state { ssUnvisitedNodes = updatedUnvisited }
     (popped, updatedUnvisited) = popHeadV $ ssUnvisitedNodes state
 
-makeSnapshot :: SnapshotState n na la -> Vector (SnapshotElement n na la)
-makeSnapshot state = (fmap Left nodes) V.++ (fmap Right links)
+makeSnapshot :: Spider n na la -> SnapshotState n na la -> Vector (SnapshotElement n na la)
+makeSnapshot spider state = (fmap Left nodes) V.++ (fmap Right links)
   where
     nodes = visited_nodes V.++ boundary_nodes
     makeSnapshotNode on_boundary nid mvfn =
@@ -291,19 +291,23 @@ makeSnapshot state = (fmap Left nodes) V.++ (fmap Right links)
                    }
     visited_nodes = foldr' V.cons mempty $ map (uncurry $ makeSnapshotNode False) $ HM.toList $ ssVisitedNodes state
     boundary_nodes = fmap (\nid -> makeSnapshotNode True nid Nothing) $ ssUnvisitedNodes state
-    links = V.fromList $ catMaybes $ map makeSnapshotLink $ HM.elems $ ssVisitedLinks state
+    links = mconcat $ map (makeSnapshotLinks spider) $ HM.elems $ ssVisitedLinks state
 
 -- | The input 'SnapshotLinkSample's must be for the equivalent
--- 'SnapshotLinkID'.
-makeSnapshotLink :: Vector (SnapshotLinkSample n la) -> Maybe (SnapshotLink n la)
-makeSnapshotLink link_samples = do
-  agg_sample <- latestSnapshotLinkSample link_samples
-  case slsLinkState agg_sample of
-   LinkUnused -> Nothing
-   LinkToTarget -> Just $ aggSampleToLink agg_sample True True
-   LinkToSubject -> Just $ aggSampleToLink agg_sample False True
-   LinkBidirectional -> Just $ aggSampleToLink agg_sample True False
+-- 'SnapshotLinkID'. The output is list of 'SnapshotLink's, each of
+-- which corresponds to a subgroup of 'SnapshotLinkSample's.
+makeSnapshotLinks :: Spider n na la -> Vector (SnapshotLinkSample n la) -> Vector (SnapshotLink n la)
+makeSnapshotLinks spider link_samples =
+  V.mapMaybe makeSnapshotLink $ makeSubgroups link_samples
   where
+    makeSubgroups = subgroupSnapshotLinkSamples $ spiderConfig spider
+    makeSnapshotLink link_subgroup = do
+      agg_sample <- latestSnapshotLinkSample link_subgroup
+      case slsLinkState agg_sample of
+       LinkUnused -> Nothing
+       LinkToTarget -> Just $ aggSampleToLink agg_sample True True
+       LinkToSubject -> Just $ aggSampleToLink agg_sample False True
+       LinkBidirectional -> Just $ aggSampleToLink agg_sample True False
     aggSampleToLink agg_sample to_target is_directed = 
       SnapshotLink { _sourceNode = (if to_target then sliSubjectNode else sliTargetNode) link_id,
                      _destinationNode = (if to_target then sliTargetNode else sliSubjectNode) link_id,

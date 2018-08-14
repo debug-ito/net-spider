@@ -15,6 +15,7 @@ module NetSpider.Spider.Internal.Type
 
 import Data.Hashable (Hashable(hashWithSalt))
 import Data.Greskell (Key)
+import Data.Vector (Vector)
 import qualified Network.Greskell.WebSocket as Gr
 
 import NetSpider.Found (LinkState(..))
@@ -41,18 +42,30 @@ data Config n na la =
     wsPort :: Gr.Port,
     -- ^ Port of WebSocket endpoint of Tinkerpop Gremlin
     -- Server. Default: 8182
-    nodeIdKey :: Key VNode n
+    nodeIdKey :: Key VNode n,
     -- ^ Name of graph property that stores the node ID. Default:
     -- \"@node_id\".
+    subgroupSnapshotLinkSamples :: Vector (SnapshotLinkSample n la) -> Vector (Vector (SnapshotLinkSample n la))
+    -- ^ Function to partition 'SnapshotLinkSample's into
+    -- subgroups. This functions is used by the 'Spider' when it makes
+    -- the snapshot graph.
+    --
+    -- The input is the 'SnapshotLinkSample's collected for a single
+    -- pair of nodes. The function is supposed to partition them into
+    -- subgroups, where each subgroup represents a physical link. If
+    -- your network can have multiple physical links between the same
+    -- pair of nodes, you should customize this function.
+    --
+    -- Default: just return the input as the only subgroup.
   }
-  deriving (Show)
 
 defConfig :: Config n na la
 defConfig =
   Config
   { wsHost = "localhost",
     wsPort = 8182,
-    nodeIdKey = "@node_id"
+    nodeIdKey = "@node_id",
+    subgroupSnapshotLinkSamples = \s -> return s
   }
 
 
