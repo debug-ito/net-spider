@@ -9,6 +9,7 @@ module NetSpider.Spider.Internal.Type
        ( Spider(..),
          Config(..),
          defConfig,
+         subgroupByLinkAttributes,
          SnapshotLinkID(..),
          SnapshotLinkSample(..)
        ) where
@@ -20,6 +21,7 @@ import qualified Network.Greskell.WebSocket as Gr
 
 import NetSpider.Found (LinkState(..))
 import NetSpider.Graph (VNode)
+import NetSpider.Util (groupWith)
 import NetSpider.Timestamp (Timestamp)
 
 -- | An IO agent of the NetSpider database.
@@ -68,6 +70,8 @@ defConfig =
     subgroupSnapshotLinkSamples = \s -> return s
   }
 
+subgroupByLinkAttributes :: Ord b => (la -> b) -> Vector (SnapshotLinkSample n la) -> Vector (Vector (SnapshotLinkSample n la))
+subgroupByLinkAttributes getKey = groupWith (getKey . slsLinkAttributes)
 
 -- | Identitfy of link while making the snapshot graph.
 --
