@@ -21,7 +21,8 @@ library
   other-extensions:     OverloadedStrings,
                         GeneralizedNewtypeDeriving,
                         TypeFamilies
-  exposed-modules:      NetSpider,
+  exposed-modules:      NetSpider.Input,
+                        NetSpider.Output,
                         NetSpider.Found,
                         NetSpider.Timestamp,
                         NetSpider.Spider,
