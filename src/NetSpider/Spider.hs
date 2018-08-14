@@ -6,14 +6,20 @@
 --
 -- 
 module NetSpider.Spider
-       ( Spider,
+       ( -- * Spider type
+         Spider,
+         -- * Make Spider
          connectWS,
          connectWith,
+         -- ** configuration
          Host,
          Port,
          Config(..),
          defConfig,
+         subgroupByLinkAttributes,
+         -- * Close Spider
          close,
+         -- * Graph operations
          addFoundNode,
          getLatestSnapshot,
          clearAll
@@ -53,7 +59,7 @@ import NetSpider.Spider.Internal.Graph
     gLatestFoundNode, gSelectFoundNode, gFinds, gHasFoundNodeEID, gAllFoundNode
   )
 import NetSpider.Spider.Internal.Type
-  ( Spider(..), Config(..), defConfig,
+  ( Spider(..), Config(..), defConfig, subgroupByLinkAttributes,
     SnapshotLinkID(..), SnapshotLinkSample(..)
   )
 
