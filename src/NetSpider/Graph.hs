@@ -4,16 +4,14 @@
 -- Maintainer: Toshio Ito <debug.ito@gmail.com>
 --
 module NetSpider.Graph
-       ( -- * EID
-         EID,
-         -- * VNode
-         VNode,
-         -- * VFoundNode
-         VFoundNode,
+       ( -- * Attributes classes
          NodeAttributes(..),
-         -- * EFinds
-         EFinds,
-         LinkAttributes(..)
+         LinkAttributes(..),
+         -- * Graph element types
+         EID,
+         VNode,
+         VFoundNode,
+         EFinds
        ) where
 
 import NetSpider.Graph.Internal
