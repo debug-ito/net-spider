@@ -20,16 +20,17 @@ module NetSpider.Graph.Internal
 
 import Data.Aeson (ToJSON(..), FromJSON(..), Value(..))
 import Data.Greskell
-  ( FromGraphSON(..), parseOneValue,
+  ( FromGraphSON(..), parseOneValue, lookupOne, lookupOneValue,
     Element(..), Vertex, Edge(..),
-    AVertexProperty, AVertex(..), AProperty, AEdge(..),
+    AVertexProperty(..), AVertex(..), AProperty, AEdge(..),
     Walk, SideEffect,
     Binder, Parser, PropertyMapList, PropertyMapSingle, GValue,
     gIdentity
   )
-import Data.Text (Text)
+import Data.Text (Text, unpack)
+import Data.Time.LocalTime (TimeZone(..))
 
-import NetSpider.Timestamp (Timestamp, fromEpochSecond)
+import NetSpider.Timestamp (Timestamp(..))
 import NetSpider.Found (LinkState)
 
 -- | Generic element ID used in the graph DB.
@@ -73,13 +74,33 @@ instance NodeAttributes na => FromGraphSON (VFoundNode na) where
     where
       fromAVertex av = do
         eid <- parseGraphSON $ avId av
-        epoch_ts <- parseOneValue "@timestamp" $ avProperties av
-        -- TODO: parse timezone.
+        ts_prop <- case lookupOne "@timestamp" $ avProperties av of
+          Nothing -> fail ("Cannot find property named @timestamp")
+          Just p -> return p
+        epoch_ts <- parseGraphSON $ avpValue ts_prop
+        mtz <- parseTimeZone ts_prop
         attrs <- parseNodeAttributes $ avProperties av
         return $ VFoundNode { vfnId = eid,
-                              vfnTimestamp = fromEpochSecond epoch_ts,
+                              vfnTimestamp = Timestamp { epochTime = epoch_ts,
+                                                         timeZone = mtz
+                                                       },
                               vfnAttributes = attrs
                             }
+      parseTimeZone ts_prop =
+        case (get "@tz_offset_min", get "@tz_summer_only", get "@tz_name") of
+         (Left _, Left _, Left _) -> return Nothing
+         (eo, es, en) -> do
+           offset <- parseE eo
+           is_summer_only <- parseE es
+           name <- parseE en
+           return $ Just $ TimeZone { timeZoneMinutes = offset,
+                                      timeZoneSummerOnly = is_summer_only,
+                                      timeZoneName = unpack name
+                                    }
+        where
+          get k = maybe (Left ("Cannot find property " ++ unpack k)) Right $ lookupOneValue k $ avpProperties ts_prop
+          parseE :: (FromGraphSON a) => Either String GValue -> Parser a
+          parseE = either fail parseGraphSON
 
 -- | \"finds\" edge.
 data EFinds la =

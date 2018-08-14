@@ -34,12 +34,13 @@ import Data.Greskell
     Binder, newBind,
     source, sV, sV', sAddV, gHasLabel, gHasId, gHas2, gId, gProperty, gPropertyV, gV,
     gAddE, gSideEffect, gTo, gFrom, gDrop, gOut, gOrder, gBy2, gValues, gOutE,
-    ($.), (<*.>),
+    ($.), (<*.>), (=:),
     ToGTraversal,
     Key, oDecr, gLimit
   )
 import Data.Int (Int64)
-import Data.Text (Text)
+import Data.Text (Text, pack)
+import Data.Time.LocalTime (TimeZone(..))
 import Data.Traversable (traverse)
 import Data.Vector (Vector)
 
@@ -125,8 +126,18 @@ keyTimestamp = "@timestamp"
 gSetTimestamp :: Timestamp -> Binder (Walk SideEffect (VFoundNode na) (VFoundNode na))
 gSetTimestamp ts = do
   var_epoch <- newBind $ epochTime ts
-  return $ gPropertyV Nothing keyTimestamp var_epoch []
-  -- TODO: set timezone.
+  meta_props <- makeMetaProps $ timeZone ts
+  return $ gPropertyV Nothing keyTimestamp var_epoch meta_props
+  where
+    makeMetaProps Nothing = return []
+    makeMetaProps (Just tz) = do
+      offset <- newBind $ timeZoneMinutes tz
+      summer <- newBind $ timeZoneSummerOnly tz
+      name <- newBind $ pack $ timeZoneName tz
+      return $ [ "@tz_offset_min" =: offset,
+                 "@tz_summer_only" =: summer,
+                 "@tz_name" =: name
+               ]
 
 emitsAEdge :: ToGTraversal g => g c s AEdge -> g c s AEdge
 emitsAEdge = id
