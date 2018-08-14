@@ -280,16 +280,77 @@ spec_getLatestSnapshot = withServer $ describe "getLatestSnapshot" $ do
     S.linkAttributes (got_ls V.! 3) `shouldBe` AText "n4 to next"
     V.length got_ls `shouldBe` 4
   specify "loop network" $ withSpider $ \spider -> do
+    let fns :: [FoundNode Text () ()]
+        fns = [ FoundNode
+                { subjectNode = "n1",
+                  observationTime = fromEpochSecond 100,
+                  neighborLinks = V.fromList
+                                  [ FoundLink
+                                    { targetNode = "n2",
+                                      linkState = LinkToTarget,
+                                      linkAttributes = ()
+                                    }
+                                  ],
+                  nodeAttributes = ()
+                },
+                FoundNode
+                { subjectNode = "n2",
+                  observationTime = fromEpochSecond 150,
+                  neighborLinks = V.fromList
+                                  [ FoundLink
+                                    { targetNode = "n1",
+                                      linkState = LinkToSubject,
+                                      linkAttributes = ()
+                                    },
+                                    FoundLink
+                                    { targetNode = "n3",
+                                      linkState = LinkBidirectional,
+                                      linkAttributes = ()
+                                    }
+                                  ],
+                  nodeAttributes = ()
+                },
+                FoundNode
+                { subjectNode = "n3",
+                  observationTime = fromEpochSecond 100,
+                  neighborLinks = V.fromList
+                                  [ FoundLink
+                                    { targetNode = "n1",
+                                      linkState = LinkToTarget,
+                                      linkAttributes = ()
+                                    },
+                                    FoundLink
+                                    { targetNode = "n2",
+                                      linkState = LinkBidirectional,
+                                      linkAttributes = ()
+                                    }
+                                  ],
+                  nodeAttributes = ()
+                }
+              ]
+    mapM_ (addFoundNode spider) fns
+    (got_ns, got_ls) <- fmap sortSnapshotElements $ getLatestSnapshot spider "n1"
+    nodeId (got_ns V.! 0) `shouldBe` "n1"
+    isOnBoundary (got_ns V.! 0) `shouldBe` False
+    nodeTimestamp (got_ns V.! 0) `shouldBe` Just (fromEpochSecond 100)
+    nodeId (got_ns V.! 1) `shouldBe` "n2"
+    isOnBoundary (got_ns V.! 1) `shouldBe` False
+    nodeTimestamp (got_ns V.! 1) `shouldBe` Just (fromEpochSecond 150)
+    nodeId (got_ns V.! 2) `shouldBe` "n3"
+    isOnBoundary (got_ns V.! 2) `shouldBe` False
+    nodeTimestamp (got_ns V.! 2) `shouldBe` Just (fromEpochSecond 100)
+    V.length got_ns `shouldBe` 3
+    linkNodeTuple (got_ls V.! 0) `shouldBe` ("n1", "n2")
+    isDirected (got_ls V.! 0) `shouldBe` True
+    linkTimestamp (got_ls V.! 0) `shouldBe` fromEpochSecond 150
+    linkNodeTuple (got_ls V.! 1) `shouldBe` ("n2", "n3")
+    isDirected (got_ls V.! 1) `shouldBe` False
+    linkTimestamp (got_ls V.! 1) `shouldBe` fromEpochSecond 150
+    linkNodeTuple (got_ls V.! 2) `shouldBe` ("n3", "n1")
+    isDirected (got_ls V.! 2) `shouldBe` True
+    linkTimestamp (got_ls V.! 2) `shouldBe` fromEpochSecond 100
+  specify "multiple links between two nodes" $ withSpider $ \spider -> do
     True `shouldBe` False
-    -- TODO: Come to think of it, in order to make multiple links
-    -- between the same pair of nodes, we need concept of ports. Link
-    -- attributes do not help, because they are not used for
-    -- LinkID. One problem about port type is that the type () is
-    -- difficult for empty port type, because `ToJSON ()` encodes it
-    -- to [] (empty array). Extending Node ID with port ID is not so
-    -- useful, because network connectivity of the snapshot graph is
-    -- not maintained. Or we can make use of aggregation mechanism??
-    -- Maybe that will be the easiest way.
 
 
 -- TODO: how linkState relates to the property of SnapshotLink ?
