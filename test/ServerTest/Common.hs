@@ -6,10 +6,12 @@ module ServerTest.Common
          toSortedList,
          sortSnapshotElements,
          AText(..),
-         AInt(..)
+         AInt(..),
+         APorts(..)
        ) where
 
 import Control.Applicative ((<$>))
+import Control.Category ((<<<))
 import Control.Exception.Safe (bracket, withException)
 import Data.Greskell (parseOneValue, gProperty, newBind)
 import Data.List (sort)
@@ -78,3 +80,20 @@ instance LinkAttributes AInt where
   writeLinkAttributes (AInt n) = gProperty "integer" <$> newBind n
   parseLinkAttributes ps = AInt <$> parseOneValue "integer" ps
 
+
+-- | Pair of ports.
+data APorts =
+  APorts
+  { apSource :: Text,
+    apDestination :: Text
+  }
+  deriving (Show,Eq,Ord)
+
+instance LinkAttributes APorts where
+  writeLinkAttributes ap = do
+    writeSource <- gProperty "source_port" <$> newBind (apSource ap)
+    writeDest <- gProperty "destination_port" <$> newBind (apDestination ap)
+    return (writeDest <<< writeSource)
+  parseLinkAttributes ps = APorts
+                           <$> parseOneValue "source_port" ps
+                           <*> parseOneValue "destination_port" ps

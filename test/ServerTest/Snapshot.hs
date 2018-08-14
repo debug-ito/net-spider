@@ -5,6 +5,7 @@ import Control.Exception.Safe (withException)
 import Control.Monad (mapM_)
 import Data.Aeson (Value(..))
 import qualified Data.HashMap.Strict as HM
+import Data.List (sortOn)
 import Data.Monoid ((<>), mempty)
 import Data.Text (Text, unpack, pack)
 import qualified Data.Text.IO as TIO
@@ -16,8 +17,8 @@ import System.IO (stderr)
 import Test.Hspec
 
 import ServerTest.Common
-  ( withServer, withSpider, toSortedList, sortSnapshotElements,
-    AText(..)
+  ( withServer, withSpider, withSpider', toSortedList, sortSnapshotElements,
+    AText(..), APorts(..)
   )
 
 import NetSpider.Found
@@ -30,7 +31,8 @@ import NetSpider.Snapshot
   )
 import qualified NetSpider.Snapshot as S (nodeAttributes, linkAttributes)
 import NetSpider.Spider
-  ( Spider, addFoundNode, getLatestSnapshot
+  ( Spider, addFoundNode, getLatestSnapshot,
+    defConfig, Config(subgroupSnapshotLinkSamples), subgroupByLinkAttributes
   )
 import NetSpider.Timestamp (fromEpochSecond)
 
@@ -349,12 +351,74 @@ spec_getLatestSnapshot = withServer $ describe "getLatestSnapshot" $ do
     linkNodeTuple (got_ls V.! 2) `shouldBe` ("n3", "n1")
     isDirected (got_ls V.! 2) `shouldBe` True
     linkTimestamp (got_ls V.! 2) `shouldBe` fromEpochSecond 100
-  specify "multiple links between two nodes" $ withSpider $ \spider -> do
-    True `shouldBe` False
+  let confWithAPorts :: Config Text () APorts
+      confWithAPorts = defConfig { subgroupSnapshotLinkSamples = subgroupByLinkAttributes id
+                                 }
+  specify "multiple links between two nodes" $ withSpider' confWithAPorts $ \spider -> do
+    let fns :: [FoundNode Text () APorts]
+        fns = [ FoundNode
+                { subjectNode = "n1",
+                  observationTime = fromEpochSecond 200,
+                  nodeAttributes = (),
+                  neighborLinks = V.fromList
+                                  [ FoundLink
+                                    { targetNode = "n2",
+                                      linkState = LinkToTarget,
+                                      linkAttributes = APorts "p4" "p8"
+                                    },
+                                    FoundLink
+                                    { targetNode = "n2",
+                                      linkState = LinkToTarget,
+                                      linkAttributes = APorts "p3" "p6"
+                                    }
+                                  ]
+                },
+                FoundNode
+                { subjectNode = "n2",
+                  observationTime = fromEpochSecond 100,
+                  nodeAttributes = (),
+                  neighborLinks = V.fromList
+                                  [ FoundLink
+                                    { targetNode = "n1",
+                                      linkState = LinkToSubject,
+                                      linkAttributes = APorts "p3" "p6"
+                                    },
+                                    FoundLink
+                                    { targetNode = "n1",
+                                      linkState = LinkToSubject,
+                                      linkAttributes = APorts "p5" "p10"
+                                    },
+                                    FoundLink
+                                    { targetNode = "n1",
+                                      linkState = LinkToSubject,
+                                      linkAttributes = APorts "p4" "p8"
+                                    }
+                                  ]
+                }
+              ]
+    mapM_ (addFoundNode spider) fns
+    (got_ns, got_ls_v) <- fmap sortSnapshotElements $ getLatestSnapshot spider "n1"
+    nodeId (got_ns V.! 0) `shouldBe` "n1"
+    nodeId (got_ns V.! 1) `shouldBe` "n2"
+    V.length got_ns `shouldBe` 2
+    let got_ls = sortOn (\l -> (linkNodeTuple l, S.linkAttributes l)) $ V.toList got_ls_v
+    linkNodeTuple (got_ls !! 0) `shouldBe` ("n1", "n2")
+    S.linkAttributes (got_ls !! 0) `shouldBe` APorts "p3" "p6"
+    linkTimestamp (got_ls !! 0) `shouldBe` fromEpochSecond 200
+    linkNodeTuple (got_ls !! 1) `shouldBe` ("n1", "n2")
+    S.linkAttributes (got_ls !! 1) `shouldBe` APorts "p4" "p8"
+    linkTimestamp (got_ls !! 1) `shouldBe` fromEpochSecond 200
+    linkNodeTuple (got_ls !! 2) `shouldBe` ("n1", "n2")
+    S.linkAttributes (got_ls !! 2) `shouldBe` APorts "p5" "p10"
+    linkTimestamp (got_ls !! 2) `shouldBe` fromEpochSecond 100
+    length got_ls `shouldBe` 3
 
 
 -- TODO: how linkState relates to the property of SnapshotLink ?
--- especially Bidirectional links?
+-- especially Bidirectional links? -> important thing is that if the
+-- link is Bidirectional, (source, destination) of snapshot link is
+-- always (subject, target).
+
 
 debugShowE :: IO a -> IO a
 debugShowE act = withException act showSubmitException
