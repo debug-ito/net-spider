@@ -8,13 +8,18 @@
 module NetSpider.Spider.Internal.Type
        ( Spider(..),
          Config(..),
-         defConfig
+         defConfig,
+         SnapshotLinkID(..),
+         SnapshotLinkSample(..)
        ) where
 
+import Data.Hashable (Hashable(hashWithSalt))
 import Data.Greskell (Key)
 import qualified Network.Greskell.WebSocket as Gr
 
+import NetSpider.Found (LinkState(..))
 import NetSpider.Graph (VNode)
+import NetSpider.Timestamp (Timestamp)
 
 -- | An IO agent of the NetSpider database.
 --
@@ -49,3 +54,45 @@ defConfig =
     wsPort = 8182,
     nodeIdKey = "@node_id"
   }
+
+
+-- | Identitfy of link while making the snapshot graph.
+--
+-- 'SnapshotLinkID' is the unordered pair of nodes. 'Eq', 'Ord' and
+-- 'Hashable' instances treat 'SnapshotLinkID's that have subject and
+-- target nodes swapped as equivalent.
+data SnapshotLinkID n =
+  SnapshotLinkID
+  { sliSubjectNode :: !n,
+    sliTargetNode :: !n
+  }
+  deriving (Show)
+
+sortedLinkID :: Ord n => SnapshotLinkID n -> (n, n)
+sortedLinkID lid = if sn <= tn
+                   then (sn, tn)
+                   else (tn, sn)
+  where
+    sn = sliSubjectNode lid
+    tn = sliTargetNode lid
+
+instance Ord n => Eq (SnapshotLinkID n) where
+  r == l = sortedLinkID r == sortedLinkID l
+
+instance Ord n => Ord (SnapshotLinkID n) where
+  compare r l = compare (sortedLinkID r) (sortedLinkID l)
+
+instance (Ord n, Hashable n) => Hashable (SnapshotLinkID n) where
+  hashWithSalt s lid = hashWithSalt s $ sortedLinkID lid
+
+
+-- | Observation sample of a link while making the snapshot graph.
+data SnapshotLinkSample n la =
+  SnapshotLinkSample
+  { slsLinkId :: !(SnapshotLinkID n),
+    slsLinkState :: !LinkState,
+    slsTimestamp :: !Timestamp,
+    slsLinkAttributes :: !la
+  }
+  deriving (Show,Eq)
+

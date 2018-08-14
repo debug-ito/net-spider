@@ -28,7 +28,7 @@ import Data.Greskell
     Binder, ToGreskell(GreskellReturn), AsIterator(IteratorItem), FromGraphSON,
     liftWalk, gLimit, gIdentity
   )
-import Data.Hashable (Hashable(hashWithSalt))
+import Data.Hashable (Hashable)
 import Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HM
 import Data.HashSet (HashSet)
@@ -48,12 +48,14 @@ import NetSpider.Graph.Internal (VFoundNode(..), EFinds(..))
 import NetSpider.Found (FoundNode(..), FoundLink(..), LinkState(..))
 import NetSpider.Snapshot (SnapshotElement)
 import NetSpider.Snapshot.Internal (SnapshotNode(..), SnapshotLink(..))
-import NetSpider.Timestamp (Timestamp(..))
 import NetSpider.Spider.Internal.Graph
   ( gMakeFoundNode, gAllNodes, gHasNodeID, gHasNodeEID, gNodeEID, gNodeID, gMakeNode, gClearAll,
     gLatestFoundNode, gSelectFoundNode, gFinds, gHasFoundNodeEID, gAllFoundNode
   )
-import NetSpider.Spider.Internal.Type (Spider(..), Config(..), defConfig)
+import NetSpider.Spider.Internal.Type
+  ( Spider(..), Config(..), defConfig,
+    SnapshotLinkID(..), SnapshotLinkSample(..)
+  )
 
 -- | Connect to the WebSocket endpoint of Tinkerpop Gremlin Server
 -- that hosts the NetSpider database.
@@ -138,6 +140,11 @@ getLatestSnapshot spider start_nid = do
   -- print =<< readIORef ref_state
   fmap makeSnapshot $ readIORef ref_state
 
+-- TODO: We can create much more complex function to query snapshot
+-- graphs, but at least we need 'getLatestSnapshot'.
+
+
+
 recurseVisitNodesForSnapshot :: (ToJSON n, Ord n, Hashable n, FromGraphSON n, LinkAttributes la, NodeAttributes na)
                              => Spider n na la
                              -> IORef (SnapshotState n na la)
@@ -217,48 +224,6 @@ tryGetNodeID :: FromGraphSON n => Spider n na la -> EID -> IO (Maybe n)
 tryGetNodeID spider node_eid = fmap vToMaybe $ Gr.slurpResults =<< submitB spider binder
   where
     binder = gNodeID spider <$.> gHasNodeEID node_eid <*.> pure gAllNodes
-
--- We can create much more complex function to query snapshot graphs,
--- but at least we need 'getLatestSnapshot'.
-
--- | Identitfy of link while making the snapshot graph.
---
--- 'SnapshotLinkID' is the unordered pair of nodes. 'Eq', 'Ord' and
--- 'Hashable' instances treat 'SnapshotLinkID's that have subject and
--- target nodes swapped as equivalent.
-data SnapshotLinkID n =
-  SnapshotLinkID
-  { sliSubjectNode :: !n,
-    sliTargetNode :: !n
-  }
-  deriving (Show)
-
-sortedLinkID :: Ord n => SnapshotLinkID n -> (n, n)
-sortedLinkID lid = if sn <= tn
-                   then (sn, tn)
-                   else (tn, sn)
-  where
-    sn = sliSubjectNode lid
-    tn = sliTargetNode lid
-
-instance Ord n => Eq (SnapshotLinkID n) where
-  r == l = sortedLinkID r == sortedLinkID l
-
-instance Ord n => Ord (SnapshotLinkID n) where
-  compare r l = compare (sortedLinkID r) (sortedLinkID l)
-
-instance (Ord n, Hashable n) => Hashable (SnapshotLinkID n) where
-  hashWithSalt s lid = hashWithSalt s $ sortedLinkID lid
-
--- | Observation sample of a link while making the snapshot graph.
-data SnapshotLinkSample n la =
-  SnapshotLinkSample
-  { slsLinkId :: !(SnapshotLinkID n),
-    slsLinkState :: !LinkState,
-    slsTimestamp :: !Timestamp,
-    slsLinkAttributes :: !la
-  }
-  deriving (Show,Eq)
 
 -- | The state kept while making the snapshot graph.
 data SnapshotState n na la =
