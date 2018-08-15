@@ -48,6 +48,18 @@ By putting the neighbor information to net-spider, it connects those information
 
 ## Basic usage
 
+To use net-spider, first you have to set up Tinkerpop Gremlin Server and its underlying graph database.
+
+For example if you use [JanusGraph](http://janusgraph.org/), you can start Gremlin Server with
+
+    $ ./bin/janusgraph.sh start
+
+By default, it accepts WebSocket connections at port 8182.
+
+Then in your application, connect to the server and get `Spider` object.
+
+
+
 
 ## Node and link attributes
 
