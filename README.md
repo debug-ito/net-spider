@@ -2,7 +2,7 @@
 
 **This is still work in progress.**
 
-net-spider is a graph database middleware to maintain a time-varying graph. It stores history of local findings, and creates a snapshot graph at a specific time in the past.
+net-spider is a graph database middleware to maintain a time-varying graph. It stores history of local findings, and creates a snapshot graph at specific time in the past.
 
 The architecture of net-spider is like:
 
@@ -23,7 +23,7 @@ The architecture of net-spider is like:
     | (history graph) |
     +-----------------+
 
-As input, net-spider takes local findings of the time-varying graph. A local finding is a local state of a node observed at a specific time.
+As input, net-spider takes local findings of the time-varying graph. A local finding is a local state of a node observed at specific time.
 
 All local findings are stored in the graph database with timestamps. So the database stores the history of the time-varying graph (history graph).
 
@@ -34,9 +34,20 @@ Maintaining the graph database is delegated to [Tinkerpop Gremlin Server](http:/
 
 ## Use case
 
-## The input
+Suppose you have a network of Cisco switches in your organization.
 
-## The output
+The network is a graph where the switches are the nodes and the cables between them are links. Some members in your organization are allowed to add new switches to the network. Sometimes some switches and cables get out of order. So the graph is a time-varying graph.
+
+Now how can you keep track of the status of the network?
+
+The switches can use Cisco Discovery Protocol (CDP) and/or Link Layer Discovery Protocol (LLDP), so each switch maintains the list of its current neighbors. Those neighbor information can be retrieved by SNMP.
+
+The neighbor information retrieved by SNMP is a local finding. The information is obtained locally by a specific switch at specific time.
+
+By putting the neighbor information to net-spider, it connects those information together to construct the history graph of your network of switches. The history graph tells you not just the latest status of the network, but also its status in the past.
+
+## Basic usage
+
 
 ## Node and link attributes
 
