@@ -73,8 +73,6 @@ flag server-test
   manual: True
 
 test-suite server-test-suite
-  if !flag(server-test)
-    buildable: False
   type:                 exitcode-stdio-1.0
   default-language:     Haskell2010
   hs-source-dirs:       test
@@ -83,10 +81,13 @@ test-suite server-test-suite
   other-modules:        ServerTest.Common,
                         ServerTest.Snapshot,
                         ServerTest.Attributes
-  build-depends:        base, hspec, net-spider, vector, text, greskell-websocket, greskell,
-                        aeson, unordered-containers, text, hashable, time,
-                        safe-exceptions,
-                        hspec-need-env
+  if flag(server-test)
+    build-depends:        base, hspec, net-spider, vector, text, greskell-websocket, greskell,
+                          aeson, unordered-containers, text, hashable, time,
+                          safe-exceptions,
+                          hspec-need-env
+  else
+    buildable: False
 
 
 source-repository head
