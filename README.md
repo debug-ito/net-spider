@@ -58,7 +58,26 @@ By default, it accepts WebSocket connections at port 8182.
 
 Then in your application, connect to the server and get `Spider` object.
 
+```haskell basic
+{-# LANGUAGE OverloadedStrings #-}
+import Control.Exception.Safe (bracket)
+import Data.Text (Text)
+import Test.Hspec
+import Test.Hspec.NeedEnv (needEnvHostPort, EnvMode(Need))
 
+import NetSpider.Input (Spider, connectWS, close)
+
+
+main :: IO ()
+main = hspec $ specify "basic" $ do
+  (gremlin_server_host, gremlin_server_port) <- needEnvHostPort Need "NET_SPIDER_TEST"
+  bracket (connectWS gremlin_server_host gremlin_server_port) close $ doWithSpider
+
+doWithSpider :: Spider Text () () -> IO ()
+doWithSpider _ = True `shouldBe` False -- TODO
+```
+
+Use `connectWS` function to get `Spider` object, and `close` function to close it. We recommend using `bracket`.
 
 
 ## Node and link attributes

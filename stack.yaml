@@ -35,6 +35,7 @@ resolver: lts-10.8
 #  - wai
 packages:
 - net-spider
+- test-readme
 
 # Dependency packages to be pulled from upstream that are not in the resolver
 # using the same syntax as the packages field.
