@@ -65,19 +65,32 @@ import Data.Text (Text)
 import Test.Hspec
 import Test.Hspec.NeedEnv (needEnvHostPort, EnvMode(Need))
 
-import NetSpider.Input (Spider, connectWS, close)
+import NetSpider.Input
+  (Spider, connectWS, close, FoundNode(..), fromEpochSecond, addFoundNode, clearAll)
 
 
 main :: IO ()
 main = hspec $ specify "basic" $ do
   (gremlin_server_host, gremlin_server_port) <- needEnvHostPort Need "NET_SPIDER_TEST"
   bracket (connectWS gremlin_server_host gremlin_server_port) close $ doWithSpider
-
-doWithSpider :: Spider Text () () -> IO ()
-doWithSpider _ = True `shouldBe` False -- TODO
 ```
 
 Use `connectWS` function to get `Spider` object, and `close` function to close it. We recommend using `bracket`.
+
+To input a local finding, use `addFoundNode` function.
+
+```haskell basic
+doWithSpider :: Spider Text () () -> IO ()
+doWithSpider spider = do
+  let finding = FoundNode
+                { subjectNode = "switch1.example.com",
+                  observationTime = fromEpochSecond 1534769618,
+                  neighborLinks = mempty,  -- TODO
+                  nodeAttributes = ()
+                }
+  clearAll spider -- for testing
+  addFoundNode spider finding
+```
 
 
 ## Node and link attributes
