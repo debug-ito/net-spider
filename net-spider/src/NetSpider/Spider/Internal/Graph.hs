@@ -95,7 +95,7 @@ gHasFoundNodeEID eid = do
 
 gMakeFoundNode :: (LinkAttributes la, NodeAttributes na)
                => EID -- ^ subject node EID
-               -> Vector (FoundLink n la, EID) -- ^ (link, target node EID)
+               -> [(FoundLink n la, EID)] -- ^ (link, target node EID)
                -> FoundNode n na la
                -> Binder (GTraversal SideEffect () (VFoundNode na))
 gMakeFoundNode subject_vid link_pairs fnode = 

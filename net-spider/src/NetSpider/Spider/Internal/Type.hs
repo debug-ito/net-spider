@@ -16,12 +16,11 @@ module NetSpider.Spider.Internal.Type
 
 import Data.Hashable (Hashable(hashWithSalt))
 import Data.Greskell (Key)
-import Data.Vector (Vector)
+import GHC.Exts (groupWith)
 import qualified Network.Greskell.WebSocket as Gr
 
 import NetSpider.Found (LinkState(..))
 import NetSpider.Graph (VNode)
-import NetSpider.Util (groupWith)
 import NetSpider.Timestamp (Timestamp)
 
 -- | An IO agent of the NetSpider database.
@@ -47,7 +46,7 @@ data Config n na la =
     nodeIdKey :: Key VNode n,
     -- ^ Name of graph property that stores the node ID. Default:
     -- \"@node_id\".
-    subgroupSnapshotLinkSamples :: Vector (SnapshotLinkSample n la) -> Vector (Vector (SnapshotLinkSample n la))
+    subgroupSnapshotLinkSamples :: [SnapshotLinkSample n la] -> [[SnapshotLinkSample n la]]
     -- ^ Function to partition 'SnapshotLinkSample's into
     -- subgroups. This function is used by the 'Spider' when it makes
     -- the snapshot graph.
@@ -73,7 +72,7 @@ defConfig =
 -- | Partition 'SnapshotLinkSample's using their link attributes. You
 -- can use this function for 'subgroupSnapshotLinkSamples' config
 -- field.
-subgroupByLinkAttributes :: Ord b => (la -> b) -> Vector (SnapshotLinkSample n la) -> Vector (Vector (SnapshotLinkSample n la))
+subgroupByLinkAttributes :: Ord b => (la -> b) -> [SnapshotLinkSample n la] -> [[SnapshotLinkSample n la]]
 subgroupByLinkAttributes getKey = groupWith (getKey . slsLinkAttributes)
 
 -- | Identitfy of link while making the snapshot graph.

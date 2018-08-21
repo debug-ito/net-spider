@@ -30,7 +30,7 @@ module NetSpider.Spider
 import Control.Exception.Safe (throwString)
 import Control.Monad (void)
 import Data.Aeson (ToJSON)
-import Data.Foldable (foldr')
+import Data.Foldable (foldr', toList)
 import Data.Greskell
   ( runBinder, ($.), (<$.>), (<*.>),
     Binder, ToGreskell(GreskellReturn), AsIterator(IteratorItem), FromGraphSON,
@@ -42,10 +42,11 @@ import qualified Data.HashMap.Strict as HM
 import Data.HashSet (HashSet)
 import qualified Data.HashSet as HS
 import Data.IORef (IORef, modifyIORef, newIORef, readIORef, atomicModifyIORef')
-import Data.Maybe (catMaybes)
+import Data.Maybe (catMaybes, mapMaybe)
 import Data.Monoid (mempty)
 import Data.Vector (Vector)
 import qualified Data.Vector as V
+import Data.Sequence (Seq, (|>), viewl, ViewL(..))
 import Network.Greskell.WebSocket
   ( Host, Port
   )
@@ -109,10 +110,10 @@ addFoundNode spider found_node = do
       return (link, target_vid)
     makeFoundNodeVertex subject_vid link_pairs =
       Gr.drainResults =<< submitB spider (fmap void $ gMakeFoundNode subject_vid link_pairs found_node)
-  
+
 vToMaybe :: Vector a -> Maybe a
 vToMaybe v = v V.!? 0
-
+  
 getNode :: (ToJSON n) => Spider n na la -> n -> IO (Maybe EID)
 getNode spider nid = fmap vToMaybe $ Gr.slurpResults =<< submitB spider gt
   where
@@ -141,7 +142,7 @@ getOrMakeNode spider nid = do
 getLatestSnapshot :: (FromGraphSON n, ToJSON n, Ord n, Hashable n, LinkAttributes la, NodeAttributes na)
                   => Spider n na la
                   -> n -- ^ ID of the node where it starts traversing.
-                  -> IO (Vector (SnapshotElement n na la))
+                  -> IO [SnapshotElement n na la]
 getLatestSnapshot spider start_nid = do
   ref_state <- newIORef $ initSnapshotState $ return start_nid
   recurseVisitNodesForSnapshot spider ref_state
@@ -185,7 +186,7 @@ visitNodeForSnapshot spider ref_state visit_nid = do
       Nothing -> return ()
       Just next_found -> do
         link_samples <- makeSnapshotLinkSamples spider visit_nid next_found
-        modifyIORef ref_state $ addSnapshotLinkSamples link_samples
+        modifyIORef ref_state $ addSnapshotLinkSamples $ toList link_samples
   where
     markAsVisited mvfn = modifyIORef ref_state $ addVisitedNode visit_nid mvfn
     getVisitedNodeEID = fmap vToMaybe $ Gr.slurpResults =<< submitB spider binder
@@ -236,11 +237,11 @@ tryGetNodeID spider node_eid = fmap vToMaybe $ Gr.slurpResults =<< submitB spide
 -- | The state kept while making the snapshot graph.
 data SnapshotState n na la =
   SnapshotState
-  { ssUnvisitedNodes :: !(Vector n),
+  { ssUnvisitedNodes :: !(Seq n), -- TODO: maybe we can wrap the type as Queue.
     ssVisitedNodes :: !(HashMap n (Maybe (VFoundNode na))),
     -- ^ If the visited node has no observation yet, its node
     -- attributes 'Nothing'.
-    ssVisitedLinks :: !(HashMap (SnapshotLinkID n) (Vector (SnapshotLinkSample n la)))
+    ssVisitedLinks :: !(HashMap (SnapshotLinkID n) [SnapshotLinkSample n la])
   }
   deriving (Show)
 
@@ -251,7 +252,7 @@ emptySnapshotState = SnapshotState
                        ssVisitedLinks = mempty
                      }
 
-initSnapshotState :: (Ord n, Hashable n) => Vector n -> SnapshotState n na la
+initSnapshotState :: (Ord n, Hashable n) => Seq n -> SnapshotState n na la
 initSnapshotState init_unvisited_nodes = emptySnapshotState { ssUnvisitedNodes = init_unvisited_nodes }
 
 addVisitedNode :: (Eq n, Hashable n) => n -> Maybe (VFoundNode na) -> SnapshotState n na la -> SnapshotState n na la
@@ -260,53 +261,52 @@ addVisitedNode nid mv state = state { ssVisitedNodes = HM.insert nid mv $ ssVisi
 addSnapshotLinkSample :: (Ord n, Hashable n)
                       => SnapshotLinkSample n la -> SnapshotState n na la -> SnapshotState n na la
 addSnapshotLinkSample ls state = state { ssVisitedLinks = updatedLinks,
-                                     ssUnvisitedNodes = updatedUnvisited
-                                   }
+                                         ssUnvisitedNodes = updatedUnvisited
+                                       }
   where
     link_id = slsLinkId ls
-    updatedLinks = HM.insertWith (V.++) link_id (return ls) $ ssVisitedLinks state
+    updatedLinks = HM.insertWith (++) link_id (return ls) $ ssVisitedLinks state
     target_nid = sliTargetNode link_id
     target_already_visited = HM.member target_nid $ ssVisitedNodes state
     updatedUnvisited = if target_already_visited
                        then ssUnvisitedNodes state
-                       else V.snoc (ssUnvisitedNodes state) target_nid
+                       else ssUnvisitedNodes state |> target_nid
 
 addSnapshotLinkSamples :: (Ord n, Hashable n)
-                       => Vector (SnapshotLinkSample n la) -> SnapshotState n na la -> SnapshotState n na la
+                       => [SnapshotLinkSample n la] -> SnapshotState n na la -> SnapshotState n na la
 addSnapshotLinkSamples links orig_state = foldr' addSnapshotLinkSample orig_state links
 
-popHeadV :: Vector a -> (Maybe a, Vector a)
-popHeadV v = let mh = v V.!? 0
-             in case mh of
-                 Just _ -> (mh, V.tail v)
-                 Nothing -> (mh, v)
+popHeadS :: Seq a -> (Maybe a, Seq a)
+popHeadS s = case viewl s of
+              EmptyL -> (Nothing, s)
+              (h :< rest) -> (Just h, rest)
 
 popUnvisitedNode :: SnapshotState n na la -> (SnapshotState n na la, Maybe n)
 popUnvisitedNode state = (updated, popped)
   where
     updated = state { ssUnvisitedNodes = updatedUnvisited }
-    (popped, updatedUnvisited) = popHeadV $ ssUnvisitedNodes state
+    (popped, updatedUnvisited) = popHeadS $ ssUnvisitedNodes state
 
-makeSnapshot :: Spider n na la -> SnapshotState n na la -> Vector (SnapshotElement n na la)
-makeSnapshot spider state = (fmap Left nodes) V.++ (fmap Right links)
+makeSnapshot :: Spider n na la -> SnapshotState n na la -> [SnapshotElement n na la]
+makeSnapshot spider state = (fmap Left nodes) ++ (fmap Right links)
   where
-    nodes = visited_nodes V.++ boundary_nodes
+    nodes = visited_nodes ++ boundary_nodes
     makeSnapshotNode on_boundary nid mvfn =
       SnapshotNode { _nodeId = nid,
                      _isOnBoundary = on_boundary,
                      _nodeTimestamp = fmap vfnTimestamp $ mvfn,
                      _nodeAttributes = fmap vfnAttributes $ mvfn
                    }
-    visited_nodes = foldr' V.cons mempty $ map (uncurry $ makeSnapshotNode False) $ HM.toList $ ssVisitedNodes state
-    boundary_nodes = fmap (\nid -> makeSnapshotNode True nid Nothing) $ ssUnvisitedNodes state
+    visited_nodes = map (uncurry $ makeSnapshotNode False) $ HM.toList $ ssVisitedNodes state
+    boundary_nodes = map (\nid -> makeSnapshotNode True nid Nothing) $ toList $ ssUnvisitedNodes state
     links = mconcat $ map (makeSnapshotLinks spider) $ HM.elems $ ssVisitedLinks state
 
 -- | The input 'SnapshotLinkSample's must be for the equivalent
 -- 'SnapshotLinkID'. The output is list of 'SnapshotLink's, each of
 -- which corresponds to a subgroup of 'SnapshotLinkSample's.
-makeSnapshotLinks :: Spider n na la -> Vector (SnapshotLinkSample n la) -> Vector (SnapshotLink n la)
+makeSnapshotLinks :: Spider n na la -> [SnapshotLinkSample n la] -> [SnapshotLink n la]
 makeSnapshotLinks spider link_samples =
-  V.mapMaybe makeSnapshotLink $ makeSubgroups link_samples
+  mapMaybe makeSnapshotLink $ makeSubgroups link_samples
   where
     makeSubgroups = subgroupSnapshotLinkSamples $ spiderConfig spider
     makeSnapshotLink link_subgroup = do
@@ -328,13 +328,11 @@ makeSnapshotLinks spider link_samples =
 
 -- | Get the 'SnapshotLinkSample' that has the latest (biggest)
 -- timestamp.
-latestSnapshotLinkSample :: Vector (SnapshotLinkSample n la) -> Maybe (SnapshotLinkSample n la)
-latestSnapshotLinkSample samples = let (mhead, samples_tail) = popHeadV samples
-                                   in fmap (aggregate samples_tail) mhead
+latestSnapshotLinkSample :: [SnapshotLinkSample n la] -> Maybe (SnapshotLinkSample n la)
+latestSnapshotLinkSample [] = Nothing
+latestSnapshotLinkSample (sample_head : samples_tail) = Just $ foldr' f sample_head samples_tail
   where
-    aggregate samples_tail sample_head = foldr' f sample_head samples_tail
-      where
-        f :: SnapshotLinkSample n la -> SnapshotLinkSample n la -> SnapshotLinkSample n la
-        f ls rs = if slsTimestamp ls >= slsTimestamp rs
-                  then ls
-                  else rs
+    f :: SnapshotLinkSample n la -> SnapshotLinkSample n la -> SnapshotLinkSample n la
+    f ls rs = if slsTimestamp ls >= slsTimestamp rs
+              then ls
+              else rs

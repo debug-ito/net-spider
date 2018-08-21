@@ -15,7 +15,6 @@ module NetSpider.Found
 
 import Data.Greskell (FromGraphSON(..))
 import Data.Text (Text, unpack)
-import Data.Vector (Vector)
 
 import NetSpider.Timestamp (Timestamp)
 
@@ -77,7 +76,7 @@ data FoundNode n na la =
   FoundNode
   { subjectNode :: !n,
     observationTime :: !Timestamp,
-    neighborLinks :: !(Vector (FoundLink n la)),
+    neighborLinks :: ![FoundLink n la],
     nodeAttributes :: !na
   }
   deriving (Show,Eq)
