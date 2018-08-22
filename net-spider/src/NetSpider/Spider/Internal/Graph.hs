@@ -42,7 +42,6 @@ import Data.Int (Int64)
 import Data.Text (Text, pack)
 import Data.Time.LocalTime (TimeZone(..))
 import Data.Traversable (traverse)
-import Data.Vector (Vector)
 
 import NetSpider.Graph
   ( EID, VNode, VFoundNode, EFinds,

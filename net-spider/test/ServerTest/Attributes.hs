@@ -2,6 +2,7 @@
 module ServerTest.Attributes (main,spec) where
 
 import Data.Aeson (ToJSON)
+import Data.List (sort)
 import Data.Hashable (Hashable)
 import Data.Greskell
   ( FromGraphSON,
@@ -12,7 +13,7 @@ import Data.Time.LocalTime (TimeZone(..))
 import Test.Hspec
 
 import ServerTest.Common
-  ( withServer, withSpider', withSpider, toSortedList,
+  ( withServer, withSpider', withSpider,
     AText(..), AInt(..)
   )
 
@@ -50,7 +51,7 @@ typeTestCase test_label conf n1_id n2_id node_attrs link_attrs =
                             linkAttributes = link_attrs
                           }
     addFoundNode spider n1
-    got <- fmap toSortedList $ getLatestSnapshot spider n1_id
+    got <- fmap sort $ getLatestSnapshot spider n1_id
     let (got_n1, got_n2, got_l) = case got of
           [Left a, Left b, Right c] -> (a,b,c)
           _ -> error ("Unexpected pattern: got = " ++ show got)
@@ -89,7 +90,7 @@ timestampTestCase label ts = specify label $ withSpider $ \spider -> do
                              }
            }
   addFoundNode spider fn
-  got <- fmap toSortedList $ getLatestSnapshot spider "n1"
+  got <- fmap sort $ getLatestSnapshot spider "n1"
   let (got_n1, got_n2, got_l) = case got of
         [Left a, Left b, Right c] -> (a,b,c)
         _ -> error ("Unexpected pattern: got = " ++ show got)

@@ -3,7 +3,6 @@ module ServerTest.Common
        ( withServer,
          withSpider,
          withSpider',
-         toSortedList,
          sortSnapshotElements,
          AText(..),
          AInt(..),
@@ -46,16 +45,14 @@ withSpider' orig_conf action (host, port) = bracket (connectWith conf) close $ \
                          wsPort = port
                        }
 
-toSortedList :: Ord a => Vector a -> [a]
-toSortedList = sort . V.toList
-
 sortSnapshotElements :: (Ord n, Eq na, Eq la)
-                     => Vector (SnapshotElement n na la)
+                     => [SnapshotElement n na la]
                      -> (Vector (SnapshotNode n na), Vector (SnapshotLink n la))
-sortSnapshotElements es = foldr f mempty $ toSortedList es
+sortSnapshotElements es = toVs $ foldr f mempty $ sort es
   where
-    f (Left n)  (ns, ls) = (V.cons n ns, ls)
-    f (Right l) (ns, ls) = (ns, V.cons l ls)
+    f (Left n)  (ns, ls) = (n : ns, ls)
+    f (Right l) (ns, ls) = (ns,     l : ls)
+    toVs (ll, rl) = (V.fromList ll, V.fromList rl)
 
 
 newtype AText = AText Text

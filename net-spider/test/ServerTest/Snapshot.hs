@@ -5,7 +5,7 @@ import Control.Exception.Safe (withException)
 import Control.Monad (mapM_)
 import Data.Aeson (Value(..))
 import qualified Data.HashMap.Strict as HM
-import Data.List (sortOn)
+import Data.List (sortOn, sort)
 import Data.Monoid ((<>), mempty)
 import Data.Text (Text, unpack, pack)
 import qualified Data.Text.IO as TIO
@@ -17,7 +17,7 @@ import System.IO (stderr)
 import Test.Hspec
 
 import ServerTest.Common
-  ( withServer, withSpider, withSpider', toSortedList, sortSnapshotElements,
+  ( withServer, withSpider, withSpider', sortSnapshotElements,
     AText(..), APorts(..)
   )
 
@@ -61,7 +61,7 @@ spec_getLatestSnapshot :: Spec
 spec_getLatestSnapshot = withServer $ describe "getLatestSnapshot" $ do
   specify "one neighbor" $ withSpider $ \spider -> do
     makeOneNeighborExample spider
-    got <- debugShowE $ fmap toSortedList $ getLatestSnapshot spider "n1"
+    got <- debugShowE $ fmap sort $ getLatestSnapshot spider "n1"
     let (got_n1, got_n2, got_link) = case got of
           [Left a, Left b, Right c] -> (a, b, c)
           _ -> error ("Unexpected result: got = " ++ show got)
@@ -85,7 +85,7 @@ spec_getLatestSnapshot = withServer $ describe "getLatestSnapshot" $ do
                           nodeAttributes = ()
                         }
     addFoundNode spider nbs
-    got <- fmap toSortedList $ getLatestSnapshot spider "n1"
+    got <- fmap sort $ getLatestSnapshot spider "n1"
     let got_n1 = case got of
           [Left a] -> a
           _ -> error ("Unexpected result: got = " ++ show got)
@@ -118,7 +118,7 @@ spec_getLatestSnapshot = withServer $ describe "getLatestSnapshot" $ do
                            nodeAttributes = ()
                          }
     mapM_ (addFoundNode spider) [nbs1, nbs2]
-    got <- fmap toSortedList $ getLatestSnapshot spider "n1"
+    got <- fmap sort $ getLatestSnapshot spider "n1"
     let (got_n1, got_n2, got_l) = case got of
           [Left a, Left b, Right c] -> (a, b ,c)
           _ -> error ("Unexpected result: got = " ++ show got)
@@ -139,8 +139,7 @@ spec_getLatestSnapshot = withServer $ describe "getLatestSnapshot" $ do
         fns = [ FoundNode
                 { subjectNode = "n1",
                   observationTime = fromEpochSecond 200,
-                  neighborLinks = V.fromList
-                                  [ FoundLink
+                  neighborLinks = [ FoundLink
                                     { targetNode = "n2",
                                       linkState = LinkToTarget,
                                       linkAttributes = ()
@@ -171,7 +170,7 @@ spec_getLatestSnapshot = withServer $ describe "getLatestSnapshot" $ do
                 }
               ]
     mapM_ (addFoundNode spider) fns
-    got <- fmap toSortedList $ getLatestSnapshot spider "n1"
+    got <- fmap sort $ getLatestSnapshot spider "n1"
     let (got_n1, got_n2, got_n3, got_l12, got_l31) = case got of
           [Left g1, Left g2, Left g3, Right g4, Right g5] -> (g1, g2, g3, g4, g5)
           _ -> error ("Unexpected patter: got = " ++ show got)
@@ -225,8 +224,7 @@ spec_getLatestSnapshot = withServer $ describe "getLatestSnapshot" $ do
           FoundNode
           { subjectNode = sub_nid,
             observationTime = time,
-            neighborLinks = V.fromList
-                            [ FoundLink
+            neighborLinks = [ FoundLink
                               { targetNode = intToNodeId (node_i - 1),
                                 linkState = LinkToSubject,
                                 linkAttributes = AText (sub_nid <> " to prev")
@@ -286,8 +284,7 @@ spec_getLatestSnapshot = withServer $ describe "getLatestSnapshot" $ do
         fns = [ FoundNode
                 { subjectNode = "n1",
                   observationTime = fromEpochSecond 100,
-                  neighborLinks = V.fromList
-                                  [ FoundLink
+                  neighborLinks = [ FoundLink
                                     { targetNode = "n2",
                                       linkState = LinkToTarget,
                                       linkAttributes = ()
@@ -298,8 +295,7 @@ spec_getLatestSnapshot = withServer $ describe "getLatestSnapshot" $ do
                 FoundNode
                 { subjectNode = "n2",
                   observationTime = fromEpochSecond 150,
-                  neighborLinks = V.fromList
-                                  [ FoundLink
+                  neighborLinks = [ FoundLink
                                     { targetNode = "n1",
                                       linkState = LinkToSubject,
                                       linkAttributes = ()
@@ -315,8 +311,7 @@ spec_getLatestSnapshot = withServer $ describe "getLatestSnapshot" $ do
                 FoundNode
                 { subjectNode = "n3",
                   observationTime = fromEpochSecond 100,
-                  neighborLinks = V.fromList
-                                  [ FoundLink
+                  neighborLinks = [ FoundLink
                                     { targetNode = "n1",
                                       linkState = LinkToTarget,
                                       linkAttributes = ()
@@ -360,8 +355,7 @@ spec_getLatestSnapshot = withServer $ describe "getLatestSnapshot" $ do
                 { subjectNode = "n1",
                   observationTime = fromEpochSecond 200,
                   nodeAttributes = (),
-                  neighborLinks = V.fromList
-                                  [ FoundLink
+                  neighborLinks = [ FoundLink
                                     { targetNode = "n2",
                                       linkState = LinkToTarget,
                                       linkAttributes = APorts "p4" "p8"
@@ -377,8 +371,7 @@ spec_getLatestSnapshot = withServer $ describe "getLatestSnapshot" $ do
                 { subjectNode = "n2",
                   observationTime = fromEpochSecond 100,
                   nodeAttributes = (),
-                  neighborLinks = V.fromList
-                                  [ FoundLink
+                  neighborLinks = [ FoundLink
                                     { targetNode = "n1",
                                       linkState = LinkToSubject,
                                       linkAttributes = APorts "p3" "p6"
