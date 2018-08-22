@@ -66,7 +66,10 @@ import Test.Hspec
 import Test.Hspec.NeedEnv (needEnvHostPort, EnvMode(Need))
 
 import NetSpider.Input
-  (Spider, connectWS, close, FoundNode(..), fromEpochSecond, addFoundNode, clearAll)
+  ( Spider, connectWS, close,
+    FoundNode(..), FoundLink(..), LinkState(LinkBidirectional),
+    fromEpochSecond, addFoundNode, clearAll
+  )
 
 
 main :: IO ()
@@ -82,15 +85,61 @@ To input a local finding, use `addFoundNode` function.
 ```haskell basic
 doWithSpider :: Spider Text () () -> IO ()
 doWithSpider spider = do
-  let finding = FoundNode
-                { subjectNode = "switch1.example.com",
-                  observationTime = fromEpochSecond 1534769618,
-                  neighborLinks = mempty,  -- TODO
-                  nodeAttributes = ()
-                }
-  clearAll spider -- for testing
-  addFoundNode spider finding
+  let finding1 = FoundNode
+                 { subjectNode = "switch1.example.com",
+                   observationTime = fromEpochSecond 1534769618,
+                   neighborLinks = links1,
+                   nodeAttributes = ()
+                 }
+      links1 = [ FoundLink
+                 { targetNode = "switch2.example.com",
+                   linkState = LinkBidirectional,
+                   linkAttributes = ()
+                 },
+                 FoundLink
+                 { targetNode = "switch3.example.com",
+                   linkState = LinkBidirectional,
+                   linkAttributes = ()
+                 }
+               ]
+  clearAll spider -- Delete all data from the databse for testing
+  addFoundNode spider finding1
 ```
+
+A local finding is expressed as `FoundNode` type. In the above example, we input a local finding observed at the switch named "switch1.example.com". `FoundNode` includes the timestamp (`observationTime`) at which the local finding was observed, and list of neighbors (`neighborLinks`) adjacent to this node. These are what we would get via SNMP + CDP/LLDP.
+
+OK, let's observe the switch2 and input that local finding as well.
+
+```haskell basic
+  let finding2 = FoundNode
+                 { subjectNode = "switch2.example.com",
+                   observationTime = fromEpochSecond 1534770022,
+                   neighborLinks = links2,
+                   nodeAttributes = ()
+                 }
+      links2 = [ FoundLink
+                 { targetNode = "switch4.example.com",
+                   linkState = LinkBidirectional,
+                   linkAttributes = ()
+                 },
+                 FoundLink
+                 { targetNode = "switch1.example.com",
+                   linkState = LinkBidirectional,
+                   linkAttributes = ()
+                 }
+               ]
+  addFoundNode spider finding2
+```
+
+So, by combining these local findings, we can infer the network topology is like:
+
+```
+[switch1]---[switch2]---[switch4]
+    |
+[switch3]
+```
+
+The above graph can be obtained by `getLatestSnapshot` function. This function retrieves the snapshot graph that is supposed to be the latest state of the network.
 
 
 ## Node and link attributes
