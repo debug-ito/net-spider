@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 -- |
 -- Module: NetSpider.Found
--- Description: Found (observed) elements
+-- Description: Types about local findings
 -- Maintainer: Toshio Ito <debug.ito@gmail.com>
 --
 -- 
