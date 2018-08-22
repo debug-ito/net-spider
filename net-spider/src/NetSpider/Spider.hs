@@ -46,7 +46,6 @@ import Data.Maybe (catMaybes, mapMaybe)
 import Data.Monoid (mempty)
 import Data.Vector (Vector)
 import qualified Data.Vector as V
-import Data.Sequence (Seq, (|>), viewl, ViewL(..))
 import Network.Greskell.WebSocket
   ( Host, Port
   )
@@ -55,6 +54,7 @@ import qualified Network.Greskell.WebSocket as Gr
 import NetSpider.Graph (EID, LinkAttributes, NodeAttributes)
 import NetSpider.Graph.Internal (VFoundNode(..), EFinds(..))
 import NetSpider.Found (FoundNode(..), FoundLink(..), LinkState(..))
+import NetSpider.Queue (Queue, newQueue, popQueue, pushQueue)
 import NetSpider.Snapshot (SnapshotElement)
 import NetSpider.Snapshot.Internal (SnapshotNode(..), SnapshotLink(..))
 import NetSpider.Spider.Internal.Graph
@@ -237,7 +237,7 @@ tryGetNodeID spider node_eid = fmap vToMaybe $ Gr.slurpResults =<< submitB spide
 -- | The state kept while making the snapshot graph.
 data SnapshotState n na la =
   SnapshotState
-  { ssUnvisitedNodes :: !(Seq n), -- TODO: maybe we can wrap the type as Queue.
+  { ssUnvisitedNodes :: !(Queue n),
     ssVisitedNodes :: !(HashMap n (Maybe (VFoundNode na))),
     -- ^ If the visited node has no observation yet, its node
     -- attributes 'Nothing'.
@@ -252,8 +252,8 @@ emptySnapshotState = SnapshotState
                        ssVisitedLinks = mempty
                      }
 
-initSnapshotState :: (Ord n, Hashable n) => Seq n -> SnapshotState n na la
-initSnapshotState init_unvisited_nodes = emptySnapshotState { ssUnvisitedNodes = init_unvisited_nodes }
+initSnapshotState :: (Ord n, Hashable n) => [n] -> SnapshotState n na la
+initSnapshotState init_unvisited_nodes = emptySnapshotState { ssUnvisitedNodes = newQueue init_unvisited_nodes }
 
 addVisitedNode :: (Eq n, Hashable n) => n -> Maybe (VFoundNode na) -> SnapshotState n na la -> SnapshotState n na la
 addVisitedNode nid mv state = state { ssVisitedNodes = HM.insert nid mv $ ssVisitedNodes state }
@@ -270,22 +270,17 @@ addSnapshotLinkSample ls state = state { ssVisitedLinks = updatedLinks,
     target_already_visited = HM.member target_nid $ ssVisitedNodes state
     updatedUnvisited = if target_already_visited
                        then ssUnvisitedNodes state
-                       else ssUnvisitedNodes state |> target_nid
+                       else pushQueue target_nid $ ssUnvisitedNodes state
 
 addSnapshotLinkSamples :: (Ord n, Hashable n)
                        => [SnapshotLinkSample n la] -> SnapshotState n na la -> SnapshotState n na la
 addSnapshotLinkSamples links orig_state = foldr' addSnapshotLinkSample orig_state links
 
-popHeadS :: Seq a -> (Maybe a, Seq a)
-popHeadS s = case viewl s of
-              EmptyL -> (Nothing, s)
-              (h :< rest) -> (Just h, rest)
-
 popUnvisitedNode :: SnapshotState n na la -> (SnapshotState n na la, Maybe n)
 popUnvisitedNode state = (updated, popped)
   where
     updated = state { ssUnvisitedNodes = updatedUnvisited }
-    (popped, updatedUnvisited) = popHeadS $ ssUnvisitedNodes state
+    (popped, updatedUnvisited) = popQueue $ ssUnvisitedNodes state
 
 makeSnapshot :: Spider n na la -> SnapshotState n na la -> [SnapshotElement n na la]
 makeSnapshot spider state = (fmap Left nodes) ++ (fmap Right links)
