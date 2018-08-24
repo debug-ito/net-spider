@@ -21,6 +21,7 @@ import qualified Network.Greskell.WebSocket as Gr
 
 import NetSpider.Found (LinkState(..))
 import NetSpider.Graph (VNode)
+import NetSpider.Snapshot (SnapshotNode)
 import NetSpider.Timestamp (Timestamp)
 
 -- | An IO agent of the NetSpider database.
@@ -46,18 +47,33 @@ data Config n na la =
     nodeIdKey :: Key VNode n,
     -- ^ Name of graph property that stores the node ID. Default:
     -- \"@node_id\".
-    subgroupSnapshotLinkSamples :: [SnapshotLinkSample n la] -> [[SnapshotLinkSample n la]]
-    -- ^ Function to partition 'SnapshotLinkSample's into
-    -- subgroups. This function is used by the 'Spider' when it makes
-    -- the snapshot graph.
+    unifyLinkSamples :: SnapshotNode n na -> SnapshotNode n na -> [SnapshotLinkSample n la] -> [SnapshotLinkSample n la]
+    -- ^ The function to unify 'SnapshotLinkSample's collected for the
+    -- given pair of nodes and return 'SnapshotLinkSample' per
+    -- physical link. The returned 'SnapshotLinkSample's will be
+    -- directly converted to 'NetSpider.Snapshot.SnapshotLink's in the
+    -- snapshot graph.
     --
-    -- The input is the 'SnapshotLinkSample's collected for a single
-    -- pair of nodes. This function is supposed to partition them into
-    -- subgroups, where each subgroup represents a physical link. If
-    -- your network can have multiple physical links between the same
-    -- pair of nodes, you should customize this function.
+    -- This function has a number of important roles during
+    -- construction of the snapshot graph.
     --
-    -- Default: just return the input as the only subgroup.
+    -- - Because a link can be observed from both of its end nodes,
+    --   there can be multiple 'SnapshotLinkSample's for one physical
+    --   link. This function is supposed to return one reasonable link
+    --   sample for the physical link from those input link samples.
+    -- - There can be multiple physical links for a given pair of
+    --   nodes, but the 'Spider' has no way to distinguish them. So,
+    --   this function is supposed to distinguish
+    --   'SnapshotLinkSample's for different physical links, and
+    --   return multiple 'SnapshotLinkSample's, each of which
+    --   corresponds to a physical link.
+    -- - Sometimes a link is found by one end node but not found by
+    --   the other end node. Should 'Spider' treats the link is
+    --   available or not? This function is supposed to answer that
+    --   question.
+    --
+    -- TODO: Show default. Maybe this whole documentation should be
+    -- moved to another module..
   }
 
 defConfig :: Config n na la
