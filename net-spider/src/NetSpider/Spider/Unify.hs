@@ -14,14 +14,15 @@ module NetSpider.Spider.Unify
          unifyToMultiOn,
          -- * Building blocks
          latestSnapshotLinkSample,
-         partitionByLinkAttributes
+         partitionByLinkAttributes,
+         removeByNegativeFinding
        ) where
 
 import Data.Foldable (maximumBy)
 import Data.Function (on)
 import GHC.Exts (groupWith)
 
-import NetSpider.Snapshot (SnapshotNode)
+import NetSpider.Snapshot (SnapshotNode, nodeTimestamp)
 import NetSpider.Spider.Internal.Sample
   ( SnapshotLinkSample(..), SnapshotLinkID(..)
   )
@@ -52,8 +53,10 @@ type LinkSampleUnifier n na la = SnapshotNode n na -> SnapshotNode n na -> [Snap
 -- | Unify 'SnapshotLinkSamples's to one. This is the sensible unifier
 -- if there is at most one physical link for a given pair of nodes.
 unifyToOne :: LinkSampleUnifier n na la
-unifyToOne _ _ samples = maybe [] return $ latestSnapshotLinkSample samples
-  -- TODO: handle the case where the link is NOT observed by one of the end nodes.
+unifyToOne ln rn samples = removeByNegativeFinding ln
+                           $ removeByNegativeFinding rn
+                           $ maybe [] return
+                           $ latestSnapshotLinkSample samples
 
 -- | Unify 'SnapshotLinkSample's to possibly multiple samples. The
 -- input samples are partitioned to groups based on the link sub-ID,
@@ -82,3 +85,16 @@ partitionByLinkAttributes :: Ord b
                           -> [SnapshotLinkSample n la]
                           -> [[SnapshotLinkSample n la]]
 partitionByLinkAttributes getKey = groupWith (getKey . slsLinkAttributes)
+
+-- | Remove 'SnapshotLinkSample's that are negated by the given
+-- 'SnapshotNode'.
+--
+-- This function is effective if 'SnapshotNode' has
+-- 'nodeTimestamp'. If 'nodeTimestamp' is 'Just', this function
+-- removes 'SnapshotLinkSample's whose timestamp is lower than the
+-- 'nodeTimestamp'. Those 'SnapshotLinkSample's are removed because
+-- the 'SnapshotNode' indicates that the link already disappears.
+removeByNegativeFinding :: SnapshotNode n na -> [SnapshotLinkSample n la] -> [SnapshotLinkSample n la]
+removeByNegativeFinding sn = case nodeTimestamp sn of
+  Nothing -> id
+  Just t -> filter $ \s -> slsTimestamp s >= t
