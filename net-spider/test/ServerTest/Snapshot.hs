@@ -406,6 +406,68 @@ spec_getLatestSnapshot = withServer $ describe "getLatestSnapshot" $ do
     S.linkAttributes (got_ls !! 2) `shouldBe` APorts "p5" "p10"
     linkTimestamp (got_ls !! 2) `shouldBe` fromEpochSecond 100
     length got_ls `shouldBe` 3
+  specify "link disappears" $ withSpider $ \spider -> do
+    let fns :: [FoundNode Text () ()]
+        fns = [ FoundNode
+                { subjectNode = "n1",
+                  observationTime = fromEpochSecond 100,
+                  nodeAttributes = (),
+                  neighborLinks = [ FoundLink
+                                    { targetNode = "n2",
+                                      linkState = LinkBidirectional,
+                                      linkAttributes = ()
+                                    }
+                                  ]
+                },
+                FoundNode
+                { subjectNode = "n2",
+                  observationTime = fromEpochSecond 200,
+                  nodeAttributes = (),
+                  neighborLinks = []
+                }
+              ]
+    mapM_ (addFoundNode spider) fns
+    (got_ns, got_ls) <- fmap sortSnapshotElements $ getLatestSnapshot spider "n1"
+    nodeId (got_ns ! 0) `shouldBe` "n1"
+    nodeId (got_ns ! 1) `shouldBe` "n2"
+    V.length got_ns `shouldBe` 2
+    V.length got_ls `shouldBe` 0
+    -- the n2 observes at t=200 that there is no link to n1. So the
+    -- Spider should consider the link disappears.
+  specify "link appears" $ withSpider $ \spider -> do
+    let fns :: [FoundNode Text () ()]
+        fns = [ FoundNode
+                { subjectNode = "n1",
+                  observationTime = fromEpochSecond 200,
+                  nodeAttributes = (),
+                  neighborLinks = [ FoundLink
+                                    { targetNode = "n2",
+                                      linkState = LinkBidirectional,
+                                      linkAttributes = ()
+                                    }
+                                  ]
+                },
+                FoundNode
+                { subjectNode = "n2",
+                  observationTime = fromEpochSecond 100,
+                  nodeAttributes = (),
+                  neighborLinks = []
+                }
+              ]
+    mapM_ (addFoundNode spider) fns
+    (got_ns, got_ls) <- fmap sortSnapshotElements $ getLatestSnapshot spider "n1"
+    nodeId (got_ns ! 0) `shouldBe` "n1"
+    nodeId (got_ns ! 1) `shouldBe` "n2"
+    V.length got_ns `shouldBe` 2
+    linkNodeTuple (got_ls ! 0) `shouldBe` ("n1", "n2")
+    isDirected (got_ls ! 0) `shouldBe` False
+    linkTimestamp (got_ls ! 0) `shouldBe` fromEpochSecond 200
+    V.length got_ls `shouldBe` 1
+    -- the n2 observes at t=100 that there is no link to n1, but n1
+    -- observes there is a link at t=200.  Spider should consider the
+    -- link appears.
+
+
 
 
 -- TODO: how linkState relates to the property of SnapshotLink ?
