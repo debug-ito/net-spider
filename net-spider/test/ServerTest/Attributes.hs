@@ -20,9 +20,9 @@ import ServerTest.Common
 import NetSpider.Found (FoundNode(..), FoundLink(..), LinkState(..))
 import NetSpider.Graph (NodeAttributes(..), LinkAttributes(..), VNode)
 import NetSpider.Spider
-  ( Host, Port, addFoundNode, getLatestSnapshot,
-    Config(..), defConfig
+  ( addFoundNode, getLatestSnapshot
   )
+import NetSpider.Spider.Config (Host, Port, Config(..), defConfig)
 import NetSpider.Snapshot (nodeTimestamp, linkTimestamp)
 import qualified NetSpider.Snapshot as S (nodeAttributes, linkAttributes)
 import NetSpider.Timestamp (Timestamp(..), fromEpochSecond)

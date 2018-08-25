@@ -49,7 +49,7 @@ import NetSpider.Graph
   )
 import NetSpider.Found (FoundLink(..), LinkState(..), FoundNode(..), linkStateToText)
 import NetSpider.Timestamp (Timestamp(..), fromEpochSecond)
-import NetSpider.Spider.Internal.Type (Spider(..), Config(..))
+import NetSpider.Spider.Config (Spider(..), Config(..))
 
 spiderNodeIdKey :: Spider n na la -> Key VNode n
 spiderNodeIdKey = nodeIdKey . spiderConfig

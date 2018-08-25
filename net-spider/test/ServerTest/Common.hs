@@ -21,10 +21,11 @@ import Test.Hspec
 import Test.Hspec.NeedEnv (needEnvHostPort, EnvMode(Need))
 
 import NetSpider.Graph (NodeAttributes(..), LinkAttributes(..), VNode)
+import NetSpider.Spider.Config
+  ( Host, Port, Spider, Config(..), defConfig
+  )
 import NetSpider.Spider
-  ( Host, Port, Spider,
-    connectWith, close, clearAll,
-    Config(..), defConfig
+  ( connectWith, close, clearAll
   )
 import NetSpider.Snapshot
   ( SnapshotElement, SnapshotNode, SnapshotLink

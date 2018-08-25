@@ -31,9 +31,10 @@ import NetSpider.Snapshot
   )
 import qualified NetSpider.Snapshot as S (nodeAttributes, linkAttributes)
 import NetSpider.Spider
-  ( Spider, addFoundNode, getLatestSnapshot,
-    defConfig, Config(subgroupSnapshotLinkSamples), subgroupByLinkAttributes
+  ( Spider, addFoundNode, getLatestSnapshot
   )
+import NetSpider.Spider.Config (defConfig, Config(unifyLinkSamples))
+import NetSpider.Spider.Unify (unifyToMultiOn)
 import NetSpider.Timestamp (fromEpochSecond)
 
 main :: IO ()
@@ -347,7 +348,7 @@ spec_getLatestSnapshot = withServer $ describe "getLatestSnapshot" $ do
     isDirected (got_ls ! 2) `shouldBe` True
     linkTimestamp (got_ls ! 2) `shouldBe` fromEpochSecond 100
   let confWithAPorts :: Config Text () APorts
-      confWithAPorts = defConfig { subgroupSnapshotLinkSamples = subgroupByLinkAttributes id
+      confWithAPorts = defConfig { unifyLinkSamples = unifyToMultiOn id
                                  }
   specify "multiple links between two nodes" $ withSpider' confWithAPorts $ \spider -> do
     let fns :: [FoundNode Text () APorts]

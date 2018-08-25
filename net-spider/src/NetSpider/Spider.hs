@@ -16,15 +16,7 @@ module NetSpider.Spider
          -- * Graph operations
          addFoundNode,
          getLatestSnapshot,
-         clearAll,
-         -- * Spider configuration
-         Host,
-         Port,
-         Config(..),
-         defConfig,
-         subgroupByLinkAttributes,
-         SnapshotLinkID(..),
-         SnapshotLinkSample(..)
+         clearAll
        ) where
 
 import Control.Exception.Safe (throwString)
@@ -46,9 +38,7 @@ import Data.Maybe (catMaybes, mapMaybe)
 import Data.Monoid (mempty)
 import Data.Vector (Vector)
 import qualified Data.Vector as V
-import Network.Greskell.WebSocket
-  ( Host, Port
-  )
+import Network.Greskell.WebSocket (Host, Port)
 import qualified Network.Greskell.WebSocket as Gr
 
 import NetSpider.Graph (EID, LinkAttributes, NodeAttributes)
@@ -57,14 +47,12 @@ import NetSpider.Found (FoundNode(..), FoundLink(..), LinkState(..))
 import NetSpider.Queue (Queue, newQueue, popQueue, pushQueue)
 import NetSpider.Snapshot (SnapshotElement)
 import NetSpider.Snapshot.Internal (SnapshotNode(..), SnapshotLink(..))
+import NetSpider.Spider.Config (Spider(..), Config(..), defConfig)
 import NetSpider.Spider.Internal.Graph
   ( gMakeFoundNode, gAllNodes, gHasNodeID, gHasNodeEID, gNodeEID, gNodeID, gMakeNode, gClearAll,
     gLatestFoundNode, gSelectFoundNode, gFinds, gHasFoundNodeEID, gAllFoundNode
   )
-import NetSpider.Spider.Internal.Type
-  ( Spider(..), Config(..), defConfig, subgroupByLinkAttributes,
-    SnapshotLinkID(..), SnapshotLinkSample(..)
-  )
+import NetSpider.Spider.Internal.Sample (SnapshotLinkID(..), SnapshotLinkSample(..))
 
 -- | Connect to the WebSocket endpoint of Tinkerpop Gremlin Server
 -- that hosts the NetSpider database.
@@ -301,33 +289,22 @@ makeSnapshot spider state = (fmap Left nodes) ++ (fmap Right links)
 -- which corresponds to a subgroup of 'SnapshotLinkSample's.
 makeSnapshotLinks :: Spider n na la -> [SnapshotLinkSample n la] -> [SnapshotLink n la]
 makeSnapshotLinks spider link_samples =
-  mapMaybe makeSnapshotLink $ makeSubgroups link_samples
+  mapMaybe makeSnapshotLink $ doUnify link_samples
   where
-    makeSubgroups = subgroupSnapshotLinkSamples $ spiderConfig spider
-    makeSnapshotLink link_subgroup = do
-      agg_sample <- latestSnapshotLinkSample link_subgroup
-      case slsLinkState agg_sample of
+    doUnify = (unifyLinkSamples $ spiderConfig spider) undefined undefined -- TODO.
+    makeSnapshotLink unified_sample = do
+      case slsLinkState unified_sample of
        LinkUnused -> Nothing
-       LinkToTarget -> Just $ aggSampleToLink agg_sample True True
-       LinkToSubject -> Just $ aggSampleToLink agg_sample False True
-       LinkBidirectional -> Just $ aggSampleToLink agg_sample True False
-    aggSampleToLink agg_sample to_target is_directed = 
+       LinkToTarget -> Just $ sampleToLink unified_sample True True
+       LinkToSubject -> Just $ sampleToLink unified_sample False True
+       LinkBidirectional -> Just $ sampleToLink unified_sample True False
+    sampleToLink sample to_target is_directed = 
       SnapshotLink { _sourceNode = (if to_target then sliSubjectNode else sliTargetNode) link_id,
                      _destinationNode = (if to_target then sliTargetNode else sliSubjectNode) link_id,
                      _isDirected = is_directed,
-                     _linkTimestamp = slsTimestamp agg_sample,
-                     _linkAttributes = slsLinkAttributes agg_sample
+                     _linkTimestamp = slsTimestamp sample,
+                     _linkAttributes = slsLinkAttributes sample
                    }
       where
-        link_id = slsLinkId agg_sample
+        link_id = slsLinkId sample
 
--- | Get the 'SnapshotLinkSample' that has the latest (biggest)
--- timestamp.
-latestSnapshotLinkSample :: [SnapshotLinkSample n la] -> Maybe (SnapshotLinkSample n la)
-latestSnapshotLinkSample [] = Nothing
-latestSnapshotLinkSample (sample_head : samples_tail) = Just $ foldr' f sample_head samples_tail
-  where
-    f :: SnapshotLinkSample n la -> SnapshotLinkSample n la -> SnapshotLinkSample n la
-    f ls rs = if slsTimestamp ls >= slsTimestamp rs
-              then ls
-              else rs
