@@ -23,6 +23,7 @@ import Control.Exception.Safe (throwString)
 import Control.Monad (void)
 import Data.Aeson (ToJSON)
 import Data.Foldable (foldr', toList)
+import Data.Hashable (Hashable)
 import Data.Greskell
   ( runBinder, ($.), (<$.>), (<*.>),
     Binder, ToGreskell(GreskellReturn), AsIterator(IteratorItem), FromGraphSON,
@@ -270,19 +271,26 @@ popUnvisitedNode state = (updated, popped)
     updated = state { ssUnvisitedNodes = updatedUnvisited }
     (popped, updatedUnvisited) = popQueue $ ssUnvisitedNodes state
 
-makeSnapshot :: Spider n na la -> SnapshotState n na la -> [SnapshotElement n na la]
+makeSnapshot :: (Eq n, Hashable n) => Spider n na la -> SnapshotState n na la -> [SnapshotElement n na la]
 makeSnapshot spider state = (fmap Left nodes) ++ (fmap Right links)
   where
     nodes = visited_nodes ++ boundary_nodes
-    makeSnapshotNode on_boundary nid mvfn =
-      SnapshotNode { _nodeId = nid,
-                     _isOnBoundary = on_boundary,
-                     _nodeTimestamp = fmap vfnTimestamp $ mvfn,
-                     _nodeAttributes = fmap vfnAttributes $ mvfn
-                   }
-    visited_nodes = map (uncurry $ makeSnapshotNode False) $ HM.toList $ ssVisitedNodes state
-    boundary_nodes = map (\nid -> makeSnapshotNode True nid Nothing) $ toList $ ssUnvisitedNodes state
+    visited_nodes = map (makeSnapshotNode state) $ HM.keys $ ssVisitedNodes state
+    boundary_nodes = map (makeSnapshotNode state) $ toList $ ssUnvisitedNodes state
     links = mconcat $ map (makeSnapshotLinks spider) $ HM.elems $ ssVisitedLinks state
+
+makeSnapshotNode :: (Eq n, Hashable n) => SnapshotState n na la -> n -> SnapshotNode n na
+makeSnapshotNode state nid =
+  SnapshotNode { _nodeId = nid,
+                 _isOnBoundary = on_boundary,
+                 _nodeTimestamp = fmap vfnTimestamp $ mvfn,
+                 _nodeAttributes = fmap vfnAttributes $ mvfn
+               }
+  where
+    (on_boundary, mvfn) =
+      case HM.lookup nid $ ssVisitedNodes state of
+       Nothing -> (True, Nothing)
+       Just mv -> (False, mv)
 
 -- | The input 'SnapshotLinkSample's must be for the equivalent
 -- 'SnapshotLinkID'. The output is list of 'SnapshotLink's, each of
@@ -291,7 +299,7 @@ makeSnapshotLinks :: Spider n na la -> [SnapshotLinkSample n la] -> [SnapshotLin
 makeSnapshotLinks spider link_samples =
   mapMaybe makeSnapshotLink $ doUnify link_samples
   where
-    doUnify = (unifyLinkSamples $ spiderConfig spider) undefined undefined -- TODO.
+    doUnify = (unifyLinkSamples $ spiderConfig spider) undefined undefined -- TODO. Use makeSnapshotNode. Need to modify signature.
     makeSnapshotLink unified_sample = do
       case slsLinkState unified_sample of
        LinkUnused -> Nothing
