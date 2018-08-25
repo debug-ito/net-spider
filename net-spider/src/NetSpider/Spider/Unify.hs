@@ -5,14 +5,20 @@
 --
 -- 
 module NetSpider.Spider.Unify
-       ( LinkSampleUnifier,
+       ( -- * Types
+         LinkSampleUnifier,
          SnapshotLinkSample(..),
          SnapshotLinkID(..),
+         -- * Standard unifiers
          unifyToOne,
-         unifyToMultiOn
+         unifyToMultiOn,
+         -- * Building blocks
+         latestSnapshotLinkSample,
+         partitionByLinkAttributes
        ) where
 
-import Data.Foldable (foldr')
+import Data.Foldable (maximumBy)
+import Data.Function (on)
 import GHC.Exts (groupWith)
 
 import NetSpider.Snapshot (SnapshotNode)
@@ -46,7 +52,8 @@ type LinkSampleUnifier n na la = SnapshotNode n na -> SnapshotNode n na -> [Snap
 -- | Unify 'SnapshotLinkSamples's to one. This is the sensible unifier
 -- if there is at most one physical link for a given pair of nodes.
 unifyToOne :: LinkSampleUnifier n na la
-unifyToOne = undefined -- TODO
+unifyToOne _ _ samples = maybe [] return $ latestSnapshotLinkSample samples
+  -- TODO: handle the case where the link is NOT observed by one of the end nodes.
 
 -- | Unify 'SnapshotLinkSample's to possibly multiple samples. The
 -- input samples are partitioned to groups based on the link sub-ID,
@@ -55,27 +62,23 @@ unifyToOne = undefined -- TODO
 unifyToMultiOn :: Ord b
                => (la -> b) -- ^ Getter of the link sub-ID
                -> LinkSampleUnifier n na la
-unifyToMultiOn = undefined -- TODO
+unifyToMultiOn getKey lnode rnode samples =
+  concat $ map (unifyToOne lnode rnode) $ partitionByLinkAttributes getKey samples
 
-
----- TODO: rearrange and export the following functions.
-
--- | Partition 'SnapshotLinkSample's using their link attributes. You
--- can use this function for 'subgroupSnapshotLinkSamples' config
--- field.
-subgroupByLinkAttributes :: Ord b
-                         => (la -> b) -- ^ Getter of the link sub-ID
-                         -> [SnapshotLinkSample n la]
-                         -> [[SnapshotLinkSample n la]]
-subgroupByLinkAttributes getKey = groupWith (getKey . slsLinkAttributes)
 
 -- | Get the 'SnapshotLinkSample' that has the latest (biggest)
 -- timestamp.
 latestSnapshotLinkSample :: [SnapshotLinkSample n la] -> Maybe (SnapshotLinkSample n la)
 latestSnapshotLinkSample [] = Nothing
-latestSnapshotLinkSample (sample_head : samples_tail) = Just $ foldr' f sample_head samples_tail
+latestSnapshotLinkSample samples = Just $ maximumBy comp samples
   where
-    f :: SnapshotLinkSample n la -> SnapshotLinkSample n la -> SnapshotLinkSample n la
-    f ls rs = if slsTimestamp ls >= slsTimestamp rs
-              then ls
-              else rs
+    comp = compare `on` slsTimestamp
+
+-- | Partition 'SnapshotLinkSample's using their link
+-- attributes. Partitions are defined based on the link sub-ID, which
+-- is defined by the given getter function.
+partitionByLinkAttributes :: Ord b
+                          => (la -> b) -- ^ Getter of the link sub-ID
+                          -> [SnapshotLinkSample n la]
+                          -> [[SnapshotLinkSample n la]]
+partitionByLinkAttributes getKey = groupWith (getKey . slsLinkAttributes)
