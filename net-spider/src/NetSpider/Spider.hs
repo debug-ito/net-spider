@@ -277,7 +277,7 @@ makeSnapshot spider state = (fmap Left nodes) ++ (fmap Right links)
     nodes = visited_nodes ++ boundary_nodes
     visited_nodes = map (makeSnapshotNode state) $ HM.keys $ ssVisitedNodes state
     boundary_nodes = map (makeSnapshotNode state) $ toList $ ssUnvisitedNodes state
-    links = mconcat $ map (makeSnapshotLinks spider) $ HM.elems $ ssVisitedLinks state
+    links = mconcat $ map (makeSnapshotLinks spider state) $ HM.elems $ ssVisitedLinks state
 
 makeSnapshotNode :: (Eq n, Hashable n) => SnapshotState n na la -> n -> SnapshotNode n na
 makeSnapshotNode state nid =
@@ -295,11 +295,13 @@ makeSnapshotNode state nid =
 -- | The input 'SnapshotLinkSample's must be for the equivalent
 -- 'SnapshotLinkID'. The output is list of 'SnapshotLink's, each of
 -- which corresponds to a subgroup of 'SnapshotLinkSample's.
-makeSnapshotLinks :: Spider n na la -> [SnapshotLinkSample n la] -> [SnapshotLink n la]
-makeSnapshotLinks spider link_samples =
+makeSnapshotLinks :: (Eq n, Hashable n) => Spider n na la -> SnapshotState n na la -> [SnapshotLinkSample n la] -> [SnapshotLink n la]
+makeSnapshotLinks _ _ [] = []
+makeSnapshotLinks spider state link_samples@(head_sample : _) =
   mapMaybe makeSnapshotLink $ doUnify link_samples
   where
-    doUnify = (unifyLinkSamples $ spiderConfig spider) undefined undefined -- TODO. Use makeSnapshotNode. Need to modify signature.
+    makeEndNode getter = makeSnapshotNode state $ getter $ slsLinkId $ head_sample
+    doUnify = (unifyLinkSamples $ spiderConfig spider) (makeEndNode sliSubjectNode) (makeEndNode sliTargetNode)
     makeSnapshotLink unified_sample = do
       case slsLinkState unified_sample of
        LinkUnused -> Nothing
