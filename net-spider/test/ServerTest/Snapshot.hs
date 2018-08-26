@@ -365,6 +365,11 @@ spec_getLatestSnapshot = withServer $ describe "getLatestSnapshot" $ do
                                     { targetNode = "n2",
                                       linkState = LinkToTarget,
                                       linkAttributes = APorts "p3" "p6"
+                                    },
+                                    FoundLink
+                                    { targetNode = "n2",
+                                      linkState = LinkToTarget,
+                                      linkAttributes = APorts "p5" "p10"
                                     }
                                   ]
                 },
@@ -404,7 +409,7 @@ spec_getLatestSnapshot = withServer $ describe "getLatestSnapshot" $ do
     linkTimestamp (got_ls !! 1) `shouldBe` fromEpochSecond 200
     linkNodeTuple (got_ls !! 2) `shouldBe` ("n1", "n2")
     S.linkAttributes (got_ls !! 2) `shouldBe` APorts "p5" "p10"
-    linkTimestamp (got_ls !! 2) `shouldBe` fromEpochSecond 100
+    linkTimestamp (got_ls !! 2) `shouldBe` fromEpochSecond 200
     length got_ls `shouldBe` 3
   specify "link disappears" $ withSpider $ \spider -> do
     let fns :: [FoundNode Text () ()]
@@ -466,7 +471,7 @@ spec_getLatestSnapshot = withServer $ describe "getLatestSnapshot" $ do
     -- the n2 observes at t=100 that there is no link to n1, but n1
     -- observes there is a link at t=200.  Spider should consider the
     -- link appears.
-  specify "multiple links between pair, some of them disapppears." $ withSpider $ \spider -> do
+  specify "multiple links between pair, some appear, some disappear." $ withSpider $ \spider -> do
     True `shouldBe` False -- TODO
     
 
