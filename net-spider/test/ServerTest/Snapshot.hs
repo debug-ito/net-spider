@@ -490,23 +490,23 @@ spec_getLatestSnapshot = withServer $ describe "getLatestSnapshot" $ do
                   neighborLinks = links1
                 }
               ]
-        links1 = [ FoundLink
+        links1 = [ FoundLink -- disappears
                    { targetNode = "n2",
                      linkState = LinkToTarget,
                      linkAttributes = APorts "p11" "p21"
                    },
-                   FoundLink
+                   FoundLink -- stays
                    { targetNode = "n2",
                      linkState = LinkToTarget,
                      linkAttributes = APorts "p12" "p22"
                    }
                  ]
-        links2 = [ FoundLink
+        links2 = [ FoundLink -- appears
                    { targetNode = "n1",
                      linkState = LinkToSubject,
                      linkAttributes = APorts "p13" "p23"
                    },
-                   FoundLink
+                   FoundLink -- stays
                    { targetNode = "n1",
                      linkState = LinkToSubject,
                      linkAttributes = APorts "p12" "p22"
@@ -515,12 +515,15 @@ spec_getLatestSnapshot = withServer $ describe "getLatestSnapshot" $ do
     mapM_ (addFoundNode spider) fns
     (got_ns, got_ls_raw) <- fmap sortSnapshotElements $ getLatestSnapshot spider "n1"
     nodeId (got_ns ! 0) `shouldBe` "n1"
+    nodeTimestamp (got_ns ! 0) `shouldBe` (Just $ fromEpochSecond 100)
     nodeId (got_ns ! 1) `shouldBe` "n2"
+    nodeTimestamp (got_ns ! 1) `shouldBe` (Just $ fromEpochSecond 200)
     V.length got_ns `shouldBe` 2
+    let got_ls = sortLinksWithAttr got_ls_raw
     linkNodeTuple (got_ls ! 0) `shouldBe` ("n1", "n2")
     S.linkAttributes (got_ls ! 0) `shouldBe` APorts "p12" "p22"
     linkTimestamp (got_ls ! 0) `shouldBe` fromEpochSecond 200
-    linkNodeTuple (got_ls ! 1) `shouldBe` ("n1", "n2")
+    linkNodeTuple (got_ls ! 1) `shouldBe` ("n1", "n2") -- TODO: looks like this link is removed. why?
     S.linkAttributes (got_ls ! 1) `shouldBe` APorts "p13" "p23"
     linkTimestamp (got_ls ! 1) `shouldBe` fromEpochSecond 200
     V.length got_ls `shouldBe` 2
