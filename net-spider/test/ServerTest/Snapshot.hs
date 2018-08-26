@@ -25,7 +25,7 @@ import NetSpider.Found
   ( FoundLink(..), LinkState(..), FoundNode(..)
   )
 import NetSpider.Snapshot
-  ( SnapshotElement,
+  ( SnapshotElement, SnapshotLink,
     nodeId, linkNodeTuple, isDirected, linkTimestamp,
     isOnBoundary, nodeTimestamp
   )
@@ -56,7 +56,14 @@ makeOneNeighborExample spider = do
                         nodeAttributes = ()
                       }
   debugShowE $ addFoundNode spider nbs
-  
+
+confWithAPorts :: Config Text () APorts
+confWithAPorts = defConfig { unifyLinkSamples = unifyToMultiOn id }
+
+sortLinksWithAttr :: (Ord n, Ord la) => Vector (SnapshotLink n la) -> Vector (SnapshotLink n la)
+sortLinksWithAttr = V.fromList . sortOn getKey . V.toList
+  where
+    getKey link = (linkNodeTuple link, S.linkAttributes link)
 
 spec_getLatestSnapshot :: Spec
 spec_getLatestSnapshot = withServer $ describe "getLatestSnapshot" $ do
@@ -347,9 +354,6 @@ spec_getLatestSnapshot = withServer $ describe "getLatestSnapshot" $ do
     linkNodeTuple (got_ls ! 2) `shouldBe` ("n3", "n1")
     isDirected (got_ls ! 2) `shouldBe` True
     linkTimestamp (got_ls ! 2) `shouldBe` fromEpochSecond 100
-  let confWithAPorts :: Config Text () APorts
-      confWithAPorts = defConfig { unifyLinkSamples = unifyToMultiOn id
-                                 }
   specify "multiple links between two nodes" $ withSpider' confWithAPorts $ \spider -> do
     let fns :: [FoundNode Text () APorts]
         fns = [ FoundNode
@@ -396,21 +400,21 @@ spec_getLatestSnapshot = withServer $ describe "getLatestSnapshot" $ do
                 }
               ]
     mapM_ (addFoundNode spider) fns
-    (got_ns, got_ls_v) <- fmap sortSnapshotElements $ getLatestSnapshot spider "n1"
+    (got_ns, got_ls_raw) <- fmap sortSnapshotElements $ getLatestSnapshot spider "n1"
     nodeId (got_ns ! 0) `shouldBe` "n1"
     nodeId (got_ns ! 1) `shouldBe` "n2"
     V.length got_ns `shouldBe` 2
-    let got_ls = sortOn (\l -> (linkNodeTuple l, S.linkAttributes l)) $ V.toList got_ls_v
-    linkNodeTuple (got_ls !! 0) `shouldBe` ("n1", "n2")
-    S.linkAttributes (got_ls !! 0) `shouldBe` APorts "p3" "p6"
-    linkTimestamp (got_ls !! 0) `shouldBe` fromEpochSecond 200
-    linkNodeTuple (got_ls !! 1) `shouldBe` ("n1", "n2")
-    S.linkAttributes (got_ls !! 1) `shouldBe` APorts "p4" "p8"
-    linkTimestamp (got_ls !! 1) `shouldBe` fromEpochSecond 200
-    linkNodeTuple (got_ls !! 2) `shouldBe` ("n1", "n2")
-    S.linkAttributes (got_ls !! 2) `shouldBe` APorts "p5" "p10"
-    linkTimestamp (got_ls !! 2) `shouldBe` fromEpochSecond 200
-    length got_ls `shouldBe` 3
+    let got_ls = sortLinksWithAttr got_ls_raw
+    linkNodeTuple (got_ls ! 0) `shouldBe` ("n1", "n2")
+    S.linkAttributes (got_ls ! 0) `shouldBe` APorts "p3" "p6"
+    linkTimestamp (got_ls ! 0) `shouldBe` fromEpochSecond 200
+    linkNodeTuple (got_ls ! 1) `shouldBe` ("n1", "n2")
+    S.linkAttributes (got_ls ! 1) `shouldBe` APorts "p4" "p8"
+    linkTimestamp (got_ls ! 1) `shouldBe` fromEpochSecond 200
+    linkNodeTuple (got_ls ! 2) `shouldBe` ("n1", "n2")
+    S.linkAttributes (got_ls ! 2) `shouldBe` APorts "p5" "p10"
+    linkTimestamp (got_ls ! 2) `shouldBe` fromEpochSecond 200
+    V.length got_ls `shouldBe` 3
   specify "link disappears" $ withSpider $ \spider -> do
     let fns :: [FoundNode Text () ()]
         fns = [ FoundNode
@@ -472,10 +476,54 @@ spec_getLatestSnapshot = withServer $ describe "getLatestSnapshot" $ do
     -- observes there is a link at t=200.  Spider should consider the
     -- link appears.
   specify "multiple links between pair, some appear, some disappear." $ withSpider $ \spider -> do
-    True `shouldBe` False -- TODO
-    
-
-
+    let fns :: [FoundNode Text () APorts]
+        fns = [ FoundNode
+                { subjectNode = "n2",
+                  observationTime = fromEpochSecond 200,
+                  nodeAttributes = (),
+                  neighborLinks = links2
+                },
+                FoundNode
+                { subjectNode = "n1",
+                  observationTime = fromEpochSecond 100,
+                  nodeAttributes = (),
+                  neighborLinks = links1
+                }
+              ]
+        links1 = [ FoundLink
+                   { targetNode = "n2",
+                     linkState = LinkToTarget,
+                     linkAttributes = APorts "p11" "p21"
+                   },
+                   FoundLink
+                   { targetNode = "n2",
+                     linkState = LinkToTarget,
+                     linkAttributes = APorts "p12" "p22"
+                   }
+                 ]
+        links2 = [ FoundLink
+                   { targetNode = "n1",
+                     linkState = LinkToSubject,
+                     linkAttributes = APorts "p13" "p23"
+                   },
+                   FoundLink
+                   { targetNode = "n1",
+                     linkState = LinkToSubject,
+                     linkAttributes = APorts "p12" "p22"
+                   }
+                 ]
+    mapM_ (addFoundNode spider) fns
+    (got_ns, got_ls_raw) <- fmap sortSnapshotElements $ getLatestSnapshot spider "n1"
+    nodeId (got_ns ! 0) `shouldBe` "n1"
+    nodeId (got_ns ! 1) `shouldBe` "n2"
+    V.length got_ns `shouldBe` 2
+    linkNodeTuple (got_ls ! 0) `shouldBe` ("n1", "n2")
+    S.linkAttributes (got_ls ! 0) `shouldBe` APorts "p12" "p22"
+    linkTimestamp (got_ls ! 0) `shouldBe` fromEpochSecond 200
+    linkNodeTuple (got_ls ! 1) `shouldBe` ("n1", "n2")
+    S.linkAttributes (got_ls ! 1) `shouldBe` APorts "p13" "p23"
+    linkTimestamp (got_ls ! 1) `shouldBe` fromEpochSecond 200
+    V.length got_ls `shouldBe` 2
 
 
 -- TODO: how linkState relates to the property of SnapshotLink ?
