@@ -475,7 +475,7 @@ spec_getLatestSnapshot = withServer $ describe "getLatestSnapshot" $ do
     -- the n2 observes at t=100 that there is no link to n1, but n1
     -- observes there is a link at t=200.  Spider should consider the
     -- link appears.
-  specify "multiple links between pair, some appear, some disappear." $ withSpider $ \spider -> do
+  specify "multiple links between pair, some appear, some disappear." $ withSpider' confWithAPorts $ \spider -> do
     let fns :: [FoundNode Text () APorts]
         fns = [ FoundNode
                 { subjectNode = "n2",
