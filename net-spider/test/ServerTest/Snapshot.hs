@@ -33,7 +33,7 @@ import qualified NetSpider.Snapshot as S (nodeAttributes, linkAttributes)
 import NetSpider.Spider
   ( Spider, addFoundNode, getLatestSnapshot
   )
-import NetSpider.Spider.Config (defConfig, Config(unifyLinkSamples))
+import NetSpider.Spider.Config (defConfig, Config(unifyLinkSamples), Host, Port)
 import NetSpider.Spider.Unify (unifyToMultiOn)
 import NetSpider.Timestamp (fromEpochSecond)
 
@@ -67,6 +67,12 @@ sortLinksWithAttr = V.fromList . sortOn getKey . V.toList
 
 spec_getLatestSnapshot :: Spec
 spec_getLatestSnapshot = withServer $ describe "getLatestSnapshot" $ do
+  spec_getLatestSnapshot1
+  spec_getLatestSnapshot2
+
+
+spec_getLatestSnapshot1 :: SpecWith (Host,Port)
+spec_getLatestSnapshot1 = do
   specify "one neighbor" $ withSpider $ \spider -> do
     makeOneNeighborExample spider
     got <- debugShowE $ fmap sort $ getLatestSnapshot spider "n1"
@@ -287,6 +293,9 @@ spec_getLatestSnapshot = withServer $ describe "getLatestSnapshot" $ do
     linkTimestamp (got_ls ! 3) `shouldBe` fromEpochSecond 200
     S.linkAttributes (got_ls ! 3) `shouldBe` AText "n4 to next"
     V.length got_ls `shouldBe` 4
+
+spec_getLatestSnapshot2 :: SpecWith (Host, Port)
+spec_getLatestSnapshot2 = do
   specify "loop network" $ withSpider $ \spider -> do
     let fns :: [FoundNode Text () ()]
         fns = [ FoundNode
