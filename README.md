@@ -61,6 +61,8 @@ Then in your application, connect to the server and get `Spider` object.
 ```haskell basic
 {-# LANGUAGE OverloadedStrings #-}
 import Control.Exception.Safe (bracket)
+import Data.Either (partitionEithers)
+import Data.List (sort)
 import Data.Text (Text)
 import Test.Hspec
 import Test.Hspec.NeedEnv (needEnvHostPort, EnvMode(Need))
@@ -68,8 +70,10 @@ import Test.Hspec.NeedEnv (needEnvHostPort, EnvMode(Need))
 import NetSpider.Input
   ( Spider, connectWS, close,
     FoundNode(..), FoundLink(..), LinkState(LinkBidirectional),
-    fromEpochSecond, addFoundNode, clearAll
+    fromEpochSecond, addFoundNode, clearAll, getLatestSnapshot
   )
+import NetSpider.Output
+  ( nodeId, nodeTimestamp, linkNodeTuple, linkTimestamp )
 
 
 main :: IO ()
@@ -140,6 +144,34 @@ So, by combining these local findings, we can infer the network topology is like
 ```
 
 The above graph can be obtained by `getLatestSnapshot` function. This function retrieves the snapshot graph that is supposed to be the latest state of the network.
+
+```haskell basic
+  snapshot <- getLatestSnapshot spider "switch1.example.com"
+```
+
+The snapshot graph is expressed as a combined list of `SnapshotNode`s and `SnapshotLink`s. They are independent of each other, so it is easy to render the graph using, for example, [graphviz](http://graphviz.org/).
+
+```haskell basic
+  let (nodes, links) = partitionEithers $ sort snapshot
+  map nodeId nodes `shouldBe` [ "switch1.example.com",
+                                "switch2.example.com",
+                                "switch3.example.com",
+                                "switch4.example.com"
+                              ]
+  map nodeTimestamp nodes `shouldBe` [ Just $ fromEpochSecond 1534769618,
+                                       Just $ fromEpochSecond 1534770022,
+                                       Nothing,
+                                       Nothing
+                                     ]
+  map linkNodeTuple links `shouldBe` [ ("switch1.example.com", "switch2.example.com"),
+                                       ("switch1.example.com", "switch3.example.com"),
+                                       ("switch2.example.com", "switch4.example.com")
+                                     ]
+  map linkTimestamp links `shouldBe` [ fromEpochSecond 1534770022,
+                                       fromEpochSecond 1534769618,
+                                       fromEpochSecond 1534770022
+                                     ]
+```
 
 
 ## Node and link attributes
