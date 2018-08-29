@@ -34,7 +34,7 @@ import NetSpider.Spider
   ( Spider, addFoundNode, getLatestSnapshot
   )
 import NetSpider.Spider.Config (defConfig, Config(unifyLinkSamples), Host, Port)
-import NetSpider.Spider.Unify (unifyToMultiOn)
+import NetSpider.Spider.Unify (unifyToMany)
 import NetSpider.Timestamp (fromEpochSecond)
 
 main :: IO ()
@@ -58,7 +58,7 @@ makeOneNeighborExample spider = do
   debugShowE $ addFoundNode spider nbs
 
 confWithAPorts :: Config Text () APorts APorts
-confWithAPorts = defConfig { unifyLinkSamples = unifyToMultiOn id }
+confWithAPorts = defConfig { unifyLinkSamples = unifyToMany id }
 
 sortLinksWithAttr :: (Ord n, Ord la) => Vector (SnapshotLink n la) -> Vector (SnapshotLink n la)
 sortLinksWithAttr = V.fromList . sortOn getKey . V.toList

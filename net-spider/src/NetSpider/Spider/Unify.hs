@@ -11,7 +11,7 @@ module NetSpider.Spider.Unify
          SnapshotLinkID(..),
          -- * Standard unifiers
          unifyToOne,
-         unifyToMultiOn,
+         unifyToMany,
          -- * Building blocks
          latestSnapshotLinkSample,
          partitionByLinkAttributes,
@@ -70,10 +70,10 @@ unifyToOne ln rn samples = removeByNegativeFinding ln
 -- input samples are partitioned to groups based on the link sub-ID,
 -- defined by the given getter function. Each group represents one of
 -- the final samples.
-unifyToMultiOn :: Ord b
-               => (la -> b) -- ^ Getter of the link sub-ID
-               -> LinkSampleUnifier n na la la
-unifyToMultiOn getKey lnode rnode samples =
+unifyToMany :: Ord b
+            => (la -> b) -- ^ Getter of the link sub-ID
+            -> LinkSampleUnifier n na la la
+unifyToMany getKey lnode rnode samples =
   concat $ map (unifyToOne lnode rnode) $ partitionByLinkAttributes getKey samples
 
 
