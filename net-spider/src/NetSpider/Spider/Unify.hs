@@ -22,7 +22,7 @@ import Data.Foldable (maximumBy)
 import Data.Function (on)
 import GHC.Exts (groupWith)
 
-import NetSpider.Snapshot (SnapshotNode, nodeTimestamp)
+import NetSpider.Snapshot (SnapshotNode, nodeTimestamp, SnapshotLink)
 import NetSpider.Spider.Internal.Sample
   ( SnapshotLinkSample(..), SnapshotLinkID(..)
   )
@@ -30,7 +30,7 @@ import NetSpider.Spider.Internal.Sample
 -- | Function to unify 'SnapshotLinkSample's collected for the given
 -- pair of nodes and return 'SnapshotLinkSample' per physical
 -- link. The returned 'SnapshotLinkSample's will be directly converted
--- to 'NetSpider.Snapshot.SnapshotLink's in the snapshot graph.
+-- to 'SnapshotLink's in the snapshot graph.
 --
 -- This function has a number of important roles during construction
 -- of the snapshot graph.
@@ -42,12 +42,20 @@ import NetSpider.Spider.Internal.Sample
 -- - There can be multiple physical links for a given pair of nodes,
 --   but the 'Spider' has no way to distinguish them. So, this
 --   function is supposed to distinguish 'SnapshotLinkSample's for
---   different physical links, and return multiple
+--   different physical links, and return one or more
 --   'SnapshotLinkSample's, each of which corresponds to a physical
 --   link.
 -- - Sometimes a link is found by one end node but not found by the
 --   other end node. Should 'Spider' treats the link is available or
---   not? This function is supposed to answer that question.
+--   not? This function is supposed to answer that question by
+--   returning non-empty result (if the link is available) or empty
+--   result (if the link is not available.)
+-- - Sometimes it is natural to have different data models of link
+--   attributes for 'FoundLink's (@fla@) and for 'SnapshotLink's
+--   (@sla@). For example, when you want to combine link attributes
+--   obtained from both of the end nodes to make the link attributes
+--   of 'SnapshotLink'. This function is supposed to convert the link
+--   attribute type.
 type LinkSampleUnifier n na fla sla = SnapshotNode n na -> SnapshotNode n na -> [SnapshotLinkSample n fla] -> [SnapshotLinkSample n sla]
 
 -- | Unify 'SnapshotLinkSamples's to one. This is the sensible unifier
