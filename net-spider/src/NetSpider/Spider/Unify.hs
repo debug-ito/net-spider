@@ -12,6 +12,9 @@ module NetSpider.Spider.Unify
          -- * Standard unifiers
          unifyToOne,
          unifyToMany,
+         unifyStd,
+         UnifyStdConfig(..),
+         defUnifyStdConfig,
          -- * Building blocks
          latestSnapshotLinkSample,
          partitionByLinkAttributes,
@@ -20,9 +23,10 @@ module NetSpider.Spider.Unify
 
 import Data.Foldable (maximumBy)
 import Data.Function (on)
+import Data.Maybe (mapMaybe)
 import GHC.Exts (groupWith)
 
-import NetSpider.Snapshot (SnapshotNode, nodeTimestamp, SnapshotLink)
+import NetSpider.Snapshot (SnapshotNode, nodeTimestamp, nodeId, SnapshotLink)
 import NetSpider.Spider.Internal.Sample
   ( SnapshotLinkSample(..), SnapshotLinkID(..)
   )
@@ -60,22 +64,46 @@ type LinkSampleUnifier n na fla sla = SnapshotNode n na -> SnapshotNode n na -> 
 
 -- | Unify 'SnapshotLinkSamples's to one. This is the sensible unifier
 -- if there is at most one physical link for a given pair of nodes.
-unifyToOne :: LinkSampleUnifier n na la la
-unifyToOne ln rn samples = removeByNegativeFinding ln
-                           $ removeByNegativeFinding rn
-                           $ maybe [] return
-                           $ latestSnapshotLinkSample samples
+unifyToOne :: Eq n => LinkSampleUnifier n na la la
+unifyToOne = unifyStd defUnifyStdConfig
 
 -- | Unify 'SnapshotLinkSample's to possibly multiple samples. The
 -- input samples are partitioned to groups based on the link sub-ID,
 -- defined by the given getter function. Each group represents one of
 -- the final samples.
-unifyToMany :: Ord b
-            => (la -> b) -- ^ Getter of the link sub-ID
-            -> LinkSampleUnifier n na la la
-unifyToMany getKey lnode rnode samples =
-  concat $ map (unifyToOne lnode rnode) $ partitionByLinkAttributes getKey samples
+unifyToMany :: (Eq n, Ord lsid)
+            => (SnapshotLinkSample n fla -> lsid) -- ^ Getter of the link sub-ID
+            -> LinkSampleUnifier n na fla fla
+unifyToMany getKey = unifyStd conf
+  where
+    conf = defUnifyStdConfig { makeLinkSubId = getKey }
 
+-- | TODO: write doc
+data UnifyStdConfig n na fla sla lsid =
+  UnifyStdConfig
+  { makeLinkSubId :: SnapshotLinkSample n fla -> lsid,
+    mergeSamples :: [SnapshotLinkSample n fla] -> [SnapshotLinkSample n fla] -> Maybe (SnapshotLinkSample n sla),
+    isLinkDetectable :: SnapshotNode n na -> SnapshotLinkSample n sla -> Bool
+  }
+
+defUnifyStdConfig :: UnifyStdConfig n na fla fla ()
+defUnifyStdConfig = UnifyStdConfig
+                    { makeLinkSubId = const (),
+                      mergeSamples = \ls rs -> latestSnapshotLinkSample (ls ++ rs),
+                      isLinkDetectable = \_ _ -> True
+                    }
+
+-- | TODO: write doc.
+unifyStd :: (Eq n, Ord lsid) => UnifyStdConfig n na fla sla lsid -> LinkSampleUnifier n na fla sla
+unifyStd conf lnode rnode = mapMaybe forGroup . groupWith (makeLinkSubId conf)
+  where
+    forGroup samples = maybeNegates rnode
+                       =<< maybeNegates lnode
+                       =<< mergeSamples conf (samplesFor samples lnode) (samplesFor samples rnode)
+    samplesFor samples sn = filter (\s -> nodeId sn == (sliSubjectNode $ slsLinkId s)) samples
+    maybeNegates sn sample = if (isLinkDetectable conf sn sample) && (negatesLinkSample sn sample)
+                             then Nothing
+                             else Just sample
 
 -- | Get the 'SnapshotLinkSample' that has the latest (biggest)
 -- timestamp.
@@ -103,6 +131,11 @@ partitionByLinkAttributes getKey = groupWith (getKey . slsLinkAttributes)
 -- 'nodeTimestamp'. Those 'SnapshotLinkSample's are removed because
 -- the 'SnapshotNode' indicates that the link already disappears.
 removeByNegativeFinding :: SnapshotNode n na -> [SnapshotLinkSample n la] -> [SnapshotLinkSample n la]
-removeByNegativeFinding sn = case nodeTimestamp sn of
-  Nothing -> id
-  Just t -> filter $ \s -> slsTimestamp s >= t
+removeByNegativeFinding sn = filter (not . negatesLinkSample sn)
+
+negatesLinkSample :: SnapshotNode n na -> SnapshotLinkSample n la -> Bool
+negatesLinkSample sn l =
+  case nodeTimestamp sn of
+   Nothing -> False
+   Just t -> slsTimestamp l < t
+  

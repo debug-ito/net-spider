@@ -34,7 +34,7 @@ import NetSpider.Snapshot
 withServer :: SpecWith (Host,Port) -> Spec
 withServer = before $ needEnvHostPort Need "NET_SPIDER_TEST"
 
-withSpider :: (Spider n na fla fla -> IO ()) -> (Host, Port) -> IO ()
+withSpider :: Eq n => (Spider n na fla fla -> IO ()) -> (Host, Port) -> IO ()
 withSpider = withSpider' defConfig
 
 withSpider' :: Config n na fla sla -> (Spider n na fla sla -> IO ()) -> (Host, Port) -> IO ()

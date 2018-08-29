@@ -57,7 +57,7 @@ import NetSpider.Spider.Internal.Sample (SnapshotLinkID(..), SnapshotLinkSample(
 
 -- | Connect to the WebSocket endpoint of Tinkerpop Gremlin Server
 -- that hosts the NetSpider database.
-connectWS :: Host -> Port -> IO (Spider n na la la)
+connectWS :: Eq n => Host -> Port -> IO (Spider n na la la)
 connectWS host port = connectWith $ defConfig { wsHost = host,
                                                 wsPort = port
                                               }

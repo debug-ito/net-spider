@@ -50,7 +50,7 @@ data Config n na fla sla =
     -- 'unifyToOne'.
   }
 
-defConfig :: Config n na fla fla
+defConfig :: Eq n => Config n na fla fla
 defConfig =
   Config
   { wsHost = "localhost",
