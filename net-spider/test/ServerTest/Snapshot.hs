@@ -44,7 +44,7 @@ spec :: Spec
 spec = do
   spec_getLatestSnapshot
 
-makeOneNeighborExample :: Spider Text () () -> IO ()
+makeOneNeighborExample :: Spider Text () () () -> IO ()
 makeOneNeighborExample spider = do
   let link = FoundLink { targetNode = "n2",
                          linkState = LinkToTarget,
@@ -57,7 +57,7 @@ makeOneNeighborExample spider = do
                       }
   debugShowE $ addFoundNode spider nbs
 
-confWithAPorts :: Config Text () APorts
+confWithAPorts :: Config Text () APorts APorts
 confWithAPorts = defConfig { unifyLinkSamples = unifyToMultiOn id }
 
 sortLinksWithAttr :: (Ord n, Ord la) => Vector (SnapshotLink n la) -> Vector (SnapshotLink n la)

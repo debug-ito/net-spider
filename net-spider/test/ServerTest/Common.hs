@@ -34,10 +34,10 @@ import NetSpider.Snapshot
 withServer :: SpecWith (Host,Port) -> Spec
 withServer = before $ needEnvHostPort Need "NET_SPIDER_TEST"
 
-withSpider :: (Spider n la na -> IO ()) -> (Host, Port) -> IO ()
+withSpider :: (Spider n na fla fla -> IO ()) -> (Host, Port) -> IO ()
 withSpider = withSpider' defConfig
 
-withSpider' :: Config n la na -> (Spider n la na -> IO ()) -> (Host, Port) -> IO ()
+withSpider' :: Config n na fla sla -> (Spider n na fla sla -> IO ()) -> (Host, Port) -> IO ()
 withSpider' orig_conf action (host, port) = bracket (connectWith conf) close $ \spider -> do
   clearAll spider
   action spider

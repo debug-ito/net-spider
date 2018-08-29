@@ -33,7 +33,7 @@ main = hspec spec
 
 typeTestCase :: (FromGraphSON n, ToJSON n, Ord n, Hashable n, Show n, NodeAttributes na, Eq na, Show na, LinkAttributes la, Eq la, Show la)
              => String
-             -> Config n na la
+             -> Config n na la la
              -> n
              -> n
              -> na

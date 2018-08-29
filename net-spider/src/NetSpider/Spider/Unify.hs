@@ -48,11 +48,11 @@ import NetSpider.Spider.Internal.Sample
 -- - Sometimes a link is found by one end node but not found by the
 --   other end node. Should 'Spider' treats the link is available or
 --   not? This function is supposed to answer that question.
-type LinkSampleUnifier n na la = SnapshotNode n na -> SnapshotNode n na -> [SnapshotLinkSample n la] -> [SnapshotLinkSample n la]
+type LinkSampleUnifier n na fla sla = SnapshotNode n na -> SnapshotNode n na -> [SnapshotLinkSample n fla] -> [SnapshotLinkSample n sla]
 
 -- | Unify 'SnapshotLinkSamples's to one. This is the sensible unifier
 -- if there is at most one physical link for a given pair of nodes.
-unifyToOne :: LinkSampleUnifier n na la
+unifyToOne :: LinkSampleUnifier n na la la
 unifyToOne ln rn samples = removeByNegativeFinding ln
                            $ removeByNegativeFinding rn
                            $ maybe [] return
@@ -64,7 +64,7 @@ unifyToOne ln rn samples = removeByNegativeFinding ln
 -- the final samples.
 unifyToMultiOn :: Ord b
                => (la -> b) -- ^ Getter of the link sub-ID
-               -> LinkSampleUnifier n na la
+               -> LinkSampleUnifier n na la la
 unifyToMultiOn getKey lnode rnode samples =
   concat $ map (unifyToOne lnode rnode) $ partitionByLinkAttributes getKey samples
 

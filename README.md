@@ -87,7 +87,7 @@ Use `connectWS` function to get `Spider` object, and `close` function to close i
 To input a local finding, use `addFoundNode` function.
 
 ```haskell basic
-doWithSpider :: Spider Text () () -> IO ()
+doWithSpider :: Spider Text () () () -> IO ()
 doWithSpider spider = do
   let finding1 = FoundNode
                  { subjectNode = "switch1.example.com",

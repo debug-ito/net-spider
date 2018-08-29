@@ -57,13 +57,13 @@ import NetSpider.Spider.Internal.Sample (SnapshotLinkID(..), SnapshotLinkSample(
 
 -- | Connect to the WebSocket endpoint of Tinkerpop Gremlin Server
 -- that hosts the NetSpider database.
-connectWS :: Host -> Port -> IO (Spider n na la)
+connectWS :: Host -> Port -> IO (Spider n na la la)
 connectWS host port = connectWith $ defConfig { wsHost = host,
                                                 wsPort = port
                                               }
 
 -- | Connect to the server with the given 'Config'.
-connectWith :: Config n na la -> IO (Spider n na la)
+connectWith :: Config n na fla sla -> IO (Spider n na fla sla)
 connectWith conf = do
   client <- Gr.connect (wsHost conf) (wsPort conf)
   return $ Spider { spiderConfig = conf,
@@ -71,11 +71,11 @@ connectWith conf = do
                   }
   
 -- | Close and release the 'Spider' object.
-close :: Spider n na la -> IO ()
+close :: Spider n na fla sla -> IO ()
 close sp = Gr.close $ spiderClient sp
 
 submitB :: (ToGreskell g, r ~ GreskellReturn g, AsIterator r, v ~ IteratorItem r, FromGraphSON v)
-        => Spider n na la -> Binder g -> IO (Gr.ResultHandle v)
+        => Spider n na fla sla -> Binder g -> IO (Gr.ResultHandle v)
 submitB sp b = Gr.submit (spiderClient sp) script mbs
   where
     (script, bs) = runBinder b
@@ -83,12 +83,12 @@ submitB sp b = Gr.submit (spiderClient sp) script mbs
 
 -- | Clear all content in the NetSpider database. This is mainly for
 -- testing.
-clearAll :: Spider n na la -> IO ()
+clearAll :: Spider n na fla sla -> IO ()
 clearAll spider = Gr.drainResults =<< submitB spider (return gClearAll)
 
 -- | Add a 'FoundNode' (observation of a node) to the NetSpider
 -- database.
-addFoundNode :: (ToJSON n, LinkAttributes la, NodeAttributes na) => Spider n na la -> FoundNode n na la -> IO ()
+addFoundNode :: (ToJSON n, LinkAttributes fla, NodeAttributes na) => Spider n na fla sla -> FoundNode n na fla -> IO ()
 addFoundNode spider found_node = do
   subject_vid <- getOrMakeNode spider $ subjectNode found_node
   link_pairs <- traverse linkAndTargetVID $ neighborLinks found_node
@@ -103,12 +103,12 @@ addFoundNode spider found_node = do
 vToMaybe :: Vector a -> Maybe a
 vToMaybe v = v V.!? 0
   
-getNode :: (ToJSON n) => Spider n na la -> n -> IO (Maybe EID)
+getNode :: (ToJSON n) => Spider n na fla sla -> n -> IO (Maybe EID)
 getNode spider nid = fmap vToMaybe $ Gr.slurpResults =<< submitB spider gt
   where
     gt = gNodeEID <$.> gHasNodeID spider nid <*.> pure gAllNodes
 
-getOrMakeNode :: (ToJSON n) => Spider n na la -> n -> IO EID
+getOrMakeNode :: (ToJSON n) => Spider n na fla sla -> n -> IO EID
 getOrMakeNode spider nid = do
   mvid <- getNode spider nid
   case mvid of
@@ -128,10 +128,10 @@ getOrMakeNode spider nid = do
 -- This function is very simple, and should be used only for small
 -- graphs.  This function starts from an arbitrary node, traverses the
 -- history graph using the latest links with unlimited number of hops.
-getLatestSnapshot :: (FromGraphSON n, ToJSON n, Ord n, Hashable n, LinkAttributes la, NodeAttributes na)
-                  => Spider n na la
+getLatestSnapshot :: (FromGraphSON n, ToJSON n, Ord n, Hashable n, LinkAttributes fla, NodeAttributes na)
+                  => Spider n na fla sla
                   -> n -- ^ ID of the node where it starts traversing.
-                  -> IO [SnapshotElement n na la]
+                  -> IO [SnapshotElement n na sla]
 getLatestSnapshot spider start_nid = do
   ref_state <- newIORef $ initSnapshotState $ return start_nid
   recurseVisitNodesForSnapshot spider ref_state
@@ -143,9 +143,9 @@ getLatestSnapshot spider start_nid = do
 
 
 
-recurseVisitNodesForSnapshot :: (ToJSON n, Ord n, Hashable n, FromGraphSON n, LinkAttributes la, NodeAttributes na)
-                             => Spider n na la
-                             -> IORef (SnapshotState n na la)
+recurseVisitNodesForSnapshot :: (ToJSON n, Ord n, Hashable n, FromGraphSON n, LinkAttributes fla, NodeAttributes na)
+                             => Spider n na fla sla
+                             -> IORef (SnapshotState n na fla)
                              -> IO ()
 recurseVisitNodesForSnapshot spider ref_state = go
   where
@@ -159,9 +159,9 @@ recurseVisitNodesForSnapshot spider ref_state = go
     getNextVisit = atomicModifyIORef' ref_state popUnvisitedNode
     -- TODO: limit number of steps.
 
-visitNodeForSnapshot :: (ToJSON n, Ord n, Hashable n, FromGraphSON n, LinkAttributes la, NodeAttributes na)
-                     => Spider n na la
-                     -> IORef (SnapshotState n na la)
+visitNodeForSnapshot :: (ToJSON n, Ord n, Hashable n, FromGraphSON n, LinkAttributes fla, NodeAttributes na)
+                     => Spider n na fla sla
+                     -> IORef (SnapshotState n na fla)
                      -> n
                      -> IO ()
 visitNodeForSnapshot spider ref_state visit_nid = do
@@ -188,11 +188,11 @@ visitNodeForSnapshot spider ref_state visit_nid = do
                  <$.> gHasNodeEID node_eid
                  <*.> pure gAllNodes
 
-makeSnapshotLinkSamples :: (FromGraphSON n, LinkAttributes la)
-                        => Spider n na la
+makeSnapshotLinkSamples :: (FromGraphSON n, LinkAttributes fla)
+                        => Spider n na fla sla
                         -> n -- ^ subject node ID.
                         -> VFoundNode na
-                        -> IO (Vector (SnapshotLinkSample n la))
+                        -> IO (Vector (SnapshotLinkSample n fla))
 makeSnapshotLinkSamples spider subject_nid vneighbors = do
   finds_edges <- getFinds $ vfnId vneighbors
   traverse toSnapshotLinkEntry finds_edges
@@ -218,37 +218,37 @@ makeSnapshotLinkSamples spider subject_nid vneighbors = do
         expectOne Nothing = throwString "Expects a Vertex for a NodeID, but nothing found."
         -- TODO: better exception spec.
 
-tryGetNodeID :: FromGraphSON n => Spider n na la -> EID -> IO (Maybe n)
+tryGetNodeID :: FromGraphSON n => Spider n na fla sla -> EID -> IO (Maybe n)
 tryGetNodeID spider node_eid = fmap vToMaybe $ Gr.slurpResults =<< submitB spider binder
   where
     binder = gNodeID spider <$.> gHasNodeEID node_eid <*.> pure gAllNodes
 
 -- | The state kept while making the snapshot graph.
-data SnapshotState n na la =
+data SnapshotState n na fla =
   SnapshotState
   { ssUnvisitedNodes :: !(Queue n),
     ssVisitedNodes :: !(HashMap n (Maybe (VFoundNode na))),
     -- ^ If the visited node has no observation yet, its node
     -- attributes 'Nothing'.
-    ssVisitedLinks :: !(HashMap (SnapshotLinkID n) [SnapshotLinkSample n la])
+    ssVisitedLinks :: !(HashMap (SnapshotLinkID n) [SnapshotLinkSample n fla])
   }
   deriving (Show)
 
-emptySnapshotState :: (Ord n, Hashable n) => SnapshotState n na la
+emptySnapshotState :: (Ord n, Hashable n) => SnapshotState n na fla
 emptySnapshotState = SnapshotState
                      { ssUnvisitedNodes = mempty,
                        ssVisitedNodes = mempty,
                        ssVisitedLinks = mempty
                      }
 
-initSnapshotState :: (Ord n, Hashable n) => [n] -> SnapshotState n na la
+initSnapshotState :: (Ord n, Hashable n) => [n] -> SnapshotState n na fla
 initSnapshotState init_unvisited_nodes = emptySnapshotState { ssUnvisitedNodes = newQueue init_unvisited_nodes }
 
-addVisitedNode :: (Eq n, Hashable n) => n -> Maybe (VFoundNode na) -> SnapshotState n na la -> SnapshotState n na la
+addVisitedNode :: (Eq n, Hashable n) => n -> Maybe (VFoundNode na) -> SnapshotState n na fla -> SnapshotState n na fla
 addVisitedNode nid mv state = state { ssVisitedNodes = HM.insert nid mv $ ssVisitedNodes state }
 
 addSnapshotLinkSample :: (Ord n, Hashable n)
-                      => SnapshotLinkSample n la -> SnapshotState n na la -> SnapshotState n na la
+                      => SnapshotLinkSample n fla -> SnapshotState n na fla -> SnapshotState n na fla
 addSnapshotLinkSample ls state = state { ssVisitedLinks = updatedLinks,
                                          ssUnvisitedNodes = updatedUnvisited
                                        }
@@ -262,16 +262,16 @@ addSnapshotLinkSample ls state = state { ssVisitedLinks = updatedLinks,
                        else pushQueue target_nid $ ssUnvisitedNodes state
 
 addSnapshotLinkSamples :: (Ord n, Hashable n)
-                       => [SnapshotLinkSample n la] -> SnapshotState n na la -> SnapshotState n na la
+                       => [SnapshotLinkSample n fla] -> SnapshotState n na fla -> SnapshotState n na fla
 addSnapshotLinkSamples links orig_state = foldr' addSnapshotLinkSample orig_state links
 
-popUnvisitedNode :: SnapshotState n na la -> (SnapshotState n na la, Maybe n)
+popUnvisitedNode :: SnapshotState n na fla -> (SnapshotState n na fla, Maybe n)
 popUnvisitedNode state = (updated, popped)
   where
     updated = state { ssUnvisitedNodes = updatedUnvisited }
     (popped, updatedUnvisited) = popQueue $ ssUnvisitedNodes state
 
-makeSnapshot :: (Eq n, Hashable n) => Spider n na la -> SnapshotState n na la -> [SnapshotElement n na la]
+makeSnapshot :: (Eq n, Hashable n) => Spider n na fla sla -> SnapshotState n na fla -> [SnapshotElement n na sla]
 makeSnapshot spider state = (fmap Left nodes) ++ (fmap Right links)
   where
     nodes = visited_nodes ++ boundary_nodes
@@ -279,7 +279,7 @@ makeSnapshot spider state = (fmap Left nodes) ++ (fmap Right links)
     boundary_nodes = map (makeSnapshotNode state) $ toList $ ssUnvisitedNodes state
     links = mconcat $ map (makeSnapshotLinks spider state) $ HM.elems $ ssVisitedLinks state
 
-makeSnapshotNode :: (Eq n, Hashable n) => SnapshotState n na la -> n -> SnapshotNode n na
+makeSnapshotNode :: (Eq n, Hashable n) => SnapshotState n na fla -> n -> SnapshotNode n na
 makeSnapshotNode state nid =
   SnapshotNode { _nodeId = nid,
                  _isOnBoundary = on_boundary,
@@ -295,7 +295,7 @@ makeSnapshotNode state nid =
 -- | The input 'SnapshotLinkSample's must be for the equivalent
 -- 'SnapshotLinkID'. The output is list of 'SnapshotLink's, each of
 -- which corresponds to a subgroup of 'SnapshotLinkSample's.
-makeSnapshotLinks :: (Eq n, Hashable n) => Spider n na la -> SnapshotState n na la -> [SnapshotLinkSample n la] -> [SnapshotLink n la]
+makeSnapshotLinks :: (Eq n, Hashable n) => Spider n na fla sla -> SnapshotState n na fla -> [SnapshotLinkSample n fla] -> [SnapshotLink n sla]
 makeSnapshotLinks _ _ [] = []
 makeSnapshotLinks spider state link_samples@(head_sample : _) =
   mapMaybe makeSnapshotLink $ doUnify link_samples
