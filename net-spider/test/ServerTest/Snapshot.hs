@@ -18,7 +18,8 @@ import Test.Hspec
 
 import ServerTest.Common
   ( withServer, withSpider, withSpider', sortSnapshotElements,
-    AText(..), APorts(..)
+    AText(..), APorts(..), subIdWithAPorts,
+    alignAPortsToLinkDirection
   )
 
 import NetSpider.Found
@@ -34,7 +35,7 @@ import NetSpider.Spider
   ( Spider, addFoundNode, getLatestSnapshot
   )
 import NetSpider.Spider.Config (defConfig, Config(unifyLinkSamples), Host, Port)
-import NetSpider.Spider.Unify (unifyToMany, lsLinkAttributes)
+import NetSpider.Spider.Unify (unifyStd, UnifyStdConfig(..), defUnifyStdConfig, lsLinkAttributes, latestLinkSample)
 import NetSpider.Timestamp (fromEpochSecond)
 
 main :: IO ()
@@ -58,7 +59,12 @@ makeOneNeighborExample spider = do
   debugShowE $ addFoundNode spider nbs
 
 confWithAPorts :: Config Text () APorts APorts
-confWithAPorts = defConfig { unifyLinkSamples = unifyToMany lsLinkAttributes }
+confWithAPorts = defConfig { unifyLinkSamples = unifyStd unify_conf }
+  where
+    unify_conf = defUnifyStdConfig
+                 { makeLinkSubId = subIdWithAPorts,
+                   mergeSamples = \l r -> fmap alignAPortsToLinkDirection $ latestLinkSample (l ++ r)
+                 }
 
 sortLinksWithAttr :: (Ord n, Ord la) => Vector (SnapshotLink n la) -> Vector (SnapshotLink n la)
 sortLinksWithAttr = V.fromList . sortOn getKey . V.toList
@@ -394,17 +400,17 @@ spec_getLatestSnapshot2 = do
                   neighborLinks = [ FoundLink
                                     { targetNode = "n1",
                                       linkState = LinkToSubject,
-                                      linkAttributes = APorts "p3" "p6"
+                                      linkAttributes = APorts "p6" "p3"
                                     },
                                     FoundLink
                                     { targetNode = "n1",
                                       linkState = LinkToSubject,
-                                      linkAttributes = APorts "p5" "p10"
+                                      linkAttributes = APorts "p10" "p5"
                                     },
                                     FoundLink
                                     { targetNode = "n1",
                                       linkState = LinkToSubject,
-                                      linkAttributes = APorts "p4" "p8"
+                                      linkAttributes = APorts "p8" "p4"
                                     }
                                   ]
                 }
@@ -514,12 +520,12 @@ spec_getLatestSnapshot2 = do
         links2 = [ FoundLink -- appears
                    { targetNode = "n1",
                      linkState = LinkToSubject,
-                     linkAttributes = APorts "p13" "p23"
+                     linkAttributes = APorts "p23" "p13"
                    },
                    FoundLink -- stays
                    { targetNode = "n1",
                      linkState = LinkToSubject,
-                     linkAttributes = APorts "p12" "p22"
+                     linkAttributes = APorts "p22" "p12" 
                    }
                  ]
     mapM_ (addFoundNode spider) fns

@@ -6,7 +6,9 @@ module ServerTest.Common
          sortSnapshotElements,
          AText(..),
          AInt(..),
-         APorts(..)
+         APorts(..),
+         subIdWithAPorts,
+         alignAPortsToLinkDirection
        ) where
 
 import Control.Applicative ((<$>))
@@ -20,7 +22,12 @@ import qualified Data.Vector as V
 import Test.Hspec
 import Test.Hspec.NeedEnv (needEnvHostPort, EnvMode(Need))
 
+import NetSpider.Found (LinkState(..))
 import NetSpider.Graph (NodeAttributes(..), LinkAttributes(..), VNode)
+import NetSpider.Pair (Pair(..))
+import NetSpider.Spider.Unify
+  ( LinkSample(..)
+  )
 import NetSpider.Spider.Config
   ( Host, Port, Spider, Config(..), defConfig
   )
@@ -79,18 +86,42 @@ instance LinkAttributes AInt where
 
 
 -- | Pair of ports.
+--
+-- This type is used in two ways. (subject port, target port) and
+-- (source port, destination port).
 data APorts =
   APorts
-  { apSource :: Text,
-    apDestination :: Text
+  { apFst :: Text,
+    apSnd :: Text
   }
   deriving (Show,Eq,Ord)
 
 instance LinkAttributes APorts where
   writeLinkAttributes ap = do
-    writeSource <- gProperty "source_port" <$> newBind (apSource ap)
-    writeDest <- gProperty "destination_port" <$> newBind (apDestination ap)
+    writeSource <- gProperty "subject_port" <$> newBind (apFst ap)
+    writeDest <- gProperty "target_port" <$> newBind (apSnd ap)
     return (writeDest <<< writeSource)
   parseLinkAttributes ps = APorts
-                           <$> parseOneValue "source_port" ps
-                           <*> parseOneValue "destination_port" ps
+                           <$> parseOneValue "subject_port" ps
+                           <*> parseOneValue "target_port" ps
+
+swapAPorts :: APorts -> APorts
+swapAPorts ap = ap { apFst = apSnd ap,
+                     apSnd = apFst ap
+                   }
+
+-- | Link sub-ID with 'APorts'.
+subIdWithAPorts :: LinkSample n APorts -> Pair (n, Text)
+subIdWithAPorts ls = Pair ( (lsSubjectNode ls, apFst $ lsLinkAttributes ls),
+                            (lsTargetNode ls, apSnd $ lsLinkAttributes ls)
+                          )
+
+-- | Sort 'APorts' according to 'LinkState'. This converts the
+-- 'APorts' as (subject port, target port) into (source port,
+-- destination port).
+alignAPortsToLinkDirection :: LinkSample n APorts -> LinkSample n APorts
+alignAPortsToLinkDirection ls = ls { lsLinkAttributes = updated }
+  where
+    updated = case lsLinkState ls of
+               LinkToSubject -> swapAPorts $ lsLinkAttributes ls
+               _ -> lsLinkAttributes ls
