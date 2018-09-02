@@ -18,6 +18,7 @@ import Data.Traversable (Traversable(..))
 -- insensitive to swapping. 'Eq', 'Ord' and 'Hashable' instances treat
 -- 'Pair's with swapped elements as equivalent.
 newtype Pair a = Pair { unPair :: (a,a) }
+               deriving (Show)
 
 instance Eq a => Eq (Pair a) where
   (Pair (al, ar)) == (Pair (bl, br)) = (al == bl && ar == br) || (al == br && ar == bl)
