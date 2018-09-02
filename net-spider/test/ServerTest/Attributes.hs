@@ -42,7 +42,7 @@ typeTestCase :: (FromGraphSON n, ToJSON n, Ord n, Hashable n, Show n, NodeAttrib
 typeTestCase test_label conf n1_id n2_id node_attrs link_attrs =
   specify test_label $ withSpider' conf $ \spider -> do
     let n1 = FoundNode { subjectNode = n1_id,
-                         observationTime = fromEpochSecond 128,
+                         foundAt = fromEpochSecond 128,
                          neighborLinks = return link1,
                          nodeAttributes = node_attrs
                        }
@@ -81,7 +81,7 @@ timestampTestCase label ts = specify label $ withSpider $ \spider -> do
   let fn :: FoundNode Text () ()
       fn = FoundNode
            { subjectNode = "n1",
-             observationTime = ts,
+             foundAt = ts,
              nodeAttributes = (),
              neighborLinks = return $ FoundLink
                              { targetNode = "n2",

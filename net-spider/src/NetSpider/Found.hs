@@ -75,7 +75,7 @@ data FoundLink n la =
 data FoundNode n na la =
   FoundNode
   { subjectNode :: !n,
-    observationTime :: !Timestamp,
+    foundAt :: !Timestamp,
     neighborLinks :: ![FoundLink n la],
     nodeAttributes :: !na
   }

@@ -100,7 +100,7 @@ gMakeFoundNode :: (LinkAttributes la, NodeAttributes na)
 gMakeFoundNode subject_vid link_pairs fnode = 
   mAddFindsEdges
   <*.> writeNodeAttributes (nodeAttributes fnode)
-  <*.> gSetTimestamp (observationTime fnode)
+  <*.> gSetTimestamp (foundAt fnode)
   <*.> mAddObservedEdge
   <*.> pure $ sAddV "found_node" $ source "g"
   where

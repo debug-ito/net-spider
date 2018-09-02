@@ -51,7 +51,7 @@ makeOneNeighborExample spider = do
                          linkAttributes = ()
                        }
       nbs = FoundNode { subjectNode = "n1",
-                        observationTime = fromEpochSecond 100,
+                        foundAt = fromEpochSecond 100,
                         neighborLinks = return link,
                         nodeAttributes = ()
                       }
@@ -94,7 +94,7 @@ spec_getLatestSnapshot1 = do
   specify "no neighbor" $ withSpider $ \spider -> do
     let nbs :: FoundNode Text () ()
         nbs = FoundNode { subjectNode = "n1",
-                          observationTime = fromEpochSecond 200,
+                          foundAt = fromEpochSecond 200,
                           neighborLinks = mempty,
                           nodeAttributes = ()
                         }
@@ -123,12 +123,12 @@ spec_getLatestSnapshot1 = do
                               linkAttributes = ()
                             }
         nbs1 = FoundNode { subjectNode = "n1",
-                           observationTime = fromEpochSecond 100,
+                           foundAt = fromEpochSecond 100,
                            neighborLinks = return link_12,
                            nodeAttributes = ()
                          }
         nbs2 = FoundNode { subjectNode = "n2",
-                           observationTime = fromEpochSecond 200,
+                           foundAt = fromEpochSecond 200,
                            neighborLinks = return link_21,
                            nodeAttributes = ()
                          }
@@ -153,7 +153,7 @@ spec_getLatestSnapshot1 = do
     let fns :: [FoundNode Text AText ()]
         fns = [ FoundNode
                 { subjectNode = "n1",
-                  observationTime = fromEpochSecond 200,
+                  foundAt = fromEpochSecond 200,
                   neighborLinks = [ FoundLink
                                     { targetNode = "n2",
                                       linkState = LinkToTarget,
@@ -169,13 +169,13 @@ spec_getLatestSnapshot1 = do
                 },
                 FoundNode
                 { subjectNode = "n1",
-                  observationTime = fromEpochSecond 100,
+                  foundAt = fromEpochSecond 100,
                   neighborLinks = mempty,
                   nodeAttributes = AText "at 100"
                 },
                 FoundNode
                 { subjectNode = "n1",
-                  observationTime = fromEpochSecond 150,
+                  foundAt = fromEpochSecond 150,
                   neighborLinks = return $ FoundLink
                                   { targetNode = "n2",
                                     linkState = LinkToTarget,
@@ -211,7 +211,7 @@ spec_getLatestSnapshot1 = do
     let fns :: [FoundNode Text () AText]
         fns = [ FoundNode
                 { subjectNode = intToNodeId 1,
-                  observationTime = fromEpochSecond 100,
+                  foundAt = fromEpochSecond 100,
                   neighborLinks = return $ FoundLink
                                   { targetNode = intToNodeId 2,
                                     linkState = LinkToTarget,
@@ -224,7 +224,7 @@ spec_getLatestSnapshot1 = do
                 middleNode 4 $ fromEpochSecond 200,
                 FoundNode
                 { subjectNode = intToNodeId 5,
-                  observationTime = fromEpochSecond 150,
+                  foundAt = fromEpochSecond 150,
                   neighborLinks = return $ FoundLink
                                   { targetNode = intToNodeId 4,
                                     linkState = LinkToSubject,
@@ -238,7 +238,7 @@ spec_getLatestSnapshot1 = do
         middleNode node_i time =
           FoundNode
           { subjectNode = sub_nid,
-            observationTime = time,
+            foundAt = time,
             neighborLinks = [ FoundLink
                               { targetNode = intToNodeId (node_i - 1),
                                 linkState = LinkToSubject,
@@ -301,7 +301,7 @@ spec_getLatestSnapshot2 = do
     let fns :: [FoundNode Text () ()]
         fns = [ FoundNode
                 { subjectNode = "n1",
-                  observationTime = fromEpochSecond 100,
+                  foundAt = fromEpochSecond 100,
                   neighborLinks = [ FoundLink
                                     { targetNode = "n2",
                                       linkState = LinkToTarget,
@@ -312,7 +312,7 @@ spec_getLatestSnapshot2 = do
                 },
                 FoundNode
                 { subjectNode = "n2",
-                  observationTime = fromEpochSecond 150,
+                  foundAt = fromEpochSecond 150,
                   neighborLinks = [ FoundLink
                                     { targetNode = "n1",
                                       linkState = LinkToSubject,
@@ -328,7 +328,7 @@ spec_getLatestSnapshot2 = do
                 },
                 FoundNode
                 { subjectNode = "n3",
-                  observationTime = fromEpochSecond 100,
+                  foundAt = fromEpochSecond 100,
                   neighborLinks = [ FoundLink
                                     { targetNode = "n1",
                                       linkState = LinkToTarget,
@@ -368,7 +368,7 @@ spec_getLatestSnapshot2 = do
     let fns :: [FoundNode Text () APorts]
         fns = [ FoundNode
                 { subjectNode = "n1",
-                  observationTime = fromEpochSecond 200,
+                  foundAt = fromEpochSecond 200,
                   nodeAttributes = (),
                   neighborLinks = [ FoundLink
                                     { targetNode = "n2",
@@ -389,7 +389,7 @@ spec_getLatestSnapshot2 = do
                 },
                 FoundNode
                 { subjectNode = "n2",
-                  observationTime = fromEpochSecond 100,
+                  foundAt = fromEpochSecond 100,
                   nodeAttributes = (),
                   neighborLinks = [ FoundLink
                                     { targetNode = "n1",
@@ -429,7 +429,7 @@ spec_getLatestSnapshot2 = do
     let fns :: [FoundNode Text () ()]
         fns = [ FoundNode
                 { subjectNode = "n1",
-                  observationTime = fromEpochSecond 100,
+                  foundAt = fromEpochSecond 100,
                   nodeAttributes = (),
                   neighborLinks = [ FoundLink
                                     { targetNode = "n2",
@@ -440,7 +440,7 @@ spec_getLatestSnapshot2 = do
                 },
                 FoundNode
                 { subjectNode = "n2",
-                  observationTime = fromEpochSecond 200,
+                  foundAt = fromEpochSecond 200,
                   nodeAttributes = (),
                   neighborLinks = []
                 }
@@ -457,7 +457,7 @@ spec_getLatestSnapshot2 = do
     let fns :: [FoundNode Text () ()]
         fns = [ FoundNode
                 { subjectNode = "n1",
-                  observationTime = fromEpochSecond 200,
+                  foundAt = fromEpochSecond 200,
                   nodeAttributes = (),
                   neighborLinks = [ FoundLink
                                     { targetNode = "n2",
@@ -468,7 +468,7 @@ spec_getLatestSnapshot2 = do
                 },
                 FoundNode
                 { subjectNode = "n2",
-                  observationTime = fromEpochSecond 100,
+                  foundAt = fromEpochSecond 100,
                   nodeAttributes = (),
                   neighborLinks = []
                 }
@@ -489,13 +489,13 @@ spec_getLatestSnapshot2 = do
     let fns :: [FoundNode Text () APorts]
         fns = [ FoundNode
                 { subjectNode = "n2",
-                  observationTime = fromEpochSecond 200,
+                  foundAt = fromEpochSecond 200,
                   nodeAttributes = (),
                   neighborLinks = links2
                 },
                 FoundNode
                 { subjectNode = "n1",
-                  observationTime = fromEpochSecond 100,
+                  foundAt = fromEpochSecond 100,
                   nodeAttributes = (),
                   neighborLinks = links1
                 }

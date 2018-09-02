@@ -92,7 +92,7 @@ doWithSpider :: Spider Text () () () -> IO ()
 doWithSpider spider = do
   let finding1 = FoundNode
                  { subjectNode = "switch1.example.com",
-                   observationTime = fromEpochSecond 1534769618,
+                   foundAt = fromEpochSecond 1534769618,
                    neighborLinks = links1,
                    nodeAttributes = ()
                  }
@@ -111,14 +111,14 @@ doWithSpider spider = do
   addFoundNode spider finding1
 ```
 
-A local finding is expressed as `FoundNode` type. In the above example, we input a local finding observed at the switch named "switch1.example.com". `FoundNode` includes the timestamp (`observationTime`) at which the local finding was observed, and list of neighbors (`neighborLinks`) adjacent to this node. These are what we would get via SNMP + CDP/LLDP.
+A local finding is expressed as `FoundNode` type. In the above example, we input a local finding observed at the switch named "switch1.example.com". `FoundNode` includes the timestamp (`foundAt`) at which the local finding was observed, and list of neighbors (`neighborLinks`) adjacent to this node. These are what we would get via SNMP + CDP/LLDP.
 
 OK, let's observe the switch2 and input that local finding as well.
 
 ```haskell basic
   let finding2 = FoundNode
                  { subjectNode = "switch2.example.com",
-                   observationTime = fromEpochSecond 1534770022,
+                   foundAt = fromEpochSecond 1534770022,
                    neighborLinks = links2,
                    nodeAttributes = ()
                  }
