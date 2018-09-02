@@ -27,6 +27,7 @@ import Data.Function (on)
 import Data.Maybe (mapMaybe)
 import GHC.Exts (groupWith)
 
+import NetSpider.Found (FoundLink)
 import NetSpider.Snapshot (SnapshotNode, nodeTimestamp, nodeId, SnapshotLink)
 import NetSpider.Spider.Internal.Sample
   ( LinkSample(..), LinkSampleID, linkSampleId
@@ -62,8 +63,8 @@ import NetSpider.Spider.Internal.Sample
 --   attribute type.
 type LinkSampleUnifier n na fla sla = SnapshotNode n na -> SnapshotNode n na -> [LinkSample n fla] -> [LinkSample n sla]
 
--- | Unify 'LinkSamples's to one. This is the sensible unifier if
--- there is at most one physical link for a given pair of nodes.
+-- | Unify 'LinkSample's to one. This is the sensible unifier if there
+-- is at most one physical link for a given pair of nodes.
 unifyToOne :: Eq n => LinkSampleUnifier n na la la
 unifyToOne = unifyStd defUnifyStdConfig
 
@@ -78,14 +79,32 @@ unifyToMany getKey = unifyStd conf
   where
     conf = defUnifyStdConfig { makeLinkSubId = getKey }
 
--- | TODO: write doc
+-- | Configuration of 'unifyStd'. See 'unifyStd' for detail.
 data UnifyStdConfig n na fla sla lsid =
   UnifyStdConfig
   { makeLinkSubId :: LinkSample n fla -> lsid,
+    -- ^ Function to create the link sub-ID from
+    -- 'LinkSample'.
+    --
+    -- Default: always return @()@. All 'LinkSample's have the same
+    -- link sub-ID.
     mergeSamples :: [LinkSample n fla] -> [LinkSample n fla] -> Maybe (LinkSample n sla),
+    -- ^ Function to merge 'LinkSample's for a physical link. The
+    -- input is 'LinkSample's found by each of the end nodes. This
+    -- function optionally converts the link attributes from @fla@ to
+    -- @sla@.
+    --
+    -- Default: Concatenate the input 'LinkSample's and get
+    -- 'latestLinkSample'.
     isLinkDetectable :: SnapshotNode n na -> LinkSample n sla -> Bool
+    -- ^ This function is supposed to return 'True' if the given
+    -- 'SnapshotNode' can detect 'LinkSample'. If it returns 'False',
+    -- that means it's natural for the node not to find the link.
+    --
+    -- Default: always return 'True'.
   }
 
+-- | Default of 'UnifyStdConfig'.
 defUnifyStdConfig :: UnifyStdConfig n na fla fla ()
 defUnifyStdConfig = UnifyStdConfig
                     { makeLinkSubId = const (),
@@ -93,7 +112,18 @@ defUnifyStdConfig = UnifyStdConfig
                       isLinkDetectable = \_ _ -> True
                     }
 
--- | TODO: write doc.
+-- | The standard unifier. This unifier does the following.
+--
+-- 1. It partitions 'LinkSample's based on their link sub-IDs. The
+--    link sub-ID is defined by 'makeLinkSubId' function. Each link
+--    sub-ID corresponds to a physical link.
+-- 2. For each partition, 'LinkSample's are merged to one using
+--    'mergeSamples' function.
+-- 3. After merge, the link is checked against its end nodes. If an
+--    end node can detect the link but its local finding does not
+--    include the link, the link is removed from the final result. You
+--    can configure which node can detect which link by
+--    'isLinkDetectable' function.
 unifyStd :: (Eq n, Ord lsid) => UnifyStdConfig n na fla sla lsid -> LinkSampleUnifier n na fla sla
 unifyStd conf lnode rnode = mapMaybe forGroup . groupWith (makeLinkSubId conf)
   where
