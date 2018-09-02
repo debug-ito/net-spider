@@ -45,6 +45,7 @@ import qualified Network.Greskell.WebSocket as Gr
 import NetSpider.Graph (EID, LinkAttributes, NodeAttributes)
 import NetSpider.Graph.Internal (VFoundNode(..), EFinds(..))
 import NetSpider.Found (FoundNode(..), FoundLink(..), LinkState(..))
+import NetSpider.Pair (Pair)
 import NetSpider.Queue (Queue, newQueue, popQueue, pushQueue)
 import NetSpider.Snapshot (SnapshotElement)
 import NetSpider.Snapshot.Internal (SnapshotNode(..), SnapshotLink(..))
@@ -53,7 +54,7 @@ import NetSpider.Spider.Internal.Graph
   ( gMakeFoundNode, gAllNodes, gHasNodeID, gHasNodeEID, gNodeEID, gNodeID, gMakeNode, gClearAll,
     gLatestFoundNode, gSelectFoundNode, gFinds, gHasFoundNodeEID, gAllFoundNode
   )
-import NetSpider.Spider.Internal.Sample (SnapshotLinkID(..), SnapshotLinkSample(..))
+import NetSpider.Spider.Internal.Sample (LinkSample(..), linkSampleId)
 
 -- | Connect to the WebSocket endpoint of Tinkerpop Gremlin Server
 -- that hosts the NetSpider database.
@@ -174,8 +175,8 @@ visitNodeForSnapshot spider ref_state visit_nid = do
      case mnext_found of
       Nothing -> return ()
       Just next_found -> do
-        link_samples <- makeSnapshotLinkSamples spider visit_nid next_found
-        modifyIORef ref_state $ addSnapshotLinkSamples $ toList link_samples
+        link_samples <- makeLinkSamples spider visit_nid next_found
+        modifyIORef ref_state $ addLinkSamples $ toList link_samples
   where
     markAsVisited mvfn = modifyIORef ref_state $ addVisitedNode visit_nid mvfn
     getVisitedNodeEID = fmap vToMaybe $ Gr.slurpResults =<< submitB spider binder
@@ -188,12 +189,12 @@ visitNodeForSnapshot spider ref_state visit_nid = do
                  <$.> gHasNodeEID node_eid
                  <*.> pure gAllNodes
 
-makeSnapshotLinkSamples :: (FromGraphSON n, LinkAttributes fla)
-                        => Spider n na fla sla
-                        -> n -- ^ subject node ID.
-                        -> VFoundNode na
-                        -> IO (Vector (SnapshotLinkSample n fla))
-makeSnapshotLinkSamples spider subject_nid vneighbors = do
+makeLinkSamples :: (FromGraphSON n, LinkAttributes fla)
+                => Spider n na fla sla
+                -> n -- ^ subject node ID.
+                -> VFoundNode na
+                -> IO (Vector (LinkSample n fla))
+makeLinkSamples spider subject_nid vneighbors = do
   finds_edges <- getFinds $ vfnId vneighbors
   traverse toSnapshotLinkEntry finds_edges
   where
@@ -202,14 +203,12 @@ makeSnapshotLinkSamples spider subject_nid vneighbors = do
         binder = gFinds <$.> gHasFoundNodeEID neighbors_eid <*.> pure gAllFoundNode
     toSnapshotLinkEntry efinds = do
       target_nid <- getNodeID $ efTargetId $ efinds
-      let lid = SnapshotLinkID { sliSubjectNode = subject_nid,
-                                 sliTargetNode = target_nid
+      let lsample = LinkSample { lsSubjectNode = subject_nid,
+                                 lsTargetNode = target_nid,
+                                 lsLinkState = efLinkState efinds,
+                                 lsTimestamp = vfnTimestamp vneighbors,
+                                 lsLinkAttributes = efLinkAttributes efinds
                                }
-          lsample = SnapshotLinkSample { slsLinkId = lid,
-                                         slsLinkState = efLinkState efinds,
-                                         slsTimestamp = vfnTimestamp vneighbors,
-                                         slsLinkAttributes = efLinkAttributes efinds
-                                       }
       return lsample
     getNodeID node_eid = expectOne =<< tryGetNodeID spider node_eid
     -- TODO: Using .as and .select steps, we can get EFinds and its destination vertex simultaneously.
@@ -223,6 +222,8 @@ tryGetNodeID spider node_eid = fmap vToMaybe $ Gr.slurpResults =<< submitB spide
   where
     binder = gNodeID spider <$.> gHasNodeEID node_eid <*.> pure gAllNodes
 
+type LinkSampleID n = Pair n
+
 -- | The state kept while making the snapshot graph.
 data SnapshotState n na fla =
   SnapshotState
@@ -230,7 +231,7 @@ data SnapshotState n na fla =
     ssVisitedNodes :: !(HashMap n (Maybe (VFoundNode na))),
     -- ^ If the visited node has no observation yet, its node
     -- attributes 'Nothing'.
-    ssVisitedLinks :: !(HashMap (SnapshotLinkID n) [SnapshotLinkSample n fla])
+    ssVisitedLinks :: !(HashMap (LinkSampleID n) [LinkSample n fla])
   }
   deriving (Show)
 
@@ -247,23 +248,23 @@ initSnapshotState init_unvisited_nodes = emptySnapshotState { ssUnvisitedNodes =
 addVisitedNode :: (Eq n, Hashable n) => n -> Maybe (VFoundNode na) -> SnapshotState n na fla -> SnapshotState n na fla
 addVisitedNode nid mv state = state { ssVisitedNodes = HM.insert nid mv $ ssVisitedNodes state }
 
-addSnapshotLinkSample :: (Ord n, Hashable n)
-                      => SnapshotLinkSample n fla -> SnapshotState n na fla -> SnapshotState n na fla
-addSnapshotLinkSample ls state = state { ssVisitedLinks = updatedLinks,
-                                         ssUnvisitedNodes = updatedUnvisited
-                                       }
+addLinkSample :: (Ord n, Hashable n)
+              => LinkSample n fla -> SnapshotState n na fla -> SnapshotState n na fla
+addLinkSample ls state = state { ssVisitedLinks = updatedLinks,
+                                 ssUnvisitedNodes = updatedUnvisited
+                               }
   where
-    link_id = slsLinkId ls
+    link_id = linkSampleId ls
     updatedLinks = HM.insertWith (++) link_id (return ls) $ ssVisitedLinks state
-    target_nid = sliTargetNode link_id
+    target_nid = lsTargetNode ls
     target_already_visited = HM.member target_nid $ ssVisitedNodes state
     updatedUnvisited = if target_already_visited
                        then ssUnvisitedNodes state
                        else pushQueue target_nid $ ssUnvisitedNodes state
 
-addSnapshotLinkSamples :: (Ord n, Hashable n)
-                       => [SnapshotLinkSample n fla] -> SnapshotState n na fla -> SnapshotState n na fla
-addSnapshotLinkSamples links orig_state = foldr' addSnapshotLinkSample orig_state links
+addLinkSamples :: (Ord n, Hashable n)
+               => [LinkSample n fla] -> SnapshotState n na fla -> SnapshotState n na fla
+addLinkSamples links orig_state = foldr' addLinkSample orig_state links
 
 popUnvisitedNode :: SnapshotState n na fla -> (SnapshotState n na fla, Maybe n)
 popUnvisitedNode state = (updated, popped)
@@ -292,29 +293,27 @@ makeSnapshotNode state nid =
        Nothing -> (True, Nothing)
        Just mv -> (False, mv)
 
--- | The input 'SnapshotLinkSample's must be for the equivalent
--- 'SnapshotLinkID'. The output is list of 'SnapshotLink's, each of
--- which corresponds to a subgroup of 'SnapshotLinkSample's.
-makeSnapshotLinks :: (Eq n, Hashable n) => Spider n na fla sla -> SnapshotState n na fla -> [SnapshotLinkSample n fla] -> [SnapshotLink n sla]
+-- | The input 'LinkSample's must be for the equivalent
+-- 'LinkSampleID'. The output is list of 'SnapshotLink's, each of
+-- which corresponds to a subgroup of 'LinkSample's.
+makeSnapshotLinks :: (Eq n, Hashable n) => Spider n na fla sla -> SnapshotState n na fla -> [LinkSample n fla] -> [SnapshotLink n sla]
 makeSnapshotLinks _ _ [] = []
 makeSnapshotLinks spider state link_samples@(head_sample : _) =
   mapMaybe makeSnapshotLink $ doUnify link_samples
   where
-    makeEndNode getter = makeSnapshotNode state $ getter $ slsLinkId $ head_sample
-    doUnify = (unifyLinkSamples $ spiderConfig spider) (makeEndNode sliSubjectNode) (makeEndNode sliTargetNode)
+    makeEndNode getter = makeSnapshotNode state $ getter $ head_sample
+    doUnify = (unifyLinkSamples $ spiderConfig spider) (makeEndNode lsSubjectNode) (makeEndNode lsTargetNode)
     makeSnapshotLink unified_sample = do
-      case slsLinkState unified_sample of
+      case lsLinkState unified_sample of
        LinkUnused -> Nothing
        LinkToTarget -> Just $ sampleToLink unified_sample True True
        LinkToSubject -> Just $ sampleToLink unified_sample False True
        LinkBidirectional -> Just $ sampleToLink unified_sample True False
     sampleToLink sample to_target is_directed = 
-      SnapshotLink { _sourceNode = (if to_target then sliSubjectNode else sliTargetNode) link_id,
-                     _destinationNode = (if to_target then sliTargetNode else sliSubjectNode) link_id,
+      SnapshotLink { _sourceNode = (if to_target then lsSubjectNode else lsTargetNode) sample,
+                     _destinationNode = (if to_target then lsTargetNode else lsSubjectNode) sample,
                      _isDirected = is_directed,
-                     _linkTimestamp = slsTimestamp sample,
-                     _linkAttributes = slsLinkAttributes sample
+                     _linkTimestamp = lsTimestamp sample,
+                     _linkAttributes = lsLinkAttributes sample
                    }
-      where
-        link_id = slsLinkId sample
 

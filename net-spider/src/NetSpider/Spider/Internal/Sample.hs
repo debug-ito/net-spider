@@ -5,53 +5,32 @@
 --
 -- __this module is internal. End-users should not use it.__
 module NetSpider.Spider.Internal.Sample
-       ( SnapshotLinkID(..),
-         SnapshotLinkSample(..)
+       ( LinkSample(..),
+         linkSampleId
        ) where
 
 import Data.Hashable (Hashable(hashWithSalt))
 
 import NetSpider.Found (LinkState)
+import NetSpider.Pair (Pair(..))
 import NetSpider.Timestamp (Timestamp)
 
-
--- | Identitfy of link while making the snapshot graph.
---
--- 'SnapshotLinkID' is the unordered pair of nodes. 'Eq', 'Ord' and
--- 'Hashable' instances treat 'SnapshotLinkID's that have subject and
--- target nodes swapped as equivalent.
-data SnapshotLinkID n =
-  SnapshotLinkID
-  { sliSubjectNode :: !n,
-    sliTargetNode :: !n
+-- | 'LinkSample' is an intermediate type between
+-- 'NetSpider.Found.FoundLink' and
+-- 'NetSpider.Snapshot.SnapshotLink'. 'LinkSample's are collected from
+-- the history graph, and are unified into
+-- 'NetSpider.Snapshot.SnapshotLink's.
+data LinkSample n la =
+  LinkSample
+  { lsSubjectNode :: !n,
+    lsTargetNode :: !n,
+    lsLinkState :: !LinkState,
+    lsTimestamp :: !Timestamp,
+    lsLinkAttributes :: !la
   }
-  deriving (Show)
+  deriving (Show,Eq,Ord)
 
-sortedLinkID :: Ord n => SnapshotLinkID n -> (n, n)
-sortedLinkID lid = if sn <= tn
-                   then (sn, tn)
-                   else (tn, sn)
-  where
-    sn = sliSubjectNode lid
-    tn = sliTargetNode lid
-
-instance Ord n => Eq (SnapshotLinkID n) where
-  r == l = sortedLinkID r == sortedLinkID l
-
-instance Ord n => Ord (SnapshotLinkID n) where
-  compare r l = compare (sortedLinkID r) (sortedLinkID l)
-
-instance (Ord n, Hashable n) => Hashable (SnapshotLinkID n) where
-  hashWithSalt s lid = hashWithSalt s $ sortedLinkID lid
-
-
--- | Observation sample of a link while making the snapshot graph.
-data SnapshotLinkSample n la =
-  SnapshotLinkSample
-  { slsLinkId :: !(SnapshotLinkID n),
-    slsLinkState :: !LinkState,
-    slsTimestamp :: !Timestamp,
-    slsLinkAttributes :: !la
-  }
-  deriving (Show,Eq)
-
+-- | Link ID of the 'LinkSample'. It's the 'Pair' of 'lsSubjectNode'
+-- and 'lsTargetNode'.
+linkSampleId :: LinkSample n la -> Pair n
+linkSampleId l = Pair (lsSubjectNode l, lsTargetNode l)
