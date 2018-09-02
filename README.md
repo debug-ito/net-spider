@@ -146,14 +146,13 @@ So, by combining these local findings, we can infer the network topology is like
 The above graph can be obtained by `getLatestSnapshot` function. This function retrieves the snapshot graph that is supposed to be the latest state of the network.
 
 ```haskell basic
-  snapshot <- getLatestSnapshot spider "switch1.example.com"
+  (raw_nodes, raw_links) <- getLatestSnapshot spider "switch1.example.com"
 ```
 
 The snapshot graph is expressed as a combined list of `SnapshotNode`s and `SnapshotLink`s. They are independent of each other, so it is easy to render the graph using, for example, [graphviz](http://graphviz.org/).
 
 ```haskell basic
-  let (raw_nodes, raw_links) = partitionEithers snapshot
-      nodes = sort raw_nodes
+  let nodes = sort raw_nodes
       links = sort $ map sortLinkNodeTuple raw_links
   map nodeId nodes `shouldBe` [ "switch1.example.com",
                                 "switch2.example.com",

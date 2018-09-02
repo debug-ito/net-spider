@@ -8,8 +8,7 @@ module NetSpider.Snapshot.Internal
        ( SnapshotLink(..),
          linkNodeTuple,
          sortLinkNodeTuple,
-         SnapshotNode(..),
-         SnapshotElement
+         SnapshotNode(..)
        ) where
 
 import NetSpider.Timestamp (Timestamp)
@@ -73,5 +72,3 @@ data SnapshotNode n na =
 -- | Comparison by node ID.
 instance (Ord n, Eq na) => Ord (SnapshotNode n na) where
   compare l r = compare (_nodeId l) (_nodeId r)
-
-type SnapshotElement n na la = Either (SnapshotNode n na) (SnapshotLink n la)

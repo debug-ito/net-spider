@@ -28,7 +28,7 @@ import NetSpider.Spider
   ( connectWith, close, clearAll
   )
 import NetSpider.Snapshot
-  ( SnapshotElement, SnapshotNode, SnapshotLink
+  ( SnapshotNode, SnapshotLink
   )
 
 withServer :: SpecWith (Host,Port) -> Spec
@@ -47,13 +47,12 @@ withSpider' orig_conf action (host, port) = bracket (connectWith conf) close $ \
                        }
 
 sortSnapshotElements :: (Ord n, Eq na, Eq la)
-                     => [SnapshotElement n na la]
+                     => ([SnapshotNode n na], [SnapshotLink n la])
                      -> (Vector (SnapshotNode n na), Vector (SnapshotLink n la))
-sortSnapshotElements es = toVs $ foldr f mempty $ sort es
+sortSnapshotElements (ns, ls) = (sortV ns, sortV ls)
   where
-    f (Left n)  (ns, ls) = (n : ns, ls)
-    f (Right l) (ns, ls) = (ns,     l : ls)
-    toVs (ll, rl) = (V.fromList ll, V.fromList rl)
+    sortV :: Ord a => [a] -> Vector a
+    sortV = V.fromList . sort
 
 
 newtype AText = AText Text

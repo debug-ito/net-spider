@@ -47,7 +47,6 @@ import NetSpider.Graph.Internal (VFoundNode(..), EFinds(..))
 import NetSpider.Found (FoundNode(..), FoundLink(..), LinkState(..))
 import NetSpider.Pair (Pair)
 import NetSpider.Queue (Queue, newQueue, popQueue, pushQueue)
-import NetSpider.Snapshot (SnapshotElement)
 import NetSpider.Snapshot.Internal (SnapshotNode(..), SnapshotLink(..))
 import NetSpider.Spider.Config (Spider(..), Config(..), defConfig)
 import NetSpider.Spider.Internal.Graph
@@ -132,7 +131,7 @@ getOrMakeNode spider nid = do
 getLatestSnapshot :: (FromGraphSON n, ToJSON n, Ord n, Hashable n, LinkAttributes fla, NodeAttributes na)
                   => Spider n na fla sla
                   -> n -- ^ ID of the node where it starts traversing.
-                  -> IO [SnapshotElement n na sla]
+                  -> IO ([SnapshotNode n na], [SnapshotLink n sla])
 getLatestSnapshot spider start_nid = do
   ref_state <- newIORef $ initSnapshotState $ return start_nid
   recurseVisitNodesForSnapshot spider ref_state
@@ -270,8 +269,11 @@ popUnvisitedNode state = (updated, popped)
     updated = state { ssUnvisitedNodes = updatedUnvisited }
     (popped, updatedUnvisited) = popQueue $ ssUnvisitedNodes state
 
-makeSnapshot :: (Eq n, Hashable n) => Spider n na fla sla -> SnapshotState n na fla -> [SnapshotElement n na sla]
-makeSnapshot spider state = (fmap Left nodes) ++ (fmap Right links)
+makeSnapshot :: (Eq n, Hashable n)
+             => Spider n na fla sla
+             -> SnapshotState n na fla
+             -> ([SnapshotNode n na], [SnapshotLink n sla])
+makeSnapshot spider state = (nodes, links)
   where
     nodes = visited_nodes ++ boundary_nodes
     visited_nodes = map (makeSnapshotNode state) $ HM.keys $ ssVisitedNodes state

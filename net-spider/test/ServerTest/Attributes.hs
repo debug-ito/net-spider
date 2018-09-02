@@ -51,10 +51,10 @@ typeTestCase test_label conf n1_id n2_id node_attrs link_attrs =
                             linkAttributes = link_attrs
                           }
     addFoundNode spider n1
-    got <- fmap sort $ getLatestSnapshot spider n1_id
-    let (got_n1, got_n2, got_l) = case got of
-          [Left a, Left b, Right c] -> (a,b,c)
-          _ -> error ("Unexpected pattern: got = " ++ show got)
+    (got_ns, got_ls) <- getLatestSnapshot spider n1_id
+    let (got_n1, got_n2, got_l) = case (sort got_ns, sort got_ls) of
+          ([a,b], [c]) -> (a,b,c)
+          _ -> error ("Unexpected pattern: got = " ++ show (got_ns, got_ls))
     S.nodeAttributes got_n1 `shouldBe` Just node_attrs
     S.nodeAttributes got_n2 `shouldBe` Nothing
     S.linkAttributes got_l `shouldBe` link_attrs
@@ -90,10 +90,10 @@ timestampTestCase label ts = specify label $ withSpider $ \spider -> do
                              }
            }
   addFoundNode spider fn
-  got <- fmap sort $ getLatestSnapshot spider "n1"
-  let (got_n1, got_n2, got_l) = case got of
-        [Left a, Left b, Right c] -> (a,b,c)
-        _ -> error ("Unexpected pattern: got = " ++ show got)
+  (got_ns, got_ls) <- getLatestSnapshot spider "n1"
+  let (got_n1, got_n2, got_l) = case (sort got_ns, sort got_ls) of
+        ([a,b], [c]) -> (a,b,c)
+        _ -> error ("Unexpected pattern: got = " ++ show (got_ns, got_ls))
   nodeTimestamp got_n1 `shouldBe` Just ts
   nodeTimestamp got_n2 `shouldBe` Nothing
   linkTimestamp got_l `shouldBe` ts

@@ -25,7 +25,7 @@ import NetSpider.Found
   ( FoundLink(..), LinkState(..), FoundNode(..)
   )
 import NetSpider.Snapshot
-  ( SnapshotElement, SnapshotLink,
+  ( SnapshotLink,
     nodeId, linkNodeTuple, isDirected, linkTimestamp,
     isOnBoundary, nodeTimestamp
   )
@@ -75,10 +75,10 @@ spec_getLatestSnapshot1 :: SpecWith (Host,Port)
 spec_getLatestSnapshot1 = do
   specify "one neighbor" $ withSpider $ \spider -> do
     makeOneNeighborExample spider
-    got <- debugShowE $ fmap sort $ getLatestSnapshot spider "n1"
-    let (got_n1, got_n2, got_link) = case got of
-          [Left a, Left b, Right c] -> (a, b, c)
-          _ -> error ("Unexpected result: got = " ++ show got)
+    (got_ns, got_ls) <- debugShowE $ getLatestSnapshot spider "n1"
+    let (got_n1, got_n2, got_link) = case (sort got_ns, sort got_ls) of
+          ([a, b], [c]) -> (a, b, c)
+          _ -> error ("Unexpected result: got = " ++ show (got_ns, got_ls))
     nodeId got_n1 `shouldBe` "n1"
     isOnBoundary got_n1 `shouldBe` False
     nodeTimestamp got_n1 `shouldBe` Just (fromEpochSecond 100)
@@ -99,18 +99,19 @@ spec_getLatestSnapshot1 = do
                           nodeAttributes = ()
                         }
     addFoundNode spider nbs
-    got <- fmap sort $ getLatestSnapshot spider "n1"
-    let got_n1 = case got of
-          [Left a] -> a
-          _ -> error ("Unexpected result: got = " ++ show got)
+    (got_ns, got_ls) <- getLatestSnapshot spider "n1"
+    let got_n1 = case (sort got_ns, sort got_ls) of
+          ([a], []) -> a
+          _ -> error ("Unexpected result: got = " ++ show (got_ns, got_ls))
     nodeId got_n1 `shouldBe` "n1"
     isOnBoundary got_n1 `shouldBe` False
     nodeTimestamp got_n1 `shouldBe` Just (fromEpochSecond 200)
     S.nodeAttributes got_n1 `shouldBe` Just ()
   specify "missing starting node" $ withSpider $ \spider -> do
     makeOneNeighborExample spider
-    got <- getLatestSnapshot spider "no node"
-    got `shouldBe` mempty
+    (got_ns, got_ls) <- getLatestSnapshot spider "no node"
+    got_ns `shouldBe` mempty
+    got_ls `shouldBe` mempty
   specify "mutual neighbors" $ withSpider $ \spider -> do
     let link_12 :: FoundLink Text ()
         link_12 = FoundLink { targetNode = "n2",
@@ -132,10 +133,10 @@ spec_getLatestSnapshot1 = do
                            nodeAttributes = ()
                          }
     mapM_ (addFoundNode spider) [nbs1, nbs2]
-    got <- fmap sort $ getLatestSnapshot spider "n1"
-    let (got_n1, got_n2, got_l) = case got of
-          [Left a, Left b, Right c] -> (a, b ,c)
-          _ -> error ("Unexpected result: got = " ++ show got)
+    (got_ns, got_ls) <- getLatestSnapshot spider "n1"
+    let (got_n1, got_n2, got_l) = case (sort got_ns, sort got_ls) of
+          ([a,b], [c]) -> (a,b,c)
+          _ -> error ("Unexpected result: got = " ++ show (got_ns, got_ls))
     nodeId got_n1 `shouldBe` "n1"
     isOnBoundary got_n1 `shouldBe` False
     nodeTimestamp got_n1 `shouldBe` Just (fromEpochSecond 100)
@@ -184,10 +185,10 @@ spec_getLatestSnapshot1 = do
                 }
               ]
     mapM_ (addFoundNode spider) fns
-    got <- fmap sort $ getLatestSnapshot spider "n1"
-    let (got_n1, got_n2, got_n3, got_l12, got_l31) = case got of
-          [Left g1, Left g2, Left g3, Right g4, Right g5] -> (g1, g2, g3, g4, g5)
-          _ -> error ("Unexpected patter: got = " ++ show got)
+    (got_ns, got_ls) <- getLatestSnapshot spider "n1"
+    let (got_n1, got_n2, got_n3, got_l12, got_l31) = case (sort got_ns, sort got_ls) of
+          ([g1, g2, g3], [g4, g5]) -> (g1, g2, g3, g4, g5)
+          _ -> error ("Unexpected patter: got = " ++ show (got_ns, got_ls))
     nodeId got_n1 `shouldBe` "n1"
     isOnBoundary got_n1 `shouldBe` False
     nodeTimestamp got_n1 `shouldBe` Just (fromEpochSecond 200)
