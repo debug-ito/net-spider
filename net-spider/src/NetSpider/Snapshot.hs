@@ -17,7 +17,7 @@ module NetSpider.Snapshot
          sourceNode,
          destinationNode,
          linkNodeTuple,
-         sortLinkNodeTuple,
+         linkNodePair,
          isDirected,
          linkTimestamp,
          linkAttributes
@@ -27,7 +27,7 @@ import NetSpider.Snapshot.Internal
   ( SnapshotNode(..),
     SnapshotLink(..),
     linkNodeTuple,
-    sortLinkNodeTuple
+    linkNodePair
   )
 import NetSpider.Timestamp (Timestamp)
 

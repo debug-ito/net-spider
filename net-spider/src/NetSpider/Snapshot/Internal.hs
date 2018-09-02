@@ -7,10 +7,11 @@
 module NetSpider.Snapshot.Internal
        ( SnapshotLink(..),
          linkNodeTuple,
-         sortLinkNodeTuple,
+         linkNodePair,
          SnapshotNode(..)
        ) where
 
+import NetSpider.Pair (Pair(..))
 import NetSpider.Timestamp (Timestamp)
 
 -- | A link in the snapshot graph.
@@ -42,22 +43,9 @@ instance (Ord n, Eq la) => Ord (SnapshotLink n la) where
 linkNodeTuple :: SnapshotLink n la -> (n, n)
 linkNodeTuple link = (_sourceNode link, _destinationNode link)
 
--- | If the link is not directed, sort its (source node, destination
--- node) pair. If the link is directed, this function does nothing.
-sortLinkNodeTuple :: Ord n => SnapshotLink n la -> SnapshotLink n la
-sortLinkNodeTuple l =
-  if _isDirected l
-  then l
-  else l { _sourceNode = new_source,
-           _destinationNode = new_dest
-         }
-  where
-    old_source = _sourceNode l
-    old_dest = _destinationNode l
-    (new_source, new_dest) = if old_source <= old_dest
-                             then (old_source, old_dest)
-                             else (old_dest, old_source)
-                           
+-- | Like 'linkNodeTuple', but this returns a 'Pair'.
+linkNodePair :: SnapshotLink n la -> Pair n
+linkNodePair = Pair . linkNodeTuple
 
 -- | A node in the snapshot graph.
 data SnapshotNode n na =

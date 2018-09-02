@@ -62,18 +62,19 @@ Then in your application, connect to the server and get `Spider` object.
 {-# LANGUAGE OverloadedStrings #-}
 import Control.Exception.Safe (bracket)
 import Data.Either (partitionEithers)
-import Data.List (sort)
+import Data.List (sort, sortOn)
 import Data.Text (Text)
 import Test.Hspec
 import Test.Hspec.NeedEnv (needEnvHostPort, EnvMode(Need))
 
+import NetSpider.Pair (Pair(..))
 import NetSpider.Input
   ( Spider, connectWS, close,
     FoundNode(..), FoundLink(..), LinkState(LinkBidirectional),
     fromEpochSecond, addFoundNode, clearAll, getLatestSnapshot
   )
 import NetSpider.Output
-  ( nodeId, nodeTimestamp, linkNodeTuple, sortLinkNodeTuple, linkTimestamp )
+  ( nodeId, nodeTimestamp, linkNodePair, linkTimestamp )
 
 
 main :: IO ()
@@ -153,7 +154,7 @@ The snapshot graph is expressed as a combined list of `SnapshotNode`s and `Snaps
 
 ```haskell basic
   let nodes = sort raw_nodes
-      links = sort $ map sortLinkNodeTuple raw_links
+      links = sortOn linkNodePair raw_links
   map nodeId nodes `shouldBe` [ "switch1.example.com",
                                 "switch2.example.com",
                                 "switch3.example.com",
@@ -164,10 +165,10 @@ The snapshot graph is expressed as a combined list of `SnapshotNode`s and `Snaps
                                        Nothing,
                                        Nothing
                                      ]
-  map linkNodeTuple links `shouldBe` [ ("switch1.example.com", "switch2.example.com"),
-                                       ("switch1.example.com", "switch3.example.com"),
-                                       ("switch2.example.com", "switch4.example.com")
-                                     ]
+  map linkNodePair links `shouldBe` map Pair [ ("switch1.example.com", "switch2.example.com"),
+                                               ("switch1.example.com", "switch3.example.com"),
+                                               ("switch2.example.com", "switch4.example.com")
+                                             ]
   map linkTimestamp links `shouldBe` [ fromEpochSecond 1534770022,
                                        fromEpochSecond 1534769618,
                                        fromEpochSecond 1534770022
