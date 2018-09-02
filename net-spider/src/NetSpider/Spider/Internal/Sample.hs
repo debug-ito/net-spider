@@ -6,6 +6,7 @@
 -- __this module is internal. End-users should not use it.__
 module NetSpider.Spider.Internal.Sample
        ( LinkSample(..),
+         LinkSampleID,
          linkSampleId
        ) where
 
@@ -32,5 +33,8 @@ data LinkSample n la =
 
 -- | Link ID of the 'LinkSample'. It's the 'Pair' of 'lsSubjectNode'
 -- and 'lsTargetNode'.
-linkSampleId :: LinkSample n la -> Pair n
+type LinkSampleID n = Pair n
+
+-- | Get 'LinkSampleID' of the 'LinkSample'.
+linkSampleId :: LinkSample n la -> LinkSampleID n
 linkSampleId l = Pair (lsSubjectNode l, lsTargetNode l)

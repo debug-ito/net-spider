@@ -54,7 +54,7 @@ import NetSpider.Spider.Internal.Graph
   ( gMakeFoundNode, gAllNodes, gHasNodeID, gHasNodeEID, gNodeEID, gNodeID, gMakeNode, gClearAll,
     gLatestFoundNode, gSelectFoundNode, gFinds, gHasFoundNodeEID, gAllFoundNode
   )
-import NetSpider.Spider.Internal.Sample (LinkSample(..), linkSampleId)
+import NetSpider.Spider.Internal.Sample (LinkSample(..), LinkSampleID, linkSampleId)
 
 -- | Connect to the WebSocket endpoint of Tinkerpop Gremlin Server
 -- that hosts the NetSpider database.
@@ -221,8 +221,6 @@ tryGetNodeID :: FromGraphSON n => Spider n na fla sla -> EID -> IO (Maybe n)
 tryGetNodeID spider node_eid = fmap vToMaybe $ Gr.slurpResults =<< submitB spider binder
   where
     binder = gNodeID spider <$.> gHasNodeEID node_eid <*.> pure gAllNodes
-
-type LinkSampleID n = Pair n
 
 -- | The state kept while making the snapshot graph.
 data SnapshotState n na fla =

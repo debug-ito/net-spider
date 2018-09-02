@@ -8,6 +8,7 @@ module NetSpider.Spider.Unify
        ( -- * Types
          LinkSampleUnifier,
          LinkSample(..),
+         LinkSampleID,
          linkSampleId,
          -- * Standard unifiers
          unifyToOne,
@@ -28,7 +29,7 @@ import GHC.Exts (groupWith)
 
 import NetSpider.Snapshot (SnapshotNode, nodeTimestamp, nodeId, SnapshotLink)
 import NetSpider.Spider.Internal.Sample
-  ( LinkSample(..), linkSampleId
+  ( LinkSample(..), LinkSampleID, linkSampleId
   )
 
 -- | Function to unify 'LinkSample's collected for the given pair of
