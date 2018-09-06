@@ -23,10 +23,18 @@ import NetSpider.Spider.Unify (LinkSampleUnifier, unifyToOne)
 
 -- | An IO agent of the NetSpider database.
 --
--- - type @n@: node ID.
--- - type @na@: node attributes
--- - type @fla@: attributes of found links
--- - type @sla@: attributes of snapshot links
+-- - Type @n@: node ID. Note that type of node ID has nothing to do
+--   with type of vertex ID used by Gremlin implementation. Node ID
+--   (in net-spider) is stored as a vertex property. See 'nodeIdKey'
+--   config field.
+-- - Type @na@: node attributes. It should implement
+--   'NetSpider.Graph.NodeAttributes' class. You can set this to @()@
+--   if you don't need node attributes.
+-- - Type @fla@: attributes of found links. It should implement
+--   'NetSpider.Graph.LinkAttributes' class. You can set this to @()@
+--   if you don't need link attributes.
+-- - Type @sla@: attributes of snapshot links. Converted from @fla@ by
+--   'LinkSampleUnifier'.
 data Spider n na fla sla =
   Spider
   { spiderConfig :: Config n na fla sla,
@@ -43,7 +51,7 @@ data Config n na fla sla =
     -- ^ Port of WebSocket endpoint of Tinkerpop Gremlin
     -- Server. Default: 8182
     nodeIdKey :: Key VNode n,
-    -- ^ Name of graph property that stores the node ID. Default:
+    -- ^ Name of vertex property that stores the node ID. Default:
     -- \"@node_id\".
     unifyLinkSamples :: LinkSampleUnifier n na fla sla
     -- ^ See the document of 'LinkSampleUnifier'. Default:
