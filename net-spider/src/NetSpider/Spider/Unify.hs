@@ -18,8 +18,7 @@ module NetSpider.Spider.Unify
          defUnifyStdConfig,
          -- * Building blocks
          latestLinkSample,
-         partitionByLinkAttributes,
-         removeByNegativeFinding
+         negatesLinkSample
        ) where
 
 import Data.Foldable (maximumBy)
@@ -142,29 +141,12 @@ latestLinkSample samples = Just $ maximumBy comp samples
   where
     comp = compare `on` lsTimestamp
 
--- | Partition 'LinkSample's using their link attributes. Partitions
--- are defined based on the link sub-ID, which is defined by the given
--- getter function.
-partitionByLinkAttributes :: Ord b
-                          => (la -> b) -- ^ Getter of the link sub-ID
-                          -> [LinkSample n la]
-                          -> [[LinkSample n la]]
-partitionByLinkAttributes getKey = groupWith (getKey . lsLinkAttributes)
-
--- | Remove 'LinkSample's that are negated by the given
--- 'SnapshotNode'.
---
--- This function is effective if 'SnapshotNode' has
--- 'nodeTimestamp'. If 'nodeTimestamp' is 'Just', this function
--- removes 'LinkSample's whose timestamp is lower than the
--- 'nodeTimestamp'. Those 'LinkSample's are removed because the
--- 'SnapshotNode' indicates that the link already disappears.
-removeByNegativeFinding :: SnapshotNode n na -> [LinkSample n la] -> [LinkSample n la]
-removeByNegativeFinding sn = filter (not . negatesLinkSample sn)
-
+-- | @(node `negatesLinkSample` link)@ returns 'True' if the node's
+-- 'nodeTimestamp' is 'Just' and the timestamp is greater (newer) than
+-- the link's timestamp. This indicates the node has a new local
+-- finding that the given link is not detected.
 negatesLinkSample :: SnapshotNode n na -> LinkSample n la -> Bool
 negatesLinkSample sn l =
   case nodeTimestamp sn of
    Nothing -> False
    Just t -> lsTimestamp l < t
-  
