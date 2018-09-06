@@ -150,7 +150,7 @@ The above graph can be obtained by `getLatestSnapshot` function. This function r
   (raw_nodes, raw_links) <- getLatestSnapshot spider "switch1"
 ```
 
-The snapshot graph is expressed as a combined list of `SnapshotNode`s and `SnapshotLink`s. They are independent of each other, so it is easy to render the graph using, for example, [graphviz](http://graphviz.org/).
+The snapshot graph is expressed as lists of `SnapshotNode`s and `SnapshotLink`s. They are independent of each other, so it is easy to render the graph using, for example, [graphviz](http://graphviz.org/).
 
 ```haskell basic
   let nodes = sort raw_nodes
@@ -175,8 +175,32 @@ The snapshot graph is expressed as a combined list of `SnapshotNode`s and `Snaps
                                      ]
 ```
 
+## The Spider type
+
+In the above example, maybe you noticed that the `Spider` type has a lot of type variables.
+
+```haskell
+Spider n na fla sla
+```
+
+These type variables determine the data model of your history graph and snapshot graph.
+
+- Type `n`: the type of the node ID. For a simple graph we recommend using `Text`, because it should be supported by any Gremlin implementation.
+- Type `na`: the type of node attributes. It's `()` if your node doesn't have any attribute.
+- Type `fla`: the type of link attributes in local findings. It's `()` if your link doesn't have any attribute.
+- Type `sla`: the type of link attributes in snapshot graphs. Similar to `fla`.
+
+You are supposed to set these type variables based on your application. Because these types are unlikely to vary inside an application, it's a good idea to declare a type alias for `Spider`.
+
+```haskell
+type MySpider = Spider Text () () ()
+```
 
 ## Node and link attributes
+
+## Multiple links between a pair of nodes
+
+## Merge local findings by end nodes of a link
 
 ## Author
 
