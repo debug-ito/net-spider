@@ -91,18 +91,18 @@ To input a local finding, use `addFoundNode` function.
 doWithSpider :: Spider Text () () () -> IO ()
 doWithSpider spider = do
   let finding1 = FoundNode
-                 { subjectNode = "switch1.example.com",
+                 { subjectNode = "switch1",
                    foundAt = fromEpochSecond 1534769618,
                    neighborLinks = links1,
                    nodeAttributes = ()
                  }
       links1 = [ FoundLink
-                 { targetNode = "switch2.example.com",
+                 { targetNode = "switch2",
                    linkState = LinkBidirectional,
                    linkAttributes = ()
                  },
                  FoundLink
-                 { targetNode = "switch3.example.com",
+                 { targetNode = "switch3",
                    linkState = LinkBidirectional,
                    linkAttributes = ()
                  }
@@ -111,24 +111,24 @@ doWithSpider spider = do
   addFoundNode spider finding1
 ```
 
-A local finding is expressed as `FoundNode` type. In the above example, we input a local finding observed at the switch named "switch1.example.com". `FoundNode` includes the timestamp (`foundAt`) at which the local finding was observed, and list of neighbors (`neighborLinks`) adjacent to this node. These are what we would get via SNMP + CDP/LLDP.
+A local finding is expressed as `FoundNode` type. In the above example, we input a local finding observed at the switch named "switch1". `FoundNode` includes the timestamp (`foundAt`) at which the local finding was observed, and list of neighbors (`neighborLinks`) adjacent to this node. These are what we would get via SNMP + CDP/LLDP.
 
 OK, let's observe the switch2 and input that local finding as well.
 
 ```haskell basic
   let finding2 = FoundNode
-                 { subjectNode = "switch2.example.com",
+                 { subjectNode = "switch2",
                    foundAt = fromEpochSecond 1534770022,
                    neighborLinks = links2,
                    nodeAttributes = ()
                  }
       links2 = [ FoundLink
-                 { targetNode = "switch4.example.com",
+                 { targetNode = "switch4",
                    linkState = LinkBidirectional,
                    linkAttributes = ()
                  },
                  FoundLink
-                 { targetNode = "switch1.example.com",
+                 { targetNode = "switch1",
                    linkState = LinkBidirectional,
                    linkAttributes = ()
                  }
@@ -147,7 +147,7 @@ So, by combining these local findings, we can infer the network topology is like
 The above graph can be obtained by `getLatestSnapshot` function. This function retrieves the snapshot graph that is supposed to be the latest state of the network.
 
 ```haskell basic
-  (raw_nodes, raw_links) <- getLatestSnapshot spider "switch1.example.com"
+  (raw_nodes, raw_links) <- getLatestSnapshot spider "switch1"
 ```
 
 The snapshot graph is expressed as a combined list of `SnapshotNode`s and `SnapshotLink`s. They are independent of each other, so it is easy to render the graph using, for example, [graphviz](http://graphviz.org/).
@@ -155,19 +155,19 @@ The snapshot graph is expressed as a combined list of `SnapshotNode`s and `Snaps
 ```haskell basic
   let nodes = sort raw_nodes
       links = sortOn linkNodePair raw_links
-  map nodeId nodes `shouldBe` [ "switch1.example.com",
-                                "switch2.example.com",
-                                "switch3.example.com",
-                                "switch4.example.com"
+  map nodeId nodes `shouldBe` [ "switch1",
+                                "switch2",
+                                "switch3",
+                                "switch4"
                               ]
   map nodeTimestamp nodes `shouldBe` [ Just $ fromEpochSecond 1534769618,
                                        Just $ fromEpochSecond 1534770022,
                                        Nothing,
                                        Nothing
                                      ]
-  map linkNodePair links `shouldBe` map Pair [ ("switch1.example.com", "switch2.example.com"),
-                                               ("switch1.example.com", "switch3.example.com"),
-                                               ("switch2.example.com", "switch4.example.com")
+  map linkNodePair links `shouldBe` map Pair [ ("switch1", "switch2"),
+                                               ("switch1", "switch3"),
+                                               ("switch2", "switch4")
                                              ]
   map linkTimestamp links `shouldBe` [ fromEpochSecond 1534770022,
                                        fromEpochSecond 1534769618,
