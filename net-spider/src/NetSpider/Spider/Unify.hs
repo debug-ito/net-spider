@@ -119,10 +119,11 @@ defUnifyStdConfig = UnifyStdConfig
 -- 2. For each partition, 'LinkSample's are merged to one using
 --    'mergeSamples' function.
 -- 3. After merge, the link is checked against its end nodes. If an
---    end node can detect the link but its local finding does not
---    include the link, the link is removed from the final result. You
---    can configure which node can detect which link by
---    'isLinkDetectable' function.
+--    end node can detect the link but its local finding indicates
+--    that it didn't detect the link, the link is removed from the
+--    final result. This is because the local finding indicates the
+--    link is lost. You can configure which node can detect which link
+--    by 'isLinkDetectable' function.
 unifyStd :: (Eq n, Ord lsid) => UnifyStdConfig n na fla sla lsid -> LinkSampleUnifier n na fla sla
 unifyStd conf lnode rnode = mapMaybe forGroup . groupWith (makeLinkSubId conf)
   where
