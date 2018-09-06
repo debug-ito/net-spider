@@ -31,7 +31,10 @@ executable test-readme-dummy
 
 
 flag server-test
-  description: Do test with Gremlin Server
+  description: Do test with Gremlin Server.
+               Note that this test clears ALL CONTENT of the server.
+               Note also that this test should not be run in parallel with other server-tests.
+               Use --jobs=1 option when running stack test.
   default: False
   manual: True
 
