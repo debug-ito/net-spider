@@ -130,7 +130,7 @@ data UnifyStdConfig n na fla sla lsid =
   }
 
 -- | Default of 'UnifyStdConfig'.
-defUnifyStdConfig :: UnifyStdConfig n na fla fla ()
+defUnifyStdConfig :: Eq n => UnifyStdConfig n na fla fla ()
 defUnifyStdConfig = UnifyStdConfig
                     { makeLinkSubId = const (),
                       mergeSamples = \ls rs -> latestLinkSample (ls ++ rs),
@@ -154,7 +154,7 @@ unifyStd conf lnode rnode = mapMaybe forGroup . groupWith (makeLinkSubId conf)
                        =<< maybeNegates lnode
                        =<< mergeSamples conf (samplesFor samples lnode) (samplesFor samples rnode)
     samplesFor samples sn = filter (\s -> nodeId sn == (lsSubjectNode s)) samples
-    maybeNegates sn sample = if (isLinkDetectable conf sn sample) && (negatesLinkSample sn sample)
+    maybeNegates sn sample = if negatesLinkSample conf sn sample
                              then Nothing
                              else Just sample
 
@@ -165,16 +165,19 @@ latestLinkSample samples = Just $ maximumBy comp samples
   where
     comp = compare `on` lsTimestamp
 
--- -- | @(node `negatesLinkSample` link)@ returns 'True' if the node's
--- -- 'nodeTimestamp' is 'Just' and the timestamp is greater (newer) than
--- -- the link's timestamp. This indicates the node has a new local
--- -- finding that the given link is not detected.
--- negatesLinkSample :: SnapshotNode n na -> LinkSample n la -> Bool
--- negatesLinkSample sn l =
---   case nodeTimestamp sn of
---    Nothing -> False
---    Just t -> lsTimestamp l < t
-
--- | TODO
-defNegatesLinkSample :: SnapshotNode n na -> LinkSample n la -> Bool
-defNegatesLinkSample = undefined
+-- | Default of 'negatesLinkSample'. This function returns 'True' if
+-- all of the following conditions are met.
+--
+-- - The 'SnapshotNode' has 'nodeTimestamp'.
+-- - The 'nodeTimestamp' is greater (newer) than the link's timestamp.
+-- - The 'lsSubjectNode' is not the node ID of the 'SnapshotNode'.
+--
+-- If the above conditions are met, it implies that the 'LinkSample'
+-- is found by the other end node, but the given 'SnapshotNode' does
+-- not find it. This is possibly because the link has just
+-- disappeared, so the link should be negated.
+defNegatesLinkSample :: Eq n => SnapshotNode n na -> LinkSample n la -> Bool
+defNegatesLinkSample sn l =
+  case nodeTimestamp sn of
+   Nothing -> False
+   Just t -> lsTimestamp l < t && lsSubjectNode l /= nodeId sn
