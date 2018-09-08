@@ -15,7 +15,8 @@ module NetSpider.Spider
          close,
          -- * Graph operations
          addFoundNode,
-         getLatestSnapshot,
+         getSnapshotSimple,
+         getSnapshot,
          clearAll
        ) where
 
@@ -47,6 +48,7 @@ import NetSpider.Graph.Internal (VFoundNode(..), EFinds(..))
 import NetSpider.Found (FoundNode(..), FoundLink(..), LinkState(..))
 import NetSpider.Pair (Pair)
 import NetSpider.Queue (Queue, newQueue, popQueue, pushQueue)
+import NetSpider.Query (Query, defQuery, startsFrom)
 import NetSpider.Snapshot.Internal (SnapshotNode(..), SnapshotLink(..))
 import NetSpider.Spider.Config (Spider(..), Config(..), defConfig)
 import NetSpider.Spider.Internal.Graph
@@ -121,26 +123,28 @@ getOrMakeNode spider nid = do
       Nothing -> throwString "Expects at least single result, but got nothing."
       -- TODO: make decent exception spec.
 
--- | Get the latest snapshot graph from the NetSpider database. It
--- builds the snapshot graph by traversing the history graph from the
--- given starting node.
+-- | Simple version of 'getSnapshot'. It builds the snapshot graph by
+-- traversing the history graph from the given starting node.
 --
 -- This function is very simple, and should be used only for small
--- graphs.  This function starts from an arbitrary node, traverses the
--- history graph using the latest links with unlimited number of hops.
-getLatestSnapshot :: (FromGraphSON n, ToJSON n, Ord n, Hashable n, LinkAttributes fla, NodeAttributes na)
+-- graphs.
+getSnapshotSimple :: (FromGraphSON n, ToJSON n, Ord n, Hashable n, LinkAttributes fla, NodeAttributes na)
                   => Spider n na fla
                   -> n -- ^ ID of the node where it starts traversing.
                   -> IO ([SnapshotNode n na], [SnapshotLink n fla])
-getLatestSnapshot spider start_nid = do
+getSnapshotSimple spider start_nid = getSnapshot spider $ defQuery { startsFrom = [start_nid] }
+
+-- | Get the snapshot graph from the history graph as specified by the
+-- 'Query'.
+getSnapshot :: (FromGraphSON n, ToJSON n, Ord n, Hashable n, LinkAttributes fla, NodeAttributes na)
+            => Spider n na fla
+            -> Query n na fla sla
+            -> IO ([SnapshotNode n na], [SnapshotLink n sla])
+getSnapshot spider query = do
   ref_state <- newIORef $ initSnapshotState $ return start_nid
   recurseVisitNodesForSnapshot spider ref_state
   -- print =<< readIORef ref_state
   fmap (makeSnapshot spider) $ readIORef ref_state
-
--- TODO: We can create much more complex function to query snapshot
--- graphs, but at least we need 'getLatestSnapshot'.
-
 
 
 recurseVisitNodesForSnapshot :: (ToJSON n, Ord n, Hashable n, FromGraphSON n, LinkAttributes fla, NodeAttributes na)
