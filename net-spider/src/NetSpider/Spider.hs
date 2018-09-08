@@ -174,6 +174,12 @@ visitNodeForSnapshot spider ref_state visit_nid = do
   case mnode_eid of
    Nothing -> return ()
    Just node_eid -> do
+     -- TODO: (2018-09-08) Final VFoundNode is the latest of those in
+     -- the query range. however, there should be an option to
+     -- traverse ALL "finds" edges in the query range, instead of
+     -- those with the latest timestamp. To do that, we may have to
+     -- use .as and .select steps to get "finds" edge and both of its
+     -- end nodes at once.
      mnext_found <- getNextFoundNode node_eid
      markAsVisited mnext_found
      case mnext_found of
