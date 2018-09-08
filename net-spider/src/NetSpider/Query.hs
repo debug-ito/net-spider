@@ -9,6 +9,7 @@ module NetSpider.Query
          Query,
          defQuery,
          -- ** accessor functions
+         startsFrom,
          unifyLinkSamples
        ) where
 
@@ -27,14 +28,22 @@ import NetSpider.Unify (LinkSampleUnifier, unifyToOne)
 
 data Query n na fla sla =
   Query
-  { unifyLinkSamples :: LinkSampleUnifier n na fla sla
-    -- ^ See the document of 'LinkSampleUnifier'. Default:
-    -- 'unifyToOne'.
+  { startsFrom :: [n],
+    -- ^ Nodes from which the Spider starts traversing the history
+    -- graph. You should at least customize this field into a
+    -- non-empty value.
+    --
+    -- Default: @[]@
+    unifyLinkSamples :: LinkSampleUnifier n na fla sla
+    -- ^ See the document of 'LinkSampleUnifier'.
+    --
+    -- Default: 'unifyToOne'.
   }
 
 -- | The default 'Query'.
-defQuery :: Eq n => Query n na fla fla
+defQuery :: Eq n -> Query n na fla fla
 defQuery = Query
-           { unifyLinkSamples = unifyToOne
+           { startsFrom = [],
+             unifyLinkSamples = unifyToOne
            }
 
