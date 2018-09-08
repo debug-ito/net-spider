@@ -18,10 +18,18 @@ import NetSpider.Unify (LinkSampleUnifier, unifyToOne)
 -- 'defQuery' function, and customize its fields by the accessor
 -- functions.
 --
--- TODO: document about type-variables and fields.
+-- - Type @n@: node ID
+-- - Type @na@: node attributes
+-- - Type @fla@: attributes of found links.
+-- - Type @sla@: attributes of snapshot links. Converted from @fla@ by
+--   'unifyLinkSamples'.
+-data Spider n na fla sla =
+
 data Query n na fla sla =
   Query
   { unifyLinkSamples :: LinkSampleUnifier n na fla sla
+    -- ^ See the document of 'LinkSampleUnifier'. Default:
+    -- 'unifyToOne'.
   }
 
 -- | The default 'Query'.
