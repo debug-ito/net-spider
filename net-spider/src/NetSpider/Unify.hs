@@ -28,6 +28,7 @@ import Data.Maybe (mapMaybe)
 import GHC.Exts (groupWith)
 
 import NetSpider.Found (FoundLink, LinkState)
+import NetSpider.Pair (Pair(..))
 import NetSpider.Snapshot (SnapshotNode, nodeTimestamp, nodeId, SnapshotLink)
 import NetSpider.Timestamp (Timestamp)
 

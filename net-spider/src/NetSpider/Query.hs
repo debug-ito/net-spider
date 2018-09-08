@@ -24,8 +24,6 @@ import NetSpider.Unify (LinkSampleUnifier, unifyToOne)
 -- - Type @fla@: attributes of found links.
 -- - Type @sla@: attributes of snapshot links. Converted from @fla@ by
 --   'unifyLinkSamples'.
--data Spider n na fla sla =
-
 data Query n na fla sla =
   Query
   { startsFrom :: [n],
@@ -41,7 +39,7 @@ data Query n na fla sla =
   }
 
 -- | The default 'Query'.
-defQuery :: Eq n -> Query n na fla fla
+defQuery :: Eq n => Query n na fla fla
 defQuery = Query
            { startsFrom = [],
              unifyLinkSamples = unifyToOne

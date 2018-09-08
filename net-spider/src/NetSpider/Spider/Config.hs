@@ -19,7 +19,6 @@ import Network.Greskell.WebSocket (Host, Port)
 import qualified Network.Greskell.WebSocket as Gr
 
 import NetSpider.Graph (VNode)
-import NetSpider.Spider.Unify (LinkSampleUnifier, unifyToOne)
 
 -- | An IO agent of the NetSpider database.
 --
