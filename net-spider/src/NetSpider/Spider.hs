@@ -57,13 +57,13 @@ import NetSpider.Spider.Internal.Sample (LinkSample(..), LinkSampleID, linkSampl
 
 -- | Connect to the WebSocket endpoint of Tinkerpop Gremlin Server
 -- that hosts the NetSpider database.
-connectWS :: Eq n => Host -> Port -> IO (Spider n na la la)
+connectWS :: Eq n => Host -> Port -> IO (Spider n na la)
 connectWS host port = connectWith $ defConfig { wsHost = host,
                                                 wsPort = port
                                               }
 
 -- | Connect to the server with the given 'Config'.
-connectWith :: Config n na fla sla -> IO (Spider n na fla sla)
+connectWith :: Config n na fla -> IO (Spider n na fla)
 connectWith conf = do
   client <- Gr.connect (wsHost conf) (wsPort conf)
   return $ Spider { spiderConfig = conf,
@@ -71,11 +71,11 @@ connectWith conf = do
                   }
   
 -- | Close and release the 'Spider' object.
-close :: Spider n na fla sla -> IO ()
+close :: Spider n na fla -> IO ()
 close sp = Gr.close $ spiderClient sp
 
 submitB :: (ToGreskell g, r ~ GreskellReturn g, AsIterator r, v ~ IteratorItem r, FromGraphSON v)
-        => Spider n na fla sla -> Binder g -> IO (Gr.ResultHandle v)
+        => Spider n na fla -> Binder g -> IO (Gr.ResultHandle v)
 submitB sp b = Gr.submit (spiderClient sp) script mbs
   where
     (script, bs) = runBinder b
@@ -83,12 +83,12 @@ submitB sp b = Gr.submit (spiderClient sp) script mbs
 
 -- | Clear all content in the NetSpider database. This is mainly for
 -- testing.
-clearAll :: Spider n na fla sla -> IO ()
+clearAll :: Spider n na fla -> IO ()
 clearAll spider = Gr.drainResults =<< submitB spider (return gClearAll)
 
 -- | Add a 'FoundNode' (observation of a node) to the NetSpider
 -- database.
-addFoundNode :: (ToJSON n, LinkAttributes fla, NodeAttributes na) => Spider n na fla sla -> FoundNode n na fla -> IO ()
+addFoundNode :: (ToJSON n, LinkAttributes fla, NodeAttributes na) => Spider n na fla -> FoundNode n na fla -> IO ()
 addFoundNode spider found_node = do
   subject_vid <- getOrMakeNode spider $ subjectNode found_node
   link_pairs <- traverse linkAndTargetVID $ neighborLinks found_node
@@ -103,12 +103,12 @@ addFoundNode spider found_node = do
 vToMaybe :: Vector a -> Maybe a
 vToMaybe v = v V.!? 0
   
-getNode :: (ToJSON n) => Spider n na fla sla -> n -> IO (Maybe EID)
+getNode :: (ToJSON n) => Spider n na fla -> n -> IO (Maybe EID)
 getNode spider nid = fmap vToMaybe $ Gr.slurpResults =<< submitB spider gt
   where
     gt = gNodeEID <$.> gHasNodeID spider nid <*.> pure gAllNodes
 
-getOrMakeNode :: (ToJSON n) => Spider n na fla sla -> n -> IO EID
+getOrMakeNode :: (ToJSON n) => Spider n na fla -> n -> IO EID
 getOrMakeNode spider nid = do
   mvid <- getNode spider nid
   case mvid of
@@ -129,9 +129,9 @@ getOrMakeNode spider nid = do
 -- graphs.  This function starts from an arbitrary node, traverses the
 -- history graph using the latest links with unlimited number of hops.
 getLatestSnapshot :: (FromGraphSON n, ToJSON n, Ord n, Hashable n, LinkAttributes fla, NodeAttributes na)
-                  => Spider n na fla sla
+                  => Spider n na fla
                   -> n -- ^ ID of the node where it starts traversing.
-                  -> IO ([SnapshotNode n na], [SnapshotLink n sla])
+                  -> IO ([SnapshotNode n na], [SnapshotLink n fla])
 getLatestSnapshot spider start_nid = do
   ref_state <- newIORef $ initSnapshotState $ return start_nid
   recurseVisitNodesForSnapshot spider ref_state
@@ -144,7 +144,7 @@ getLatestSnapshot spider start_nid = do
 
 
 recurseVisitNodesForSnapshot :: (ToJSON n, Ord n, Hashable n, FromGraphSON n, LinkAttributes fla, NodeAttributes na)
-                             => Spider n na fla sla
+                             => Spider n na fla
                              -> IORef (SnapshotState n na fla)
                              -> IO ()
 recurseVisitNodesForSnapshot spider ref_state = go
@@ -160,7 +160,7 @@ recurseVisitNodesForSnapshot spider ref_state = go
     -- TODO: limit number of steps.
 
 visitNodeForSnapshot :: (ToJSON n, Ord n, Hashable n, FromGraphSON n, LinkAttributes fla, NodeAttributes na)
-                     => Spider n na fla sla
+                     => Spider n na fla
                      -> IORef (SnapshotState n na fla)
                      -> n
                      -> IO ()
@@ -189,7 +189,7 @@ visitNodeForSnapshot spider ref_state visit_nid = do
                  <*.> pure gAllNodes
 
 makeLinkSamples :: (FromGraphSON n, LinkAttributes fla)
-                => Spider n na fla sla
+                => Spider n na fla
                 -> n -- ^ subject node ID.
                 -> VFoundNode na
                 -> IO (Vector (LinkSample n fla))
@@ -216,7 +216,7 @@ makeLinkSamples spider subject_nid vneighbors = do
         expectOne Nothing = throwString "Expects a Vertex for a NodeID, but nothing found."
         -- TODO: better exception spec.
 
-tryGetNodeID :: FromGraphSON n => Spider n na fla sla -> EID -> IO (Maybe n)
+tryGetNodeID :: FromGraphSON n => Spider n na fla -> EID -> IO (Maybe n)
 tryGetNodeID spider node_eid = fmap vToMaybe $ Gr.slurpResults =<< submitB spider binder
   where
     binder = gNodeID spider <$.> gHasNodeEID node_eid <*.> pure gAllNodes
@@ -270,7 +270,7 @@ popUnvisitedNode state = (updated, popped)
     (popped, updatedUnvisited) = popQueue $ ssUnvisitedNodes state
 
 makeSnapshot :: (Eq n, Hashable n)
-             => Spider n na fla sla
+             => Spider n na fla
              -> SnapshotState n na fla
              -> ([SnapshotNode n na], [SnapshotLink n sla])
 makeSnapshot spider state = (nodes, links)
@@ -296,7 +296,7 @@ makeSnapshotNode state nid =
 -- | The input 'LinkSample's must be for the equivalent
 -- 'LinkSampleID'. The output is list of 'SnapshotLink's, each of
 -- which corresponds to a subgroup of 'LinkSample's.
-makeSnapshotLinks :: (Eq n, Hashable n) => Spider n na fla sla -> SnapshotState n na fla -> [LinkSample n fla] -> [SnapshotLink n sla]
+makeSnapshotLinks :: (Eq n, Hashable n) => Spider n na fla -> SnapshotState n na fla -> [LinkSample n fla] -> [SnapshotLink n sla]
 makeSnapshotLinks _ _ [] = []
 makeSnapshotLinks spider state link_samples@(head_sample : _) =
   mapMaybe makeSnapshotLink $ doUnify link_samples

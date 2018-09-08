@@ -33,16 +33,14 @@ import NetSpider.Spider.Unify (LinkSampleUnifier, unifyToOne)
 -- - Type @fla@: attributes of found links. It should implement
 --   'NetSpider.Graph.LinkAttributes' class. You can set this to @()@
 --   if you don't need link attributes.
--- - Type @sla@: attributes of snapshot links. Converted from @fla@ by
---   'LinkSampleUnifier'.
-data Spider n na fla sla =
+data Spider n na fla =
   Spider
-  { spiderConfig :: Config n na fla sla,
+  { spiderConfig :: Config n na fla,
     spiderClient :: Gr.Client
   }
 
 -- | Configuration to create a 'Spider' object.
-data Config n na fla sla =
+data Config n na fla =
   Config
   { wsHost :: Gr.Host,
     -- ^ Host of WebSocket endpoint of Tinkerpop Gremlin
@@ -50,20 +48,16 @@ data Config n na fla sla =
     wsPort :: Gr.Port,
     -- ^ Port of WebSocket endpoint of Tinkerpop Gremlin
     -- Server. Default: 8182
-    nodeIdKey :: Key VNode n,
+    nodeIdKey :: Key VNode n
     -- ^ Name of vertex property that stores the node ID. Default:
     -- \"@node_id\".
-    unifyLinkSamples :: LinkSampleUnifier n na fla sla
-    -- ^ See the document of 'LinkSampleUnifier'. Default:
-    -- 'unifyToOne'.
   }
 
-defConfig :: Eq n => Config n na fla fla
+defConfig :: Eq n => Config n na fla
 defConfig =
   Config
   { wsHost = "localhost",
     wsPort = 8182,
-    nodeIdKey = "@node_id",
-    unifyLinkSamples = unifyToOne
+    nodeIdKey = "@node_id"
   }
 
