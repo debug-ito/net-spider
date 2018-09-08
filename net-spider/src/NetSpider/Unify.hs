@@ -18,7 +18,7 @@ module NetSpider.Unify
          defUnifyStdConfig,
          -- * Building blocks
          latestLinkSample,
-         negatesLinkSample
+         defNegatesLinkSample
        ) where
 
 import Data.Foldable (maximumBy)
@@ -121,12 +121,12 @@ data UnifyStdConfig n na fla sla lsid =
     --
     -- Default: Concatenate the input 'LinkSample's and get
     -- 'latestLinkSample'.
-    isLinkDetectable :: SnapshotNode n na -> LinkSample n sla -> Bool
-    -- ^ This function is supposed to return 'True' if the given
-    -- 'SnapshotNode' can detect 'LinkSample'. If it returns 'False',
-    -- that means it's natural for the node not to find the link.
+
+    negatesLinkSample :: SnapshotNode n na -> LinkSample n sla -> Bool
+    -- ^ This function is supposed to return 'True' if the
+    -- 'SnapshotNode' negates the presence of the 'LinkSample'.
     --
-    -- Default: always return 'True'.
+    -- Default: 'defNegatesLinkSample'.
   }
 
 -- | Default of 'UnifyStdConfig'.
@@ -134,7 +134,7 @@ defUnifyStdConfig :: UnifyStdConfig n na fla fla ()
 defUnifyStdConfig = UnifyStdConfig
                     { makeLinkSubId = const (),
                       mergeSamples = \ls rs -> latestLinkSample (ls ++ rs),
-                      isLinkDetectable = \_ _ -> True
+                      negatesLinkSample = defNegatesLinkSample
                     }
 
 -- | The standard unifier. This unifier does the following.
@@ -144,12 +144,9 @@ defUnifyStdConfig = UnifyStdConfig
 --    sub-ID corresponds to a physical link.
 -- 2. For each partition, 'LinkSample's are merged to one using
 --    'mergeSamples' function.
--- 3. After merge, the link is checked against its end nodes. If an
---    end node can detect the link but its local finding indicates
---    that it didn't detect the link, the link is removed from the
---    final result. This is because the local finding indicates the
---    link is lost. You can configure which node can detect which link
---    by 'isLinkDetectable' function.
+-- 3. After merge, the link is checked against its end nodes. If
+--    'negatesLinkSample' returns 'True' for either of the end nodes,
+--    the link is removed from the final result.
 unifyStd :: (Eq n, Ord lsid) => UnifyStdConfig n na fla sla lsid -> LinkSampleUnifier n na fla sla
 unifyStd conf lnode rnode = mapMaybe forGroup . groupWith (makeLinkSubId conf)
   where
@@ -168,12 +165,16 @@ latestLinkSample samples = Just $ maximumBy comp samples
   where
     comp = compare `on` lsTimestamp
 
--- | @(node `negatesLinkSample` link)@ returns 'True' if the node's
--- 'nodeTimestamp' is 'Just' and the timestamp is greater (newer) than
--- the link's timestamp. This indicates the node has a new local
--- finding that the given link is not detected.
-negatesLinkSample :: SnapshotNode n na -> LinkSample n la -> Bool
-negatesLinkSample sn l =
-  case nodeTimestamp sn of
-   Nothing -> False
-   Just t -> lsTimestamp l < t
+-- -- | @(node `negatesLinkSample` link)@ returns 'True' if the node's
+-- -- 'nodeTimestamp' is 'Just' and the timestamp is greater (newer) than
+-- -- the link's timestamp. This indicates the node has a new local
+-- -- finding that the given link is not detected.
+-- negatesLinkSample :: SnapshotNode n na -> LinkSample n la -> Bool
+-- negatesLinkSample sn l =
+--   case nodeTimestamp sn of
+--    Nothing -> False
+--    Just t -> lsTimestamp l < t
+
+-- | TODO
+defNegatesLinkSample :: SnapshotNode n na -> LinkSample n la -> Bool
+defNegatesLinkSample = undefined
