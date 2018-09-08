@@ -25,9 +25,6 @@ import Test.Hspec.NeedEnv (needEnvHostPort, EnvMode(Need))
 import NetSpider.Found (LinkState(..))
 import NetSpider.Graph (NodeAttributes(..), LinkAttributes(..), VNode)
 import NetSpider.Pair (Pair(..))
-import NetSpider.Spider.Unify
-  ( LinkSample(..)
-  )
 import NetSpider.Spider.Config
   ( Host, Port, Spider, Config(..), defConfig
   )
@@ -37,14 +34,17 @@ import NetSpider.Spider
 import NetSpider.Snapshot
   ( SnapshotNode, SnapshotLink
   )
+import NetSpider.Unify
+  ( LinkSample(..)
+  )
 
 withServer :: SpecWith (Host,Port) -> Spec
 withServer = before $ needEnvHostPort Need "NET_SPIDER_TEST"
 
-withSpider :: Eq n => (Spider n na fla fla -> IO ()) -> (Host, Port) -> IO ()
+withSpider :: Eq n => (Spider n na fla -> IO ()) -> (Host, Port) -> IO ()
 withSpider = withSpider' defConfig
 
-withSpider' :: Config n na fla sla -> (Spider n na fla sla -> IO ()) -> (Host, Port) -> IO ()
+withSpider' :: Config n na fla -> (Spider n na fla -> IO ()) -> (Host, Port) -> IO ()
 withSpider' orig_conf action (host, port) = bracket (connectWith conf) close $ \spider -> do
   clearAll spider
   action spider

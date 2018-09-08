@@ -20,7 +20,7 @@ import ServerTest.Common
 import NetSpider.Found (FoundNode(..), FoundLink(..), LinkState(..))
 import NetSpider.Graph (NodeAttributes(..), LinkAttributes(..), VNode)
 import NetSpider.Spider
-  ( addFoundNode, getLatestSnapshot
+  ( addFoundNode, getSnapshotSimple
   )
 import NetSpider.Spider.Config (Host, Port, Config(..), defConfig)
 import NetSpider.Snapshot (nodeTimestamp, linkTimestamp)
@@ -33,7 +33,7 @@ main = hspec spec
 
 typeTestCase :: (FromGraphSON n, ToJSON n, Ord n, Hashable n, Show n, NodeAttributes na, Eq na, Show na, LinkAttributes la, Eq la, Show la)
              => String
-             -> Config n na la la
+             -> Config n na la
              -> n
              -> n
              -> na
@@ -51,7 +51,7 @@ typeTestCase test_label conf n1_id n2_id node_attrs link_attrs =
                             linkAttributes = link_attrs
                           }
     addFoundNode spider n1
-    (got_ns, got_ls) <- getLatestSnapshot spider n1_id
+    (got_ns, got_ls) <- getSnapshotSimple spider n1_id
     let (got_n1, got_n2, got_l) = case (sort got_ns, sort got_ls) of
           ([a,b], [c]) -> (a,b,c)
           _ -> error ("Unexpected pattern: got = " ++ show (got_ns, got_ls))
@@ -90,7 +90,7 @@ timestampTestCase label ts = specify label $ withSpider $ \spider -> do
                              }
            }
   addFoundNode spider fn
-  (got_ns, got_ls) <- getLatestSnapshot spider "n1"
+  (got_ns, got_ls) <- getSnapshotSimple spider "n1"
   let (got_n1, got_n2, got_l) = case (sort got_ns, sort got_ls) of
         ([a,b], [c]) -> (a,b,c)
         _ -> error ("Unexpected pattern: got = " ++ show (got_ns, got_ls))

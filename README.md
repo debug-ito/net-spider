@@ -71,7 +71,7 @@ import NetSpider.Pair (Pair(..))
 import NetSpider.Input
   ( Spider, connectWS, close,
     FoundNode(..), FoundLink(..), LinkState(LinkBidirectional),
-    fromEpochSecond, addFoundNode, clearAll, getLatestSnapshot
+    fromEpochSecond, addFoundNode, clearAll, getSnapshotSimple
   )
 import NetSpider.Output
   ( nodeId, nodeTimestamp, linkNodePair, linkTimestamp )
@@ -88,7 +88,7 @@ Use `connectWS` function to get `Spider` object, and `close` function to close i
 To input a local finding, use `addFoundNode` function.
 
 ```haskell basic
-doWithSpider :: Spider Text () () () -> IO ()
+doWithSpider :: Spider Text () () -> IO ()
 doWithSpider spider = do
   let finding1 = FoundNode
                  { subjectNode = "switch1",
@@ -144,10 +144,10 @@ So, by combining these local findings, we can infer the network topology is like
 [switch3]
 ```
 
-The above graph can be obtained by `getLatestSnapshot` function. This function retrieves the snapshot graph that is supposed to be the latest state of the network.
+The above graph can be obtained by `getSnapshotSimple` function. This function retrieves the snapshot graph that is supposed to be the latest state of the network.
 
 ```haskell basic
-  (raw_nodes, raw_links) <- getLatestSnapshot spider "switch1"
+  (raw_nodes, raw_links) <- getSnapshotSimple spider "switch1"
 ```
 
 The snapshot graph is expressed as lists of `SnapshotNode`s and `SnapshotLink`s. They are independent of each other, so it is easy to render the graph using, for example, [graphviz](http://graphviz.org/).
@@ -180,7 +180,7 @@ The snapshot graph is expressed as lists of `SnapshotNode`s and `SnapshotLink`s.
 In the above example, maybe you noticed that the `Spider` type has a lot of type variables.
 
 ```haskell
-Spider n na fla sla
+Spider n na fla
 ```
 
 These type variables determine the data model of your history graph and snapshot graph.
@@ -188,12 +188,11 @@ These type variables determine the data model of your history graph and snapshot
 - Type `n`: the type of the node ID. For a simple graph we recommend using `Text`, because it should be supported by any Gremlin implementation.
 - Type `na`: the type of node attributes. It's `()` if your node doesn't have any attribute.
 - Type `fla`: the type of link attributes in local findings. It's `()` if your link doesn't have any attribute.
-- Type `sla`: the type of link attributes in snapshot graphs. Similar to `fla`.
 
 You are supposed to set these type variables based on your application. Because these types are unlikely to vary inside an application, it's a good idea to declare a type alias for `Spider`.
 
 ```haskell
-type MySpider = Spider Text () () ()
+type MySpider = Spider Text () ()
 ```
 
 ## Node and link attributes

@@ -17,7 +17,7 @@ import System.IO (stderr)
 import Test.Hspec
 
 import ServerTest.Common
-  ( withServer, withSpider, withSpider', sortSnapshotElements,
+  ( withServer, withSpider, sortSnapshotElements,
     AText(..), APorts(..), subIdWithAPorts,
     alignAPortsToLinkDirection
   )
@@ -25,6 +25,7 @@ import ServerTest.Common
 import NetSpider.Found
   ( FoundLink(..), LinkState(..), FoundNode(..)
   )
+import NetSpider.Query (Query, defQuery, startsFrom, unifyLinkSamples)
 import NetSpider.Snapshot
   ( SnapshotLink,
     nodeId, linkNodeTuple, isDirected, linkTimestamp,
@@ -32,10 +33,10 @@ import NetSpider.Snapshot
   )
 import qualified NetSpider.Snapshot as S (nodeAttributes, linkAttributes)
 import NetSpider.Spider
-  ( Spider, addFoundNode, getLatestSnapshot
+  ( Spider, addFoundNode, getSnapshotSimple, getSnapshot
   )
-import NetSpider.Spider.Config (defConfig, Config(unifyLinkSamples), Host, Port)
-import NetSpider.Spider.Unify (unifyStd, UnifyStdConfig(..), defUnifyStdConfig, lsLinkAttributes, latestLinkSample)
+import NetSpider.Spider.Config (defConfig, Config, Host, Port)
+import NetSpider.Unify (unifyStd, UnifyStdConfig(..), defUnifyStdConfig, lsLinkAttributes, latestLinkSample)
 import NetSpider.Timestamp (fromEpochSecond)
 
 main :: IO ()
@@ -43,9 +44,9 @@ main = hspec spec
 
 spec :: Spec
 spec = do
-  spec_getLatestSnapshot
+  spec_getSnapshot
 
-makeOneNeighborExample :: Spider Text () () () -> IO ()
+makeOneNeighborExample :: Spider Text () () -> IO ()
 makeOneNeighborExample spider = do
   let link = FoundLink { targetNode = "n2",
                          linkState = LinkToTarget,
@@ -58,8 +59,8 @@ makeOneNeighborExample spider = do
                       }
   debugShowE $ addFoundNode spider nbs
 
-confWithAPorts :: Config Text () APorts APorts
-confWithAPorts = defConfig { unifyLinkSamples = unifyStd unify_conf }
+queryWithAPorts :: Text -> Query Text () APorts APorts
+queryWithAPorts nid = (defQuery [nid]) { unifyLinkSamples = unifyStd unify_conf }
   where
     unify_conf = defUnifyStdConfig
                  { makeLinkSubId = subIdWithAPorts,
@@ -71,17 +72,17 @@ sortLinksWithAttr = V.fromList . sortOn getKey . V.toList
   where
     getKey link = (linkNodeTuple link, S.linkAttributes link)
 
-spec_getLatestSnapshot :: Spec
-spec_getLatestSnapshot = withServer $ describe "getLatestSnapshot" $ do
-  spec_getLatestSnapshot1
-  spec_getLatestSnapshot2
+spec_getSnapshot :: Spec
+spec_getSnapshot = withServer $ describe "getSnapshotSimple, getSnapshot" $ do
+  spec_getSnapshot1
+  spec_getSnapshot2
 
 
-spec_getLatestSnapshot1 :: SpecWith (Host,Port)
-spec_getLatestSnapshot1 = do
+spec_getSnapshot1 :: SpecWith (Host,Port)
+spec_getSnapshot1 = do
   specify "one neighbor" $ withSpider $ \spider -> do
     makeOneNeighborExample spider
-    (got_ns, got_ls) <- debugShowE $ getLatestSnapshot spider "n1"
+    (got_ns, got_ls) <- debugShowE $ getSnapshotSimple spider "n1"
     let (got_n1, got_n2, got_link) = case (sort got_ns, sort got_ls) of
           ([a, b], [c]) -> (a, b, c)
           _ -> error ("Unexpected result: got = " ++ show (got_ns, got_ls))
@@ -105,7 +106,7 @@ spec_getLatestSnapshot1 = do
                           nodeAttributes = ()
                         }
     addFoundNode spider nbs
-    (got_ns, got_ls) <- getLatestSnapshot spider "n1"
+    (got_ns, got_ls) <- getSnapshotSimple spider "n1"
     let got_n1 = case (sort got_ns, sort got_ls) of
           ([a], []) -> a
           _ -> error ("Unexpected result: got = " ++ show (got_ns, got_ls))
@@ -115,7 +116,7 @@ spec_getLatestSnapshot1 = do
     S.nodeAttributes got_n1 `shouldBe` Just ()
   specify "missing starting node" $ withSpider $ \spider -> do
     makeOneNeighborExample spider
-    (got_ns, got_ls) <- getLatestSnapshot spider "no node"
+    (got_ns, got_ls) <- getSnapshotSimple spider "no node"
     got_ns `shouldBe` mempty
     got_ls `shouldBe` mempty
   specify "mutual neighbors" $ withSpider $ \spider -> do
@@ -139,7 +140,7 @@ spec_getLatestSnapshot1 = do
                            nodeAttributes = ()
                          }
     mapM_ (addFoundNode spider) [nbs1, nbs2]
-    (got_ns, got_ls) <- getLatestSnapshot spider "n1"
+    (got_ns, got_ls) <- getSnapshotSimple spider "n1"
     let (got_n1, got_n2, got_l) = case (sort got_ns, sort got_ls) of
           ([a,b], [c]) -> (a,b,c)
           _ -> error ("Unexpected result: got = " ++ show (got_ns, got_ls))
@@ -191,7 +192,7 @@ spec_getLatestSnapshot1 = do
                 }
               ]
     mapM_ (addFoundNode spider) fns
-    (got_ns, got_ls) <- getLatestSnapshot spider "n1"
+    (got_ns, got_ls) <- getSnapshotSimple spider "n1"
     let (got_n1, got_n2, got_n3, got_l12, got_l31) = case (sort got_ns, sort got_ls) of
           ([g1, g2, g3], [g4, g5]) -> (g1, g2, g3, g4, g5)
           _ -> error ("Unexpected patter: got = " ++ show (got_ns, got_ls))
@@ -261,7 +262,7 @@ spec_getLatestSnapshot1 = do
           where
             sub_nid = intToNodeId node_i
     mapM_ (addFoundNode spider) fns
-    (got_ns, got_ls) <- fmap sortSnapshotElements $ getLatestSnapshot spider "n1"
+    (got_ns, got_ls) <- fmap sortSnapshotElements $ getSnapshotSimple spider "n1"
     nodeId (got_ns ! 0) `shouldBe` "n1"
     isOnBoundary (got_ns ! 0) `shouldBe` False
     nodeTimestamp (got_ns ! 0) `shouldBe` Just (fromEpochSecond 100)
@@ -301,8 +302,8 @@ spec_getLatestSnapshot1 = do
     S.linkAttributes (got_ls ! 3) `shouldBe` AText "n4 to next"
     V.length got_ls `shouldBe` 4
 
-spec_getLatestSnapshot2 :: SpecWith (Host, Port)
-spec_getLatestSnapshot2 = do
+spec_getSnapshot2 :: SpecWith (Host, Port)
+spec_getSnapshot2 = do
   specify "loop network" $ withSpider $ \spider -> do
     let fns :: [FoundNode Text () ()]
         fns = [ FoundNode
@@ -350,7 +351,7 @@ spec_getLatestSnapshot2 = do
                 }
               ]
     mapM_ (addFoundNode spider) fns
-    (got_ns, got_ls) <- fmap sortSnapshotElements $ getLatestSnapshot spider "n1"
+    (got_ns, got_ls) <- fmap sortSnapshotElements $ getSnapshotSimple spider "n1"
     nodeId (got_ns ! 0) `shouldBe` "n1"
     isOnBoundary (got_ns ! 0) `shouldBe` False
     nodeTimestamp (got_ns ! 0) `shouldBe` Just (fromEpochSecond 100)
@@ -370,7 +371,7 @@ spec_getLatestSnapshot2 = do
     linkNodeTuple (got_ls ! 2) `shouldBe` ("n3", "n1")
     isDirected (got_ls ! 2) `shouldBe` True
     linkTimestamp (got_ls ! 2) `shouldBe` fromEpochSecond 100
-  specify "multiple links between two nodes" $ withSpider' confWithAPorts $ \spider -> do
+  specify "multiple links between two nodes" $ withSpider $ \spider -> do
     let fns :: [FoundNode Text () APorts]
         fns = [ FoundNode
                 { subjectNode = "n1",
@@ -416,7 +417,7 @@ spec_getLatestSnapshot2 = do
                 }
               ]
     mapM_ (addFoundNode spider) fns
-    (got_ns, got_ls_raw) <- fmap sortSnapshotElements $ getLatestSnapshot spider "n1"
+    (got_ns, got_ls_raw) <- fmap sortSnapshotElements $ getSnapshot spider $ queryWithAPorts "n1"
     nodeId (got_ns ! 0) `shouldBe` "n1"
     nodeId (got_ns ! 1) `shouldBe` "n2"
     V.length got_ns `shouldBe` 2
@@ -452,7 +453,7 @@ spec_getLatestSnapshot2 = do
                 }
               ]
     mapM_ (addFoundNode spider) fns
-    (got_ns, got_ls) <- fmap sortSnapshotElements $ getLatestSnapshot spider "n1"
+    (got_ns, got_ls) <- fmap sortSnapshotElements $ getSnapshotSimple spider "n1"
     nodeId (got_ns ! 0) `shouldBe` "n1"
     nodeId (got_ns ! 1) `shouldBe` "n2"
     V.length got_ns `shouldBe` 2
@@ -480,7 +481,7 @@ spec_getLatestSnapshot2 = do
                 }
               ]
     mapM_ (addFoundNode spider) fns
-    (got_ns, got_ls) <- fmap sortSnapshotElements $ getLatestSnapshot spider "n1"
+    (got_ns, got_ls) <- fmap sortSnapshotElements $ getSnapshotSimple spider "n1"
     nodeId (got_ns ! 0) `shouldBe` "n1"
     nodeId (got_ns ! 1) `shouldBe` "n2"
     V.length got_ns `shouldBe` 2
@@ -491,7 +492,7 @@ spec_getLatestSnapshot2 = do
     -- the n2 observes at t=100 that there is no link to n1, but n1
     -- observes there is a link at t=200.  Spider should consider the
     -- link appears.
-  specify "multiple links between pair, some appear, some disappear." $ withSpider' confWithAPorts $ \spider -> do
+  specify "multiple links between pair, some appear, some disappear." $ withSpider $ \spider -> do
     let fns :: [FoundNode Text () APorts]
         fns = [ FoundNode
                 { subjectNode = "n2",
@@ -529,7 +530,7 @@ spec_getLatestSnapshot2 = do
                    }
                  ]
     mapM_ (addFoundNode spider) fns
-    (got_ns, got_ls_raw) <- fmap sortSnapshotElements $ getLatestSnapshot spider "n1"
+    (got_ns, got_ls_raw) <- fmap sortSnapshotElements $ getSnapshot spider $ queryWithAPorts "n1"
     nodeId (got_ns ! 0) `shouldBe` "n1"
     nodeTimestamp (got_ns ! 0) `shouldBe` (Just $ fromEpochSecond 100)
     nodeId (got_ns ! 1) `shouldBe` "n2"
