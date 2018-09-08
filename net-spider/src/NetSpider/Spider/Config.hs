@@ -52,7 +52,7 @@ data Config n na fla =
     -- \"@node_id\".
   }
 
-defConfig :: Eq n => Config n na fla
+defConfig :: Config n na fla
 defConfig =
   Config
   { wsHost = "localhost",

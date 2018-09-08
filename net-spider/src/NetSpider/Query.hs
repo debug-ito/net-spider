@@ -28,10 +28,7 @@ data Query n na fla sla =
   Query
   { startsFrom :: [n],
     -- ^ Nodes from which the Spider starts traversing the history
-    -- graph. You should at least customize this field into a
-    -- non-empty value.
-    --
-    -- Default: @[]@
+    -- graph.
     unifyLinkSamples :: LinkSampleUnifier n na fla sla
     -- ^ See the document of 'LinkSampleUnifier'.
     --
@@ -39,9 +36,11 @@ data Query n na fla sla =
   }
 
 -- | The default 'Query'.
-defQuery :: Eq n => Query n na fla fla
-defQuery = Query
-           { startsFrom = [],
-             unifyLinkSamples = unifyToOne
-           }
+defQuery :: Eq n
+         => [n] -- ^ 'startsFrom' field.
+         -> Query n na fla fla
+defQuery ns = Query
+              { startsFrom = ns,
+                unifyLinkSamples = unifyToOne
+              }
 

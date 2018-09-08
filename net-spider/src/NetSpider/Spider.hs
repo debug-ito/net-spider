@@ -132,10 +132,8 @@ getSnapshotSimple :: (FromGraphSON n, ToJSON n, Ord n, Hashable n, LinkAttribute
                   => Spider n na fla
                   -> n -- ^ ID of the node where it starts traversing.
                   -> IO ([SnapshotNode n na], [SnapshotLink n fla])
-getSnapshotSimple spider start_nid = getSnapshot spider $ defQuery { startsFrom = [start_nid] }
+getSnapshotSimple spider start_nid = getSnapshot spider $ defQuery [start_nid]
 
-
--- TODO: fix getSnapshot with Query!!!
 
 -- | Get the snapshot graph from the history graph as specified by the
 -- 'Query'.
