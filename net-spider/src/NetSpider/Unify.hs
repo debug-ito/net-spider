@@ -1,10 +1,10 @@
 -- |
--- Module: NetSpider.Spider.Unify
+-- Module: NetSpider.Unify
 -- Description: LinkSampleUnifier type
 -- Maintainer: Toshio Ito <debug.ito@gmail.com>
 --
 -- 
-module NetSpider.Spider.Unify
+module NetSpider.Unify
        ( -- * Types
          LinkSampleUnifier,
          LinkSample(..),
@@ -23,14 +23,39 @@ module NetSpider.Spider.Unify
 
 import Data.Foldable (maximumBy)
 import Data.Function (on)
+import Data.Hashable (Hashable(hashWithSalt))
 import Data.Maybe (mapMaybe)
 import GHC.Exts (groupWith)
 
-import NetSpider.Found (FoundLink)
+import NetSpider.Found (FoundLink, LinkState)
 import NetSpider.Snapshot (SnapshotNode, nodeTimestamp, nodeId, SnapshotLink)
-import NetSpider.Spider.Internal.Sample
-  ( LinkSample(..), LinkSampleID, linkSampleId
-  )
+import NetSpider.Timestamp (Timestamp)
+
+
+-- | 'LinkSample' is an intermediate type between
+-- 'NetSpider.Found.FoundLink' and
+-- 'NetSpider.Snapshot.SnapshotLink'. 'LinkSample's are collected from
+-- the history graph, and are unified into
+-- 'NetSpider.Snapshot.SnapshotLink's.
+data LinkSample n la =
+  LinkSample
+  { lsSubjectNode :: !n,
+    lsTargetNode :: !n,
+    lsLinkState :: !LinkState,
+    lsTimestamp :: !Timestamp,
+    lsLinkAttributes :: !la
+  }
+  deriving (Show,Eq,Ord)
+
+-- | Link ID of the 'LinkSample'. It's the 'Pair' of 'lsSubjectNode'
+-- and 'lsTargetNode'.
+type LinkSampleID n = Pair n
+
+-- | Get 'LinkSampleID' of the 'LinkSample'.
+linkSampleId :: LinkSample n la -> LinkSampleID n
+linkSampleId l = Pair (lsSubjectNode l, lsTargetNode l)
+
+
 
 -- | Function to unify 'LinkSample's collected for the given pair of
 -- nodes and return 'LinkSample' per physical link. The returned
