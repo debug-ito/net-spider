@@ -48,14 +48,14 @@ import NetSpider.Graph.Internal (VFoundNode(..), EFinds(..))
 import NetSpider.Found (FoundNode(..), FoundLink(..), LinkState(..))
 import NetSpider.Pair (Pair)
 import NetSpider.Queue (Queue, newQueue, popQueue, pushQueue)
-import NetSpider.Query (Query, defQuery, startsFrom)
+import NetSpider.Query (Query, defQuery, startsFrom, unifyLinkSamples)
 import NetSpider.Snapshot.Internal (SnapshotNode(..), SnapshotLink(..))
 import NetSpider.Spider.Config (Spider(..), Config(..), defConfig)
 import NetSpider.Spider.Internal.Graph
   ( gMakeFoundNode, gAllNodes, gHasNodeID, gHasNodeEID, gNodeEID, gNodeID, gMakeNode, gClearAll,
     gLatestFoundNode, gSelectFoundNode, gFinds, gHasFoundNodeEID, gAllFoundNode
   )
-import NetSpider.Spider.Internal.Sample (LinkSample(..), LinkSampleID, linkSampleId)
+import NetSpider.Unify (LinkSampleUnifier, LinkSample(..), LinkSampleID, linkSampleId)
 
 -- | Connect to the WebSocket endpoint of Tinkerpop Gremlin Server
 -- that hosts the NetSpider database.
@@ -134,6 +134,9 @@ getSnapshotSimple :: (FromGraphSON n, ToJSON n, Ord n, Hashable n, LinkAttribute
                   -> IO ([SnapshotNode n na], [SnapshotLink n fla])
 getSnapshotSimple spider start_nid = getSnapshot spider $ defQuery { startsFrom = [start_nid] }
 
+
+-- TODO: fix getSnapshot with Query!!!
+
 -- | Get the snapshot graph from the history graph as specified by the
 -- 'Query'.
 getSnapshot :: (FromGraphSON n, ToJSON n, Ord n, Hashable n, LinkAttributes fla, NodeAttributes na)
@@ -141,10 +144,10 @@ getSnapshot :: (FromGraphSON n, ToJSON n, Ord n, Hashable n, LinkAttributes fla,
             -> Query n na fla sla
             -> IO ([SnapshotNode n na], [SnapshotLink n sla])
 getSnapshot spider query = do
-  ref_state <- newIORef $ initSnapshotState $ return start_nid
+  ref_state <- newIORef $ initSnapshotState $ startsFrom query
   recurseVisitNodesForSnapshot spider ref_state
   -- print =<< readIORef ref_state
-  fmap (makeSnapshot spider) $ readIORef ref_state
+  fmap (makeSnapshot $ unifyLinkSamples query) $ readIORef ref_state
 
 
 recurseVisitNodesForSnapshot :: (ToJSON n, Ord n, Hashable n, FromGraphSON n, LinkAttributes fla, NodeAttributes na)
@@ -274,15 +277,15 @@ popUnvisitedNode state = (updated, popped)
     (popped, updatedUnvisited) = popQueue $ ssUnvisitedNodes state
 
 makeSnapshot :: (Eq n, Hashable n)
-             => Spider n na fla
+             => LinkSampleUnifier n na fla sla
              -> SnapshotState n na fla
              -> ([SnapshotNode n na], [SnapshotLink n sla])
-makeSnapshot spider state = (nodes, links)
+makeSnapshot unifier state = (nodes, links)
   where
     nodes = visited_nodes ++ boundary_nodes
     visited_nodes = map (makeSnapshotNode state) $ HM.keys $ ssVisitedNodes state
     boundary_nodes = map (makeSnapshotNode state) $ toList $ ssUnvisitedNodes state
-    links = mconcat $ map (makeSnapshotLinks spider state) $ HM.elems $ ssVisitedLinks state
+    links = mconcat $ map (makeSnapshotLinks unifier state) $ HM.elems $ ssVisitedLinks state
 
 makeSnapshotNode :: (Eq n, Hashable n) => SnapshotState n na fla -> n -> SnapshotNode n na
 makeSnapshotNode state nid =
@@ -300,13 +303,17 @@ makeSnapshotNode state nid =
 -- | The input 'LinkSample's must be for the equivalent
 -- 'LinkSampleID'. The output is list of 'SnapshotLink's, each of
 -- which corresponds to a subgroup of 'LinkSample's.
-makeSnapshotLinks :: (Eq n, Hashable n) => Spider n na fla -> SnapshotState n na fla -> [LinkSample n fla] -> [SnapshotLink n sla]
+makeSnapshotLinks :: (Eq n, Hashable n)
+                  => LinkSampleUnifier n na fla sla
+                  -> SnapshotState n na fla
+                  -> [LinkSample n fla]
+                  -> [SnapshotLink n sla]
 makeSnapshotLinks _ _ [] = []
-makeSnapshotLinks spider state link_samples@(head_sample : _) =
+makeSnapshotLinks unifier state link_samples@(head_sample : _) =
   mapMaybe makeSnapshotLink $ doUnify link_samples
   where
     makeEndNode getter = makeSnapshotNode state $ getter $ head_sample
-    doUnify = (unifyLinkSamples $ spiderConfig spider) (makeEndNode lsSubjectNode) (makeEndNode lsTargetNode)
+    doUnify = unifier (makeEndNode lsSubjectNode) (makeEndNode lsTargetNode)
     makeSnapshotLink unified_sample = do
       case lsLinkState unified_sample of
        LinkUnused -> Nothing
