@@ -64,7 +64,8 @@ test-suite readme-attrs
     build-depends:        base,
                           hspec, 
                           net-spider, safe-exceptions, hspec-need-env, text,
-                          markdown-unlit
+                          markdown-unlit,
+                          greskell
   else
     buildable: False
 

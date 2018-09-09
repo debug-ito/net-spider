@@ -208,6 +208,17 @@ Nodes and links in your history graph can have time-varying attributes. You can 
 For example, let's monitor the total number of packets that the switch has transmitted and received. First, we define the data type for the node attributes.
 
 ```haskell attrs
+import Control.Applicative ((<$>), (<*>))
+import Control.Category ((<<<))
+import Data.Greskell (newBind, gProperty, parseOneValue)
+
+import NetSpider.Input
+  ( Spider, connectWS, close, clearAll, addFoundNode,
+    FoundNode(..), FoundLink(..), NodeAttributes(..),
+    fromEpochSecond
+  )
+
+
 data PacketCount =
   PacketCount
   { transmitCount :: Int,
@@ -216,10 +227,52 @@ data PacketCount =
   deriving(Show,Eq,Ord)
 ```
 
+Second, make it instance of `NodeAttributes` class and implement its methods. This is necessary for `Spider` to store/load the attributes to/from the history graph.
+
+```haskell attrs
+instance NodeAttributes PacketCount where
+  writeNodeAttributes packet_count = do
+    tx_count <- newBind $ transmitCount packet_count
+    rx_count <- newBind $ receiveCount packet_count
+    return (gProperty "tx_count" tx_count <<< gProperty "rx_count" rx_count)
+  parseNodeAttributes props =
+    PacketCount
+    <$> parseOneValue "tx_count" props
+    <*> parseOneValue "rx_count" props
+```
+
+`writeNodeAttributes` function is supposed to return Gremlin steps that store the given data in the graph database. `parseNodeAttributes` function is supposed to construct the attributes from the given property data. Those functions are based on [greskell package](https://github.com/debug-ito/greskell).
+
+Once you implement `NodeAddtributes` instance, you can use `PacketCount` as the `na` type-variable.
+
+
 ```haskell attrs
 main = hspec $ specify "node attributes" $ do
-  True `shouldBe` False -- TODO
+  (host, port) <- needEnvHostPort Need "NET_SPIDER_TEST"
+  bracket (connectWS host port) close $ doWithSpider
+
+doWithSpider :: Spider Text PacketCount () -> IO ()
+doWithSpider spider = do
+  clearAll spider
+  let finding1 = FoundNode
+                 { subjectNode = "switch1",
+                   foundAt = fromEpochSecond 1536496858,
+                   neighborLinks = [],
+                   nodeAttributes = attrs1
+                 }
+      attrs1 = PacketCount
+               { transmitCount = 15242,
+                 receiveCount = 22301
+               }
+  addFoundNode spider finding
 ```
+
+
+TODO:
+
+- get and check snapshot graph.
+- add new finding and check the new snapshot graph.
+
 
 ## Multiple links between a pair of nodes
 
