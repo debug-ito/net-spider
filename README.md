@@ -272,7 +272,7 @@ TODO:
 
 - get and check snapshot graph.
 - add new finding and check the new snapshot graph.
-
+- mention LinkAttributes.
 
 ## Multiple links between a pair of nodes
 
