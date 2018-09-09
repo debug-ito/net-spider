@@ -46,6 +46,20 @@ The neighbor information retrieved by SNMP is a local finding. The information i
 
 By putting the neighbor information to net-spider, it connects those information together to construct the history graph of your network of switches. The history graph tells you not just the latest status of the network, but also its status in the past.
 
+## Prelude
+
+Before we enter the detail, here we define the common imports. This is because this README is also a test script.
+
+```haskell common
+{-# LANGUAGE OverloadedStrings #-}
+import Control.Exception.Safe (bracket)
+import Data.Either (partitionEithers)
+import Data.List (sort, sortOn)
+import Data.Text (Text)
+import Test.Hspec
+import Test.Hspec.NeedEnv (needEnvHostPort, EnvMode(Need))
+```
+
 ## Basic usage
 
 To use net-spider, first you have to set up Tinkerpop Gremlin Server and its underlying graph database.
@@ -59,14 +73,6 @@ By default, it accepts WebSocket connections at port 8182.
 Then in your application, connect to the server and get `Spider` object.
 
 ```haskell basic
-{-# LANGUAGE OverloadedStrings #-}
-import Control.Exception.Safe (bracket)
-import Data.Either (partitionEithers)
-import Data.List (sort, sortOn)
-import Data.Text (Text)
-import Test.Hspec
-import Test.Hspec.NeedEnv (needEnvHostPort, EnvMode(Need))
-
 import NetSpider.Pair (Pair(..))
 import NetSpider.Input
   ( Spider, connectWS, close,
@@ -196,6 +202,24 @@ type MySpider = Spider Text () ()
 ```
 
 ## Node and link attributes
+
+Nodes and links in your history graph can have time-varying attributes. You can store those attributes in the history graph. In the snapshot graph, you can basically get the latest values of those attributes.
+
+For example, let's monitor the total number of packets that the switch has transmitted and received. First, we define the data type for the node attributes.
+
+```haskell attrs
+data PacketCount =
+  PacketCount
+  { transmitCount :: Int,
+    receiveCount :: Int
+  }
+  deriving(Show,Eq,Ord)
+```
+
+```haskell attrs
+main = hspec $ specify "node attributes" $ do
+  True `shouldBe` False -- TODO
+```
 
 ## Multiple links between a pair of nodes
 
