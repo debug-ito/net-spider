@@ -217,6 +217,8 @@ import NetSpider.Input
     FoundNode(..), FoundLink(..), NodeAttributes(..),
     fromEpochSecond
   )
+import NetSpider.Output (nodeId, getSnapshotSimple, nodeTimestamp)
+import qualified NetSpider.Output as Out
 
 
 data PacketCount =
@@ -264,15 +266,48 @@ doWithSpider spider = do
                { transmitCount = 15242,
                  receiveCount = 22301
                }
-  addFoundNode spider finding
+  addFoundNode spider finding1
 ```
 
+Of course, you can retrieve the node attributes in the snapshot graph.
 
-TODO:
+```haskell attrs
+  (raw_nodes1, []) <- getSnapshotSimple spider "switch1"
+  map nodeId raw_nodes1 `shouldBe` ["switch1"]
+  map nodeTimestamp raw_nodes1 `shouldBe` [Just $ fromEpochSecond 1536496858]
+  map Out.nodeAttributes raw_nodes1 `shouldBe`
+    [ Just PacketCount { transmitCount = 15242,
+                         receiveCount = 22301
+                       }
+    ]
+```
 
-- get and check snapshot graph.
-- add new finding and check the new snapshot graph.
-- mention LinkAttributes.
+Now let's update the PacketCount. To do that, just add a local finding with a newer timestamp. `getSnapshotSimple` returns the latest state of the graph.
+
+```haskell attrs
+  let finding2 = FoundNode
+                 { subjectNode = "switch1",
+                   foundAt = fromEpochSecond 1536669543,
+                   neighborLinks = [],
+                   nodeAttributes = attrs2
+                 }
+      attrs2 = PacketCount
+               { transmitCount = 20112,
+                 receiveCount = 28544
+               }
+  addFoundNode spider finding2
+  
+  (raw_nodes2, []) <- getSnapshotSimple spider "switch1"
+  map nodeId raw_nodes2 `shouldBe` ["switch1"]
+  map nodeTimestamp raw_nodes2 `shouldBe` [Just $ fromEpochSecond 1536669543]
+  map Out.nodeAttributes raw_nodes2 `shouldBe`
+    [ Just PacketCount { transmitCount = 20112,
+                         receiveCount = 28544
+                       }
+    ]
+```
+
+Just like `FoundNode` has `nodeAttributes` field, `FoundLink` has `linkAttributes` field. To store your data type as link attributes, make that data type an instance of `LinkAttributes` class.
 
 ## Multiple links between a pair of nodes
 
