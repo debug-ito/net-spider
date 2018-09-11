@@ -74,13 +74,13 @@ Then in your application, connect to the server and get `Spider` object.
 
 ```haskell basic
 import NetSpider.Pair (Pair(..))
-import NetSpider.Input
-  ( Spider, connectWS, close,
-    FoundNode(..), FoundLink(..), LinkState(LinkBidirectional),
-    fromEpochSecond, addFoundNode, clearAll, getSnapshotSimple
-  )
-import NetSpider.Output
-  ( nodeId, nodeTimestamp, linkNodePair, linkTimestamp )
+import NetSpider.Spider
+  (Spider, connectWS, close, addFoundNode, clearAll, getSnapshotSimple)
+import NetSpider.Found
+  (FoundNode(..), FoundLink(..), LinkState(LinkBidirectional))
+import NetSpider.Timestamp (fromEpochSecond)
+import NetSpider.Snapshot
+  (nodeId, nodeTimestamp, linkNodePair, linkTimestamp)
 
 
 main :: IO ()
@@ -212,13 +212,13 @@ import Control.Applicative ((<$>), (<*>))
 import Control.Category ((<<<))
 import Data.Greskell (newBind, gProperty, parseOneValue)
 
-import NetSpider.Input
-  ( Spider, connectWS, close, clearAll, addFoundNode,
-    FoundNode(..), FoundLink(..), NodeAttributes(..),
-    fromEpochSecond
-  )
-import NetSpider.Output (nodeId, getSnapshotSimple, nodeTimestamp)
-import qualified NetSpider.Output as Out
+import NetSpider.Spider
+  (Spider, connectWS, close, clearAll, addFoundNode, getSnapshotSimple)
+import NetSpider.Found (FoundNode(..), FoundLink(..))
+import NetSpider.Graph (NodeAttributes(..))
+import NetSpider.Timestamp (fromEpochSecond)
+import NetSpider.Snapshot (nodeId, nodeTimestamp)
+import qualified NetSpider.Snapshot as Sn
 
 
 data PacketCount =
@@ -275,7 +275,7 @@ Of course, you can retrieve the node attributes in the snapshot graph.
   (raw_nodes1, []) <- getSnapshotSimple spider "switch1"
   map nodeId raw_nodes1 `shouldBe` ["switch1"]
   map nodeTimestamp raw_nodes1 `shouldBe` [Just $ fromEpochSecond 1536496858]
-  map Out.nodeAttributes raw_nodes1 `shouldBe`
+  map Sn.nodeAttributes raw_nodes1 `shouldBe`
     [ Just PacketCount { transmitCount = 15242,
                          receiveCount = 22301
                        }
@@ -300,7 +300,7 @@ Now let's update the PacketCount. To do that, just add a local finding with a ne
   (raw_nodes2, []) <- getSnapshotSimple spider "switch1"
   map nodeId raw_nodes2 `shouldBe` ["switch1"]
   map nodeTimestamp raw_nodes2 `shouldBe` [Just $ fromEpochSecond 1536669543]
-  map Out.nodeAttributes raw_nodes2 `shouldBe`
+  map Sn.nodeAttributes raw_nodes2 `shouldBe`
     [ Just PacketCount { transmitCount = 20112,
                          receiveCount = 28544
                        }
