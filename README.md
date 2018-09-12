@@ -52,6 +52,8 @@ Before we enter the detail, here we define the common imports. This is because t
 
 ```haskell common
 {-# LANGUAGE OverloadedStrings #-}
+import Control.Applicative ((<$>), (<*>))
+import Control.Category ((<<<))
 import Control.Exception.Safe (bracket)
 import Data.Either (partitionEithers)
 import Data.List (sort, sortOn)
@@ -208,8 +210,6 @@ Nodes and links in your history graph can have time-varying attributes. You can 
 For example, let's monitor the total number of packets that the switch has transmitted and received. First, we define the data type for the node attributes.
 
 ```haskell attrs
-import Control.Applicative ((<$>), (<*>))
-import Control.Category ((<<<))
 import Data.Greskell (newBind, gProperty, parseOneValue)
 
 import NetSpider.Spider
@@ -310,6 +310,39 @@ Now let's update the PacketCount. To do that, just add a local finding with a ne
 Just like `FoundNode` has `nodeAttributes` field, `FoundLink` has `linkAttributes` field. To store your data type as link attributes, make that data type an instance of `LinkAttributes` class.
 
 ## Multiple links between a pair of nodes
+
+By default, net-spider assumes there is at most one link between a pair of nodes. If it is possible in your application that there are more than one links between a pair of nodes, you have to tell `Spider` how to distinguish those links.
+
+For example, if you use link aggregation, you can connect a pair of switches with more than one physical links. Those physical links can be distinguished by the port names of the switches. So, let's define the data type for port names first.
+
+```haskell multi-link
+import Data.Greskell (newBind, gProperty, parseOneValue)
+
+import NetSpider.Graph (LinkAttributes(..))
+
+data Ports =
+  Ports
+  { subjectPort :: Text,
+    targetPort :: Text
+  }
+  deriving (Show,Eq,Ord)
+
+instance LinkAttributes Ports where
+  writeLinkAttributes ports = do
+    sp <- newBind $ subjectPort ports
+    tp <- newBind $ targetPort ports
+    return $ gProperty "sport" sp <<< gProperty "tport" tp
+  parseLinkAttributes props =
+    Ports <$> parseOneValue "sport" props <*> parseOneValue "tport" props
+```
+
+Then, put some local findings.
+
+
+```haskell multi-link
+main :: IO ()
+main = hspec $ specify "multi-link" $ True `shouldBe` False --- TODO
+```
 
 ## Merge local findings by end nodes of a link
 
