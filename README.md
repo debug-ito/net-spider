@@ -313,12 +313,19 @@ Just like `FoundNode` has `nodeAttributes` field, `FoundLink` has `linkAttribute
 
 By default, net-spider assumes there is at most one link between a pair of nodes. If it is possible in your application that there are more than one links between a pair of nodes, you have to tell `Spider` how to distinguish those links.
 
-For example, if you use link aggregation, you can connect a pair of switches with more than one physical links. Those physical links can be distinguished by the port names of the switches. So, let's define the data type for port names first.
+For example, if you use link aggregation, it's not unusual to connect a pair of switches with more than one physical links. Those physical links can be distinguished by the port names of the switches. So, let's define the data type for port names first.
 
 ```haskell multi-link
 import Data.Greskell (newBind, gProperty, parseOneValue)
 
+import NetSpider.Found (FoundNode(..), FoundLink(..), LinkState(..))
 import NetSpider.Graph (LinkAttributes(..))
+import NetSpider.Pair (Pair(..))
+import NetSpider.Query (defQuery, unifyLinkSamples)
+import NetSpider.Spider
+  (Spider, connectWS, close, clearAll, addFoundNode, getSnapshot)
+import NetSpider.Timestamp (fromEpochSecond)
+import NetSpider.Unify (LinkSample(..), unifyStd, defUnifyStdConfig, makeLinkSubId)
 
 data Ports =
   Ports
@@ -338,10 +345,44 @@ instance LinkAttributes Ports where
 
 Then, put some local findings.
 
-
 ```haskell multi-link
 main :: IO ()
-main = hspec $ specify "multi-link" $ True `shouldBe` False --- TODO
+main = hspec $ specify "multi-link" $ do
+  (host, port) <- needEnvHostPort Need "NET_SPIDER_TEST"
+  bracket (connectWS host port) close $ doWithSpider
+
+doWithSpider :: Spider Text () Ports -> IO ()
+doWithSpider spider = do
+  clearAll spider
+  let finding1 = FoundNode
+                 { subjectNode = "switch1",
+                   foundAt = fromEpochSecond 1536842590,
+                   neighborLinks = links1,
+                   nodeAttributes = ()
+                 }
+      links1 = [ FoundLink
+                 { targetNode = "switch2",
+                   linkState = LinkBidirectional,
+                   linkAttributes = Ports "Gi0/0" "Gi0/12"
+                 },
+                 FoundLink
+                 { targetNode = "switch2",
+                   linkState = LinkBidirectional,
+                   linkAttributes = Ports "Gi0/1" "Gi0/13"
+                 }
+               ]
+  addFoundNode spider finding1
+```
+
+```haskell multi-link
+  let linkSubIdWithPorts :: LinkSample Text Ports -> Pair (Text,Text)
+      linkSubIdWithPorts ls = Pair ( (lsSubjectNode ls, subjectPort $ lsLinkAttributes ls),
+                                     (lsTargetNode ls, targetPort $ lsLinkAttributes ls)
+                                   )
+      unifier = unifyStd $ defUnifyStdConfig { makeLinkSubId = linkSubIdWithPorts }
+      query = (defQuery ["switch1"]) { unifyLinkSamples = unifier }
+  (_, raw_links) <- getSnapshot spider query
+  length raw_links `shouldBe` 2
 ```
 
 ## Merge local findings by end nodes of a link
