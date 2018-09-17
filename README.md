@@ -408,6 +408,73 @@ If you didn't pass the `linkSubIdWithPorts` to `getSnapshot`, the result would c
 
 ## Merge local findings by end nodes of a link
 
+In some applications, each end node of a link can observe some independent attributes of the link. In that case, you may want to merge those attributes from the two end nodes into a single link attribute.
+
+For example, when you use optical fibers to connect switches, it may be a good idea to monitor the signal strength to detect link failures early.
+
+So, let's define the link attribute type for that.
+
+```haskell merge-link-attrs
+import Data.Greskell (newBind, gProperty, parseOneValue)
+import Data.Scientific (Scientific)
+
+import NetSpider.Found (FoundNode(..), FoundLink(..), LinkState(..))
+import NetSpider.Graph (LinkAttributes(..))
+import NetSpider.Spider
+  (Spider, connectWS, close, clearAll, addFoundNode)
+import NetSpider.Timestamp (fromEpochSecond)
+
+-- | Received signal strength (dBm)
+newtype RxSignal = RxSignal Scientific
+                   deriving (Show,Eq,Ord)
+
+instance LinkAttributes RxSignal where
+  writeLinkAttributes (RxSignal s) = do
+    s_var <- newBind s
+    return $ gProperty "rx_signal" s_var
+  parseLinkAttributes props =
+    RxSignal <$> parseOneValue "rx_signal" props
+```
+
+Then, put local findings for a link. Note that each end node observes its own received signal strength.
+
+```haskell merge-link-attrs
+main :: IO ()
+main = hspec $ specify "merge link attributes" $ do
+  (host, port) <- needEnvHostPort Need "NET_SPIDER_TEST"
+  bracket (connectWS host port) close $ doWithSpider
+
+doWithSpider :: Spider Text () RxSignal -> IO ()
+doWithSpider spider = do
+  clearAll spider
+  let finding1 = FoundNode
+                 { subjectNode = "switch1",
+                   foundAt = fromEpochSecond 1537189070,
+                   nodeAttributes = (),
+                   neighborLinks = [link1]
+                 }
+      link1 = FoundLink
+              { targetNode = "switch2",
+                linkState = LinkBidirectional,
+                linkAttributes = RxSignal (-4.3)
+              }
+      finding2 = FoundNode
+                 { subjectNode = "switch2",
+                   foundAt = fromEpochSecond 1537189388,
+                   nodeAttributes = (),
+                   neighborLinks = [link2]
+                 }
+      link2 = FoundLink
+              { targetNode = "switch1",
+                linkState = LinkBidirectional,
+                linkAttributes = RxSignal (-5.5)
+              }
+  addFoundNode spider finding1
+  addFoundNode spider finding2
+```
+
+TODO: how to merge the two RxSignals? and what's the default behavior of getSnapshot?
+
 ## Author
 
 Toshio Ito <debug.ito@gmail.com>
