@@ -436,16 +436,18 @@ instance LinkAttributes RxSignal where
     RxSignal <$> parseOneValue "rx_signal" props
 ```
 
-Then, put local findings for a link. Note that each end node observes its own received signal strength.
+Then, put local findings for a link.
 
 ```haskell merge-link-attrs
 main :: IO ()
 main = hspec $ specify "merge link attributes" $ do
   (host, port) <- needEnvHostPort Need "NET_SPIDER_TEST"
-  bracket (connectWS host port) close $ doWithSpider
+  bracket (connectWS host port) close $ \spider -> do
+    inputFindings spider
+    inspectSnapshot spider
 
-doWithSpider :: Spider Text () RxSignal -> IO ()
-doWithSpider spider = do
+inputFindings :: Spider Text () RxSignal -> IO ()
+inputFindings spider = do
   clearAll spider
   let finding1 = FoundNode
                  { subjectNode = "switch1",
@@ -473,7 +475,26 @@ doWithSpider spider = do
   addFoundNode spider finding2
 ```
 
-TODO: how to merge the two RxSignals? and what's the default behavior of getSnapshot?
+The switch1 and switch2 observe their own signal strength, but both of them are on the same link. So, it's natural for a link data model to have BOTH of the signal strength values. Let's define another link attribute type that has two signal strengths.
+
+```haskell merge-link-attrs
+-- | Received signal strengths observed at ends of a link.
+data SignalStrengths =
+  SignalStrengths
+  { atSource :: Maybe RxSignal,
+    atDestination :: Maybe RxSignal
+  }
+  deriving (Show,Eq,Ord)
+```
+
+
+
+```haskell merge-link-attrs
+inspectSnapshot :: Spider Text () RxSignal -> IO ()
+inspectSnapshot = undefined -- TODO
+```
+
+
 
 ## Author
 
