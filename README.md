@@ -427,8 +427,9 @@ import NetSpider.Spider
   (Spider, connectWS, close, clearAll, addFoundNode, getSnapshot)
 import NetSpider.Timestamp (fromEpochSecond)
 import NetSpider.Unify
-  ( LinkSample(lsLinkAttributes), defUnifyStdConfig, unifyStd,
-    mergeSamples, latestLinkSample, UnifyStdConfig
+  ( LinkSample(lsLinkAttributes),
+    unifyStd, defUnifyStdConfig, mergeSamples, latestLinkSample,
+    negatesLinkSample, defNegatesLinkSample
   )
 
 -- | Received signal strength (dBm)
@@ -508,7 +509,13 @@ merger llinks rlinks = do
            then SignalStrengths lsignal rsignal
            else SignalStrengths rsignal lsignal
   return $ base_link { lsLinkAttributes = ss }
+```haskell merge-link-attrs
 
+The above merger function takes link samples obtained from the history graph. The `llinks` is the link samples got by one of the end nodes, whereas the `rlinks` is the one got by the other end node. It constructs the `SignalStrengths` attribute from the attributes from `llinks` and `rlinks`.
+
+Finally let's make a query.
+
+```haskell merge-link-attrs
 -- | a support getter
 sourceNodeRxSignal :: SnapshotLink Text SignalStrengths -> (Text, Maybe RxSignal)
 sourceNodeRxSignal l = (sourceNode l, atSource $ Sn.linkAttributes l)
@@ -519,8 +526,9 @@ destNodeRxSignal l = (destinationNode l, atDestination $ Sn.linkAttributes l)
 
 inspectSnapshot :: Spider Text () RxSignal -> IO ()
 inspectSnapshot spider = do
-  let unify_conf :: UnifyStdConfig Text () RxSignal SignalStrengths ()
-      unify_conf = defUnifyStdConfig { mergeSamples = merger }    ----- TODO: is this polymorphic update impossible???
+  let unify_conf = defUnifyStdConfig { mergeSamples = merger,
+                                       negatesLinkSample = defNegatesLinkSample
+                                     }
       unifier = unifyStd unify_conf
       query = (defQuery ["switch1"]) { unifyLinkSamples = unifier }
   (_, raw_links) <- getSnapshot spider query
@@ -530,6 +538,7 @@ inspectSnapshot spider = do
     [("switch1", Just $ RxSignal (-4.3)), ("switch2", Just $ RxSignal (-5.5))]
 ```
 
+TODO: setting negatesLinkSample is necessary because of the polymorphic update.
 
 ## Author
 
