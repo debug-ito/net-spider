@@ -420,9 +420,16 @@ import Data.Scientific (Scientific)
 
 import NetSpider.Found (FoundNode(..), FoundLink(..), LinkState(..))
 import NetSpider.Graph (LinkAttributes(..))
+import NetSpider.Query (defQuery, unifyLinkSamples)
+import NetSpider.Snapshot (SnapshotLink, sourceNode, destinationNode)
+import qualified NetSpider.Snapshot as Sn
 import NetSpider.Spider
-  (Spider, connectWS, close, clearAll, addFoundNode)
+  (Spider, connectWS, close, clearAll, addFoundNode, getSnapshot)
 import NetSpider.Timestamp (fromEpochSecond)
+import NetSpider.Unify
+  ( LinkSample(lsLinkAttributes), defUnifyStdConfig, unifyStd,
+    mergeSamples, latestLinkSample, UnifyStdConfig
+  )
 
 -- | Received signal strength (dBm)
 newtype RxSignal = RxSignal Scientific
@@ -487,13 +494,41 @@ data SignalStrengths =
   deriving (Show,Eq,Ord)
 ```
 
-
+To merge the two `RxSignal`s into one `SignalStrengths`, define the merger function and pass it to the query to `getSnapshot`.
 
 ```haskell merge-link-attrs
-inspectSnapshot :: Spider Text () RxSignal -> IO ()
-inspectSnapshot = undefined -- TODO
-```
+merger :: [LinkSample Text RxSignal] -> [LinkSample Text RxSignal] -> Maybe (LinkSample Text SignalStrengths)
+merger llinks rlinks = do
+  let llink = latestLinkSample llinks
+      rlink = latestLinkSample rlinks
+      lsignal = fmap lsLinkAttributes llink
+      rsignal = fmap lsLinkAttributes rlink
+  base_link <- latestLinkSample (llinks ++ rlinks)
+  let ss = if Just base_link == llink
+           then SignalStrengths lsignal rsignal
+           else SignalStrengths rsignal lsignal
+  return $ base_link { lsLinkAttributes = ss }
 
+-- | a support getter
+sourceNodeRxSignal :: SnapshotLink Text SignalStrengths -> (Text, Maybe RxSignal)
+sourceNodeRxSignal l = (sourceNode l, atSource $ Sn.linkAttributes l)
+
+-- | a support getter
+destNodeRxSignal :: SnapshotLink Text SignalStrengths -> (Text, Maybe RxSignal)
+destNodeRxSignal l = (destinationNode l, atDestination $ Sn.linkAttributes l)
+
+inspectSnapshot :: Spider Text () RxSignal -> IO ()
+inspectSnapshot spider = do
+  let unify_conf :: UnifyStdConfig Text () RxSignal SignalStrengths ()
+      unify_conf = defUnifyStdConfig { mergeSamples = merger }    ----- TODO: is this polymorphic update impossible???
+      unifier = unifyStd unify_conf
+      query = (defQuery ["switch1"]) { unifyLinkSamples = unifier }
+  (_, raw_links) <- getSnapshot spider query
+  length raw_links `shouldBe` 1
+  let [got_link] = raw_links
+  [sourceNodeRxSignal got_link, destNodeRxSignal got_link] `shouldMatchList`
+    [("switch1", Just $ RxSignal (-4.3)), ("switch2", Just $ RxSignal (-5.5))]
+```
 
 
 ## Author
