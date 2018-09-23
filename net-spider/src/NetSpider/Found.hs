@@ -52,7 +52,7 @@ instance FromGraphSON LinkState where
         Just ls -> return ls
         Nothing -> fail ("Unrecognized LinkState: " ++ unpack t)
 
--- | A link found for a found node. The link connects from the subject
+-- | A link found at a 'FoundNode'. The link connects from the subject
 -- node (the found node) to the target node. The link may be
 -- directional or non-directional.
 --

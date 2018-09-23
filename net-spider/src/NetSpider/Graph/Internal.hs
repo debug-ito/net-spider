@@ -134,7 +134,9 @@ instance LinkAttributes la => FromGraphSON (EFinds la) where
 -- stored in the NetSpider database.
 class NodeAttributes ps where
   writeNodeAttributes :: ps -> Binder (Walk SideEffect (VFoundNode ps) (VFoundNode ps))
+  -- ^ Return 'Walk' to write the attributes to the 'VFoundNode'.
   parseNodeAttributes :: PropertyMapList AVertexProperty GValue -> Parser ps
+  -- ^ Parse the vertex proprerties into the attributes.
 
 -- | No attributes.
 instance NodeAttributes () where
@@ -145,7 +147,9 @@ instance NodeAttributes () where
 -- stored in the NetSpider database.
 class LinkAttributes ps where
   writeLinkAttributes :: ps -> Binder (Walk SideEffect (EFinds ps) (EFinds ps))
+  -- ^ Return 'Walk' to write the attributes to the 'EFinds'.
   parseLinkAttributes :: PropertyMapSingle AProperty GValue -> Parser ps
+  -- ^ Parse the edge proprerties into the attributes.
 
 -- | No attributes.
 instance LinkAttributes () where
