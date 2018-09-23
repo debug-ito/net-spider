@@ -31,6 +31,15 @@ The history graph can be queried via net-spider. When queried, it traverses the 
 
 Maintaining the graph database is delegated to [Tinkerpop Gremlin Server](http://tinkerpop.apache.org/). You have to set up a server instance seprately.
 
+## Contents
+
+* [Use case](#use-case)
+* [Basic usage](#basic-usage)
+* [The Spider type](#the-spider-type)
+* [Node and link attributes](#node-and-link-attributes)
+* [Multiple links between a pair of nodes](#multiple-links-between-a-pair-of-nodes)
+* [Merge local findings by end nodes of a link](#merge-local-findings-by-end-nodes-of-a-link)
+
 
 ## Use case
 
