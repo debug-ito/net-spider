@@ -390,7 +390,7 @@ To get the correct snapshot graph, you have to tell `Spider` to distinguish the 
   (_, raw_links) <- getSnapshot spider query
 ```
 
-The `linkSubIdWithPorts` function above defines the link sub-ID, an identifier for a link for a pair of switches. Here we include the `subjectPort` and `targetPort` in the link sub-ID. We also use the switch names and `Pair` type (from `NetSpider.Pair`) because the link's subject and target may be swapped.
+The `linkSubIdWithPorts` function above defines the link sub-ID, an identifier for a link within the given pair of switches. Here we include the `subjectPort` and `targetPort` in the link sub-ID. We also use the switch names and `Pair` type (from `NetSpider.Pair`) because the link's subject and target may be swapped. `Pair` type's `Eq` and `Ord` instances are immune to swapping.
 
 The `linkSubIdWithPorts` function is used to construct the `unifier`, which is included in the `query`, which is passed to `getSnapshot`.
 
@@ -421,7 +421,8 @@ import Data.Scientific (Scientific)
 import NetSpider.Found (FoundNode(..), FoundLink(..), LinkState(..))
 import NetSpider.Graph (LinkAttributes(..))
 import NetSpider.Query (defQuery, unifyLinkSamples)
-import NetSpider.Snapshot (SnapshotLink, sourceNode, destinationNode)
+import NetSpider.Snapshot
+  (SnapshotLink, sourceNode, destinationNode, linkTimestamp, linkNodeTuple)
 import qualified NetSpider.Snapshot as Sn
 import NetSpider.Spider
   (Spider, connectWS, close, clearAll, addFoundNode, getSnapshot)
@@ -483,7 +484,7 @@ inputFindings spider = do
   addFoundNode spider finding2
 ```
 
-The switch1 and switch2 observe their own signal strength, but both of them are on the same link. So, it's natural for a link data model to have BOTH of the signal strength values. Let's define another link attribute type that has two signal strengths.
+The switch1 and switch2 observe their own signal strength, but both of them are on the same link. So, it's natural for the data model of a link to have BOTH of the signal strength values. Let's define another link attribute type that has two signal strengths.
 
 ```haskell merge-link-attrs
 -- | Received signal strengths observed at ends of a link.
@@ -495,10 +496,14 @@ data SignalStrengths =
   deriving (Show,Eq,Ord)
 ```
 
-To merge the two `RxSignal`s into one `SignalStrengths`, define the merger function and pass it to the query to `getSnapshot`.
+To merge the two `RxSignal`s into one `SignalStrengths`, you have to tell `Spider` how to merge them. To do that, define the merger function and pass it to the query to `getSnapshot`.
+
+The merger function is like this:
 
 ```haskell merge-link-attrs
-merger :: [LinkSample Text RxSignal] -> [LinkSample Text RxSignal] -> Maybe (LinkSample Text SignalStrengths)
+merger :: [LinkSample Text RxSignal]
+       -> [LinkSample Text RxSignal]
+       -> Maybe (LinkSample Text SignalStrengths)
 merger llinks rlinks = do
   let llink = latestLinkSample llinks
       rlink = latestLinkSample rlinks
@@ -509,9 +514,9 @@ merger llinks rlinks = do
            then SignalStrengths lsignal rsignal
            else SignalStrengths rsignal lsignal
   return $ base_link { lsLinkAttributes = ss }
-```haskell merge-link-attrs
+```
 
-The above merger function takes link samples obtained from the history graph. The `llinks` is the link samples got by one of the end nodes, whereas the `rlinks` is the one got by the other end node. It constructs the `SignalStrengths` attribute from the attributes from `llinks` and `rlinks`.
+The above merger function takes link samples obtained from the history graph. The `llinks` is the link samples observed by one of the end nodes, whereas the `rlinks` is the ones observed by the other end node. It constructs the `SignalStrengths` attribute from the attributes from `llinks` and `rlinks`. Note that the subject node and target node of `llink` are swap of those of `rlink`. That's why we take care when we construct a `SignalStrengths` above.
 
 Finally let's make a query.
 
@@ -534,11 +539,13 @@ inspectSnapshot spider = do
   (_, raw_links) <- getSnapshot spider query
   length raw_links `shouldBe` 1
   let [got_link] = raw_links
+  linkNodeTuple got_link `shouldBe` ("switch2", "switch1")
+  linkTimestamp got_link `shouldBe` fromEpochSecond 1537189388
   [sourceNodeRxSignal got_link, destNodeRxSignal got_link] `shouldMatchList`
     [("switch1", Just $ RxSignal (-4.3)), ("switch2", Just $ RxSignal (-5.5))]
 ```
 
-TODO: setting negatesLinkSample is necessary because of the polymorphic update.
+The `merger` function passed to `getSnapshot` via `unifyStd`. Note that you need to set `negatesLinkSample` field in `UnifyStdConfig`, because setting `merger` to it is a polymorphic update. The result `SnapshotLink` has `SignalStrengths` type as its link attributes, which contains the signal strengths observed at both of the end nodes.
 
 ## Author
 
