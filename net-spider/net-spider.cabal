@@ -4,14 +4,14 @@ author:                 Toshio Ito <debug.ito@gmail.com>
 maintainer:             Toshio Ito <debug.ito@gmail.com>
 license:                BSD3
 license-file:           LICENSE
--- synopsis:               
--- description:            
--- category:               
+synopsis:               A graph database middleware to maintain a time-varying graph.
+description:            A graph database middleware to maintain a time-varying graph. See the [project README](https://github.com/debug-ito/net-spider) for detail.
+category:               Database
 cabal-version:          >= 1.10
 build-type:             Simple
 extra-source-files:     README.md, ChangeLog.md
--- homepage:               
--- bug-reports:            
+homepage:               https://github.com/debug-ito/net-spider
+bug-reports:            https://github.com/debug-ito/net-spider/issues
 
 library
   default-language:     Haskell2010
@@ -99,4 +99,4 @@ test-suite server-test-suite
 
 source-repository head
   type:                 git
---  location:             
+  location:             https://github.com/debug-ito/net-spider.git
