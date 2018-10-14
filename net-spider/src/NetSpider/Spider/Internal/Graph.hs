@@ -21,7 +21,8 @@ module NetSpider.Spider.Internal.Graph
          gSelectFoundNode,
          gLatestFoundNode,
          -- * EFinds
-         gFinds
+         gFinds,
+         gFindsTarget
        ) where
 
 import Control.Category ((<<<))
@@ -33,7 +34,7 @@ import Data.Greskell
     GTraversal, Filter, Transform, SideEffect, Walk, liftWalk,
     Binder, newBind,
     source, sV, sV', sAddV, gHasLabel, gHasId, gHas2, gId, gProperty, gPropertyV, gV,
-    gAddE, gSideEffect, gTo, gFrom, gDrop, gOut, gOrder, gBy2, gValues, gOutE,
+    gAddE, gSideEffect, gTo, gFrom, gDrop, gOut, gOrder, gBy2, gValues, gOutE, gInV,
     ($.), (<*.>), (=:),
     ToGTraversal,
     Key, oDecr, gLimit
@@ -153,5 +154,5 @@ gLatestFoundNode = gLimit 1 <<< gOrder [gBy2 keyTimestamp oDecr]
 gFinds :: Walk Transform (VFoundNode na) (EFinds la)
 gFinds = gOutE ["finds"]
 
-  
-        
+gFindsTarget :: Walk Transform (EFinds la) VNode
+gFindsTarget = gInV

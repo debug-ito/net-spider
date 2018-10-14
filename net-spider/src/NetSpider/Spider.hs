@@ -28,7 +28,8 @@ import Data.Hashable (Hashable)
 import Data.Greskell
   ( runBinder, ($.), (<$.>), (<*.>),
     Binder, ToGreskell(GreskellReturn), AsIterator(IteratorItem), FromGraphSON,
-    liftWalk, gLimit, gIdentity
+    liftWalk, gLimit, gIdentity, gSelectN, gAs,
+    lookupAsM, newAsLabel
   )
 import Data.Hashable (Hashable)
 import Data.HashMap.Strict (HashMap)
@@ -53,7 +54,7 @@ import NetSpider.Snapshot.Internal (SnapshotNode(..), SnapshotLink(..))
 import NetSpider.Spider.Config (Spider(..), Config(..), defConfig)
 import NetSpider.Spider.Internal.Graph
   ( gMakeFoundNode, gAllNodes, gHasNodeID, gHasNodeEID, gNodeEID, gNodeID, gMakeNode, gClearAll,
-    gLatestFoundNode, gSelectFoundNode, gFinds, gHasFoundNodeEID, gAllFoundNode
+    gLatestFoundNode, gSelectFoundNode, gFinds, gFindsTarget, gHasFoundNodeEID, gAllFoundNode
   )
 import NetSpider.Unify (LinkSampleUnifier, LinkSample(..), LinkSampleID, linkSampleId)
 
@@ -205,32 +206,27 @@ makeLinkSamples :: (FromGraphSON n, LinkAttributes fla)
                 -> VFoundNode na
                 -> IO (Vector (LinkSample n fla))
 makeLinkSamples spider subject_nid vneighbors = do
-  finds_edges <- getFinds $ vfnId vneighbors
-  traverse toSnapshotLinkEntry finds_edges
+  finds_targets <- getFindsAndTargetID $ vfnId vneighbors
+  return $ fmap (uncurry toSnapshotLinkEntry) finds_targets
   where
-    getFinds neighbors_eid = Gr.slurpResults =<< submitB spider binder
+    getFindsAndTargetID neighbors_eid = do
+      traverse extract =<< Gr.slurpResults =<< Gr.submit (spiderClient spider) gtrav (Just binding)
       where
-        binder = gFinds <$.> gHasFoundNodeEID neighbors_eid <*.> pure gAllFoundNode
-    toSnapshotLinkEntry efinds = do
-      target_nid <- getNodeID $ efTargetId $ efinds
-      let lsample = LinkSample { lsSubjectNode = subject_nid,
-                                 lsTargetNode = target_nid,
-                                 lsLinkState = efLinkState efinds,
-                                 lsTimestamp = vfnTimestamp vneighbors,
-                                 lsLinkAttributes = efLinkAttributes efinds
-                               }
-      return lsample
-    getNodeID node_eid = expectOne =<< tryGetNodeID spider node_eid
-    -- TODO: Using .as and .select steps, we can get EFinds and its destination vertex simultaneously.
-      where
-        expectOne (Just r) = return r
-        expectOne Nothing = throwString "Expects a Vertex for a NodeID, but nothing found."
-        -- TODO: better exception spec.
-
-tryGetNodeID :: FromGraphSON n => Spider n na fla -> EID -> IO (Maybe n)
-tryGetNodeID spider node_eid = fmap vToMaybe $ Gr.slurpResults =<< submitB spider binder
-  where
-    binder = gNodeID spider <$.> gHasNodeEID node_eid <*.> pure gAllNodes
+        ((gtrav, label_finds, label_target), binding) = runBinder $ do
+          lfinds <- newAsLabel
+          ltarget <- newAsLabel
+          gt <- gSelectN lfinds ltarget []
+                <$.> (gAs ltarget) <$.> gNodeID spider <$.> gFindsTarget <$.> (gAs lfinds)
+                <$.> gFinds <$.> gHasFoundNodeEID neighbors_eid <*.> pure gAllFoundNode
+          return (gt, lfinds, ltarget)
+        extract smap = (,) <$> lookupAsM label_finds smap <*> lookupAsM label_target smap
+    toSnapshotLinkEntry efinds target_nid =
+      LinkSample { lsSubjectNode = subject_nid,
+                   lsTargetNode = target_nid,
+                   lsLinkState = efLinkState efinds,
+                   lsTimestamp = vfnTimestamp vneighbors,
+                   lsLinkAttributes = efLinkAttributes efinds
+                 }
 
 -- | The state kept while making the snapshot graph.
 data SnapshotState n na fla =

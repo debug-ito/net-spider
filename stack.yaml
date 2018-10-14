@@ -43,9 +43,12 @@ packages:
 # extra-deps: []
 extra-deps:
 - hspec-need-env-0.1.0.0
-- greskell-core-0.1.2.2
-- greskell-0.2.1.0
-- greskell-websocket-0.1.1.0
+## - greskell-core-0.1.2.2
+## - greskell-0.2.1.0
+## - greskell-websocket-0.1.1.0
+- ../greskell/greskell-core
+- ../greskell/greskell
+- ../greskell/greskell-websocket
 
 ## - greskell-websocket-0.1.0.0
 ## - greskell-core-0.1.2.2
