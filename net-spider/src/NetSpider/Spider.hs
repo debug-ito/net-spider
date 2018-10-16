@@ -165,13 +165,36 @@ recurseVisitNodesForSnapshot spider ref_state = go
     getNextVisit = atomicModifyIORef' ref_state popUnvisitedNode
     -- TODO: limit number of steps.
 
+makeEFindsIterator :: (ToJSON n, FromGraphSON n, NodeAttributes na, LinkAttributes fla)
+                   => Spider n na fla -> n -> IO (IO (Maybe (VFoundNode na, EFinds fla, n)))
+makeEFindsIterator spider visit_nid = do
+  handle <- submitQuery
+  return (traverse extractFromSMap =<< Gr.nextResult handle)
+  where
+    submitQuery = Gr.submit (spiderClient spider) query (Just bindings)
+    ((query, label_vfn, label_ef, label_target_nid), bindings) = runBinder $ do
+      lvfn <- newAsLabel
+      lef <- newAsLabel
+      ln <- newAsLabel
+      gt <- gSelectN lvfn lef [ln]
+            <$.> gAs ln <$.> gNodeID spider <$.> gFindsTarget
+            <$.> gAs lef <$.> gFinds
+            <$.> gAs lvfn <$.> gSelectFoundNode gIdentity -- TODO: select FoundNode to consider
+            <$.> gHasNodeID spider visit_nid <*.> pure gAllNodes
+      return (gt, lvfn, lef, ln)
+    extractFromSMap smap =
+      (,,)
+      <$> lookupAsM label_vfn smap 
+      <*> lookupAsM label_ef smap 
+      <*> lookupAsM label_target_nid smap 
+
 visitNodeForSnapshot :: (ToJSON n, Ord n, Hashable n, FromGraphSON n, LinkAttributes fla, NodeAttributes na)
                      => Spider n na fla
                      -> IORef (SnapshotState n na fla)
                      -> n
                      -> IO ()
 visitNodeForSnapshot spider ref_state visit_nid = do
-  mnode_eid <- getVisitedNodeEID
+  mnode_eid <- getVisitedNodeEID -- TODO: ここでEIDを取ってくる意味あるか？一気にtraverseできるのでは？
   case mnode_eid of
    Nothing -> return ()
    Just node_eid -> do
