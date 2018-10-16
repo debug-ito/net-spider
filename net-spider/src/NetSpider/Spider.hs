@@ -165,11 +165,10 @@ recurseVisitNodesForSnapshot spider ref_state = go
     getNextVisit = atomicModifyIORef' ref_state popUnvisitedNode
     -- TODO: limit number of steps.
 
-makeEFindsIterator :: (ToJSON n, FromGraphSON n, NodeAttributes na, LinkAttributes fla)
-                   => Spider n na fla -> n -> IO (IO (Maybe (VFoundNode na, EFinds fla, n)))
-makeEFindsIterator spider visit_nid = do
-  handle <- submitQuery
-  return (traverse extractFromSMap =<< Gr.nextResult handle)
+-- TODO: これを使ってvisitを実装する。
+traverseEFindsOneHop :: (ToJSON n, FromGraphSON n, NodeAttributes na, LinkAttributes fla)
+                     => Spider n na fla -> n -> IO (Vector (VFoundNode na, EFinds fla, n))
+traverseEFindsOneHop spider visit_nid = traverse extractFromSMap =<< Gr.slurpResults =<< submitQuery
   where
     submitQuery = Gr.submit (spiderClient spider) query (Just bindings)
     ((query, label_vfn, label_ef, label_target_nid), bindings) = runBinder $ do
