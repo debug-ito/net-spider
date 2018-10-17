@@ -24,7 +24,6 @@ import Control.Exception.Safe (throwString)
 import Control.Monad (void)
 import Data.Aeson (ToJSON)
 import Data.Foldable (foldr', toList)
-import Data.Hashable (Hashable)
 import Data.Greskell
   ( runBinder, ($.), (<$.>), (<*.>),
     Binder, ToGreskell(GreskellReturn), AsIterator(IteratorItem), FromGraphSON,
@@ -37,8 +36,9 @@ import qualified Data.HashMap.Strict as HM
 import Data.HashSet (HashSet)
 import qualified Data.HashSet as HS
 import Data.IORef (IORef, modifyIORef, newIORef, readIORef, atomicModifyIORef')
-import Data.Maybe (catMaybes, mapMaybe)
+import Data.Maybe (catMaybes, mapMaybe, listToMaybe)
 import Data.Monoid (mempty)
+import Data.List (sortOn)
 import Data.Vector (Vector)
 import qualified Data.Vector as V
 import Network.Greskell.WebSocket (Host, Port)
@@ -165,7 +165,6 @@ recurseVisitNodesForSnapshot spider ref_state = go
     getNextVisit = atomicModifyIORef' ref_state popUnvisitedNode
     -- TODO: limit number of steps.
 
--- TODO: これを使ってvisitを実装する。
 traverseEFindsOneHop :: (ToJSON n, FromGraphSON n, NodeAttributes na, LinkAttributes fla)
                      => Spider n na fla -> n -> IO (Vector (VFoundNode na, EFinds fla, n))
 traverseEFindsOneHop spider visit_nid = traverse extractFromSMap =<< Gr.slurpResults =<< submitQuery
@@ -187,68 +186,90 @@ traverseEFindsOneHop spider visit_nid = traverse extractFromSMap =<< Gr.slurpRes
       <*> lookupAsM label_ef smap 
       <*> lookupAsM label_target_nid smap 
 
+makeLinkSample :: n -> VFoundNode na -> EFinds la -> n -> LinkSample n la
+makeLinkSample subject_nid vfn efinds target_nid = 
+  LinkSample { lsSubjectNode = subject_nid,
+               lsTargetNode = target_nid,
+               lsLinkState = efLinkState efinds,
+               lsTimestamp = vfnTimestamp vfn,
+               lsLinkAttributes = efLinkAttributes efinds
+             }
+
 visitNodeForSnapshot :: (ToJSON n, Ord n, Hashable n, FromGraphSON n, LinkAttributes fla, NodeAttributes na)
                      => Spider n na fla
                      -> IORef (SnapshotState n na fla)
                      -> n
                      -> IO ()
 visitNodeForSnapshot spider ref_state visit_nid = do
-  mnode_eid <- getVisitedNodeEID -- TODO: ここでEIDを取ってくる意味あるか？一気にtraverseできるのでは？
-  case mnode_eid of
-   Nothing -> return ()
-   Just node_eid -> do
-     -- TODO: (2018-09-08) Final VFoundNode is the latest of those in
-     -- the query range. however, there should be an option to
-     -- traverse ALL "finds" edges in the query range, instead of
-     -- those with the latest timestamp. To do that, we may have to
-     -- use .as and .select steps to get "finds" edge and both of its
-     -- end nodes at once.
-     mnext_found <- getNextFoundNode node_eid
-     markAsVisited mnext_found
-     case mnext_found of
-      Nothing -> return ()
-      Just next_found -> do
-        link_samples <- makeLinkSamples spider visit_nid next_found
-        modifyIORef ref_state $ addLinkSamples $ toList link_samples
+  hops <- fmap V.toList $ traverseEFindsOneHop spider visit_nid
+  let mlatest_vfn = latestVFN hops
+  markAsVisited $ mlatest_vfn
+  modifyIORef ref_state
+    $ addLinkSamples $ map (uncurry3 $ makeLinkSample visit_nid) $ filter (hopHasVFN mlatest_vfn) hops
   where
+    vfnFromHop (vfn, _, _) = vfn
+    latestVFN hops = listToMaybe $ sortOn vfnTimestamp $ map vfnFromHop $ hops
     markAsVisited mvfn = modifyIORef ref_state $ addVisitedNode visit_nid mvfn
-    getVisitedNodeEID = fmap vToMaybe $ Gr.slurpResults =<< submitB spider binder
-      where
-        binder = gNodeEID <$.> gHasNodeID spider visit_nid <*.> pure gAllNodes
-    getNextFoundNode node_eid = fmap vToMaybe $ Gr.slurpResults =<< submitB spider binder
-      where
-        binder = gLatestFoundNode
-                 <$.> gSelectFoundNode gIdentity -- TODO: select FoundNode to consider
-                 <$.> gHasNodeEID node_eid
-                 <*.> pure gAllNodes
+    uncurry3 f (a,b,c) = f a b c
+    hopHasVFN Nothing _ = True
+    hopHasVFN (Just vfn1) (vfn2, _, _) = vfnId vfn1 == vfnId vfn2
 
-makeLinkSamples :: (FromGraphSON n, LinkAttributes fla)
-                => Spider n na fla
-                -> n -- ^ subject node ID.
-                -> VFoundNode na
-                -> IO (Vector (LinkSample n fla))
-makeLinkSamples spider subject_nid vneighbors = do
-  finds_targets <- getFindsAndTargetID $ vfnId vneighbors
-  return $ fmap (uncurry toSnapshotLinkEntry) finds_targets
-  where
-    getFindsAndTargetID neighbors_eid = do
-      traverse extract =<< Gr.slurpResults =<< Gr.submit (spiderClient spider) gtrav (Just binding)
-      where
-        ((gtrav, label_finds, label_target), binding) = runBinder $ do
-          lfinds <- newAsLabel
-          ltarget <- newAsLabel
-          gt <- gSelectN lfinds ltarget []
-                <$.> (gAs ltarget) <$.> gNodeID spider <$.> gFindsTarget <$.> (gAs lfinds)
-                <$.> gFinds <$.> gHasFoundNodeEID neighbors_eid <*.> pure gAllFoundNode
-          return (gt, lfinds, ltarget)
-        extract smap = (,) <$> lookupAsM label_finds smap <*> lookupAsM label_target smap
-    toSnapshotLinkEntry efinds target_nid =
-      LinkSample { lsSubjectNode = subject_nid,
-                   lsTargetNode = target_nid,
-                   lsLinkState = efLinkState efinds,
-                   lsTimestamp = vfnTimestamp vneighbors,
-                   lsLinkAttributes = efLinkAttributes efinds
-                 }
+--   mnode_eid <- getVisitedNodeEID -- TODO: ここでEIDを取ってくる意味あるか？一気にtraverseできるのでは？
+--   case mnode_eid of
+--    Nothing -> return ()
+--    Just node_eid -> do
+--      -- TODO: (2018-09-08) Final VFoundNode is the latest of those in
+--      -- the query range. however, there should be an option to
+--      -- traverse ALL "finds" edges in the query range, instead of
+--      -- those with the latest timestamp. To do that, we may have to
+--      -- use .as and .select steps to get "finds" edge and both of its
+--      -- end nodes at once.
+--      mnext_found <- getNextFoundNode node_eid
+--      markAsVisited mnext_found
+--      case mnext_found of
+--       Nothing -> return ()
+--       Just next_found -> do
+--         link_samples <- makeLinkSamples spider visit_nid next_found
+--         modifyIORef ref_state $ addLinkSamples $ toList link_samples
+--   where
+--     markAsVisited mvfn = modifyIORef ref_state $ addVisitedNode visit_nid mvfn
+--     getVisitedNodeEID = fmap vToMaybe $ Gr.slurpResults =<< submitB spider binder
+--       where
+--         binder = gNodeEID <$.> gHasNodeID spider visit_nid <*.> pure gAllNodes
+--     getNextFoundNode node_eid = fmap vToMaybe $ Gr.slurpResults =<< submitB spider binder
+--       where
+--         binder = gLatestFoundNode
+--                  <$.> gSelectFoundNode gIdentity -- TODO: select FoundNode to consider
+--                  <$.> gHasNodeEID node_eid
+--                  <*.> pure gAllNodes
+
+-- makeLinkSamples :: (FromGraphSON n, LinkAttributes fla)
+--                 => Spider n na fla
+--                 -> n -- ^ subject node ID.
+--                 -> VFoundNode na
+--                 -> IO (Vector (LinkSample n fla))
+-- makeLinkSamples spider subject_nid vneighbors = do
+--   finds_targets <- getFindsAndTargetID $ vfnId vneighbors
+--   return $ fmap (uncurry toSnapshotLinkEntry) finds_targets
+--   where
+--     getFindsAndTargetID neighbors_eid = do
+--       traverse extract =<< Gr.slurpResults =<< Gr.submit (spiderClient spider) gtrav (Just binding)
+--       where
+--         ((gtrav, label_finds, label_target), binding) = runBinder $ do
+--           lfinds <- newAsLabel
+--           ltarget <- newAsLabel
+--           gt <- gSelectN lfinds ltarget []
+--                 <$.> (gAs ltarget) <$.> gNodeID spider <$.> gFindsTarget <$.> (gAs lfinds)
+--                 <$.> gFinds <$.> gHasFoundNodeEID neighbors_eid <*.> pure gAllFoundNode
+--           return (gt, lfinds, ltarget)
+--         extract smap = (,) <$> lookupAsM label_finds smap <*> lookupAsM label_target smap
+--     toSnapshotLinkEntry efinds target_nid =
+--       LinkSample { lsSubjectNode = subject_nid,
+--                    lsTargetNode = target_nid,
+--                    lsLinkState = efLinkState efinds,
+--                    lsTimestamp = vfnTimestamp vneighbors,
+--                    lsLinkAttributes = efLinkAttributes efinds
+--                  }
 
 -- | The state kept while making the snapshot graph.
 data SnapshotState n na fla =
