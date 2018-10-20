@@ -165,26 +165,33 @@ recurseVisitNodesForSnapshot spider ref_state = go
     getNextVisit = atomicModifyIORef' ref_state popUnvisitedNode
     -- TODO: limit number of steps.
 
+-- | Returns the result of query: (latest VFoundNode, list of traversed edges)
 traverseEFindsOneHop :: (ToJSON n, FromGraphSON n, NodeAttributes na, LinkAttributes fla)
-                     => Spider n na fla -> n -> IO (Vector (VFoundNode na, EFinds fla, n))
-traverseEFindsOneHop spider visit_nid = traverse extractFromSMap =<< Gr.slurpResults =<< submitQuery
+                     => Spider n na fla -> n -> IO (Maybe (VFoundNode na), [(VFoundNode na, EFinds fla, n)])
+traverseEFindsOneHop spider visit_nid = (,) <$> getLatestVFoundNode <*> getTraversedEdges
   where
-    submitQuery = Gr.submit (spiderClient spider) query (Just bindings)
-    ((query, label_vfn, label_ef, label_target_nid), bindings) = runBinder $ do
-      lvfn <- newAsLabel
-      lef <- newAsLabel
-      ln <- newAsLabel
-      gt <- gSelectN lvfn lef [ln]
-            <$.> gAs ln <$.> gNodeID spider <$.> gFindsTarget
-            <$.> gAs lef <$.> gFinds
-            <$.> gAs lvfn <$.> gSelectFoundNode gIdentity -- TODO: select FoundNode to consider
-            <$.> gHasNodeID spider visit_nid <*.> pure gAllNodes
-      return (gt, lvfn, lef, ln)
-    extractFromSMap smap =
-      (,,)
-      <$> lookupAsM label_vfn smap 
-      <*> lookupAsM label_ef smap 
-      <*> lookupAsM label_target_nid smap 
+    foundNodeTraversal = gSelectFoundNode gIdentity -- TODO: select FoundNode to consider
+                         <$.> gHasNodeID spider visit_nid <*.> pure gAllNodes
+    getLatestVFoundNode = fmap vToMaybe $ Gr.slurpResults =<< submitQuery
+      where
+        submitQuery = submitB spider binder
+        binder = gLatestFoundNode <$.> foundNodeTraversal
+    getTraversedEdges = fmap V.toList $ traverse extractFromSMap =<< Gr.slurpResults =<< submitQuery
+      where
+        submitQuery = Gr.submit (spiderClient spider) query (Just bindings)
+        ((query, label_vfn, label_ef, label_target_nid), bindings) = runBinder $ do
+          lvfn <- newAsLabel
+          lef <- newAsLabel
+          ln <- newAsLabel
+          gt <- gSelectN lvfn lef [ln]
+                <$.> gAs ln <$.> gNodeID spider <$.> gFindsTarget
+                <$.> gAs lef <$.> gFinds <$.> gAs lvfn <$.> foundNodeTraversal
+          return (gt, lvfn, lef, ln)
+        extractFromSMap smap =
+          (,,)
+          <$> lookupAsM label_vfn smap 
+          <*> lookupAsM label_ef smap 
+          <*> lookupAsM label_target_nid smap 
 
 makeLinkSample :: n -> VFoundNode na -> EFinds la -> n -> LinkSample n la
 makeLinkSample subject_nid vfn efinds target_nid = 
@@ -201,14 +208,11 @@ visitNodeForSnapshot :: (ToJSON n, Ord n, Hashable n, FromGraphSON n, LinkAttrib
                      -> n
                      -> IO ()
 visitNodeForSnapshot spider ref_state visit_nid = do
-  hops <- fmap V.toList $ traverseEFindsOneHop spider visit_nid
-  let mlatest_vfn = latestVFN hops
+  (mlatest_vfn, hops) <- traverseEFindsOneHop spider visit_nid
   markAsVisited $ mlatest_vfn
-  modifyIORef ref_state
-    $ addLinkSamples $ map (uncurry3 $ makeLinkSample visit_nid) $ filter (hopHasVFN mlatest_vfn) hops
+  modifyIORef ref_state $ addLinkSamples
+    $ map (uncurry3 $ makeLinkSample visit_nid) $ filter (hopHasVFN mlatest_vfn) hops
   where
-    vfnFromHop (vfn, _, _) = vfn
-    latestVFN hops = listToMaybe $ sortOn vfnTimestamp $ map vfnFromHop $ hops
     markAsVisited mvfn = modifyIORef ref_state $ addVisitedNode visit_nid mvfn
     uncurry3 f (a,b,c) = f a b c
     hopHasVFN Nothing _ = True
