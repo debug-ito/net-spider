@@ -166,12 +166,12 @@ recurseVisitNodesForSnapshot spider ref_state = go
     -- TODO: limit number of steps.
 
 -- | Returns the result of query: (latest VFoundNode, list of traversed edges)
-traverseEFindsOneHop :: (ToJSON n, FromGraphSON n, NodeAttributes na, LinkAttributes fla)
-                     => Spider n na fla -> n -> IO (Maybe (VFoundNode na), [(VFoundNode na, EFinds fla, n)])
-traverseEFindsOneHop spider visit_nid = (,) <$> getLatestVFoundNode <*> getTraversedEdges
+traverseEFindsOneHop :: (FromGraphSON n, NodeAttributes na, LinkAttributes fla)
+                     => Spider n na fla -> EID -> IO (Maybe (VFoundNode na), [(VFoundNode na, EFinds fla, n)])
+traverseEFindsOneHop spider visit_eid = (,) <$> getLatestVFoundNode <*> getTraversedEdges
   where
     foundNodeTraversal = gSelectFoundNode gIdentity -- TODO: select FoundNode to consider
-                         <$.> gHasNodeID spider visit_nid <*.> pure gAllNodes
+                         <$.> gHasNodeEID visit_eid <*.> pure gAllNodes
     getLatestVFoundNode = fmap vToMaybe $ Gr.slurpResults =<< submitQuery
       where
         submitQuery = submitB spider binder
@@ -208,72 +208,22 @@ visitNodeForSnapshot :: (ToJSON n, Ord n, Hashable n, FromGraphSON n, LinkAttrib
                      -> n
                      -> IO ()
 visitNodeForSnapshot spider ref_state visit_nid = do
-  (mlatest_vfn, hops) <- traverseEFindsOneHop spider visit_nid
-  markAsVisited $ mlatest_vfn
-  modifyIORef ref_state $ addLinkSamples
-    $ map (uncurry3 $ makeLinkSample visit_nid) $ filter (hopHasVFN mlatest_vfn) hops
+  mvisit_eid <- getVisitedNodeEID
+  case mvisit_eid of
+   Nothing -> return () -- visit_nid does not exist. Should not markAsVisited it.
+   Just visit_eid -> do
+     (mlatest_vfn, hops) <- traverseEFindsOneHop spider visit_eid
+     markAsVisited $ mlatest_vfn
+     modifyIORef ref_state $ addLinkSamples
+       $ map (uncurry3 $ makeLinkSample visit_nid) $ filter (hopHasVFN mlatest_vfn) hops
   where
+    getVisitedNodeEID = fmap vToMaybe $ Gr.slurpResults =<< submitB spider binder
+      where
+        binder = gNodeEID <$.> gHasNodeID spider visit_nid <*.> pure gAllNodes
     markAsVisited mvfn = modifyIORef ref_state $ addVisitedNode visit_nid mvfn
     uncurry3 f (a,b,c) = f a b c
     hopHasVFN Nothing _ = True
     hopHasVFN (Just vfn1) (vfn2, _, _) = vfnId vfn1 == vfnId vfn2
-
---   mnode_eid <- getVisitedNodeEID -- TODO: ここでEIDを取ってくる意味あるか？一気にtraverseできるのでは？
---   case mnode_eid of
---    Nothing -> return ()
---    Just node_eid -> do
---      -- TODO: (2018-09-08) Final VFoundNode is the latest of those in
---      -- the query range. however, there should be an option to
---      -- traverse ALL "finds" edges in the query range, instead of
---      -- those with the latest timestamp. To do that, we may have to
---      -- use .as and .select steps to get "finds" edge and both of its
---      -- end nodes at once.
---      mnext_found <- getNextFoundNode node_eid
---      markAsVisited mnext_found
---      case mnext_found of
---       Nothing -> return ()
---       Just next_found -> do
---         link_samples <- makeLinkSamples spider visit_nid next_found
---         modifyIORef ref_state $ addLinkSamples $ toList link_samples
---   where
---     markAsVisited mvfn = modifyIORef ref_state $ addVisitedNode visit_nid mvfn
---     getVisitedNodeEID = fmap vToMaybe $ Gr.slurpResults =<< submitB spider binder
---       where
---         binder = gNodeEID <$.> gHasNodeID spider visit_nid <*.> pure gAllNodes
---     getNextFoundNode node_eid = fmap vToMaybe $ Gr.slurpResults =<< submitB spider binder
---       where
---         binder = gLatestFoundNode
---                  <$.> gSelectFoundNode gIdentity -- TODO: select FoundNode to consider
---                  <$.> gHasNodeEID node_eid
---                  <*.> pure gAllNodes
-
--- makeLinkSamples :: (FromGraphSON n, LinkAttributes fla)
---                 => Spider n na fla
---                 -> n -- ^ subject node ID.
---                 -> VFoundNode na
---                 -> IO (Vector (LinkSample n fla))
--- makeLinkSamples spider subject_nid vneighbors = do
---   finds_targets <- getFindsAndTargetID $ vfnId vneighbors
---   return $ fmap (uncurry toSnapshotLinkEntry) finds_targets
---   where
---     getFindsAndTargetID neighbors_eid = do
---       traverse extract =<< Gr.slurpResults =<< Gr.submit (spiderClient spider) gtrav (Just binding)
---       where
---         ((gtrav, label_finds, label_target), binding) = runBinder $ do
---           lfinds <- newAsLabel
---           ltarget <- newAsLabel
---           gt <- gSelectN lfinds ltarget []
---                 <$.> (gAs ltarget) <$.> gNodeID spider <$.> gFindsTarget <$.> (gAs lfinds)
---                 <$.> gFinds <$.> gHasFoundNodeEID neighbors_eid <*.> pure gAllFoundNode
---           return (gt, lfinds, ltarget)
---         extract smap = (,) <$> lookupAsM label_finds smap <*> lookupAsM label_target smap
---     toSnapshotLinkEntry efinds target_nid =
---       LinkSample { lsSubjectNode = subject_nid,
---                    lsTargetNode = target_nid,
---                    lsLinkState = efLinkState efinds,
---                    lsTimestamp = vfnTimestamp vneighbors,
---                    lsLinkAttributes = efLinkAttributes efinds
---                  }
 
 -- | The state kept while making the snapshot graph.
 data SnapshotState n na fla =
