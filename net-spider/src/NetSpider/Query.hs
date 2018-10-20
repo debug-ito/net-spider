@@ -10,9 +10,14 @@ module NetSpider.Query
          defQuery,
          -- ** accessor functions
          startsFrom,
-         unifyLinkSamples
+         unifyLinkSamples,
+         timeInterval
        ) where
 
+import Data.Interval (Interval)
+import qualified Data.Interval as Interval
+
+import NetSpider.Timestamp (Timestamp)
 import NetSpider.Unify (LinkSampleUnifier, unifyToOne)
 
 -- | Query for snapshot graph. You can get the default 'Query' by
@@ -29,10 +34,15 @@ data Query n na fla sla =
   { startsFrom :: [n],
     -- ^ Nodes from which the Spider starts traversing the history
     -- graph.
-    unifyLinkSamples :: LinkSampleUnifier n na fla sla
+    unifyLinkSamples :: LinkSampleUnifier n na fla sla,
     -- ^ See the document of 'LinkSampleUnifier'.
     --
     -- Default: 'unifyToOne'.
+    timeInterval :: Interval Timestamp
+    -- ^ Time interval to query. Only the local findings observed
+    -- during this interval are used to make the snapshot graph.
+    --
+    -- Default: (-infinity, +infinity)
   }
 
 -- | The default 'Query'.
@@ -41,6 +51,7 @@ defQuery :: Eq n
          -> Query n na fla fla
 defQuery ns = Query
               { startsFrom = ns,
-                unifyLinkSamples = unifyToOne
+                unifyLinkSamples = unifyToOne,
+                timeInterval = Interval.whole
               }
 
