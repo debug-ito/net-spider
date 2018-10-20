@@ -76,6 +76,7 @@ spec_getSnapshot :: Spec
 spec_getSnapshot = withServer $ describe "getSnapshotSimple, getSnapshot" $ do
   spec_getSnapshot1
   spec_getSnapshot2
+  spec_getSnapshot_timeInterval
 
 
 spec_getSnapshot1 :: SpecWith (Host,Port)
@@ -571,3 +572,36 @@ showResponseStatus status = mapM_ showKeyValue $ ("message", Res.message status)
     justValue (k, Just v) = [(k, v)]
     justValue (_, Nothing) = []
     showKeyValue (key, val) = TIO.hPutStrLn stderr (key <> ": " <> val)
+
+spec_getSnapshot_timeInterval :: SpecWith (Host,Port)
+spec_getSnapshot_timeInterval = do
+  let linkTo n = FoundLink
+                 { targetNode = n,
+                   linkState = LinkToTarget,
+                   linkAttributes = ()
+                 }
+      linksTo ns = map linkTo ns
+      node n t ls = FoundNode
+                    { subjectNode = n,
+                      foundAt = fromEpochSecond t,
+                      neighborLinks = ls,
+                      nodeAttributes = ()
+                    }
+      input_fns :: [FoundNode Text () ()]
+      input_fns = [ node "n1" 10 $ linksTo ["n2"],
+                    node "n1" 20 $ linksTo ["n2", "n3"],
+                    node "n1" 30 $ linksTo [],
+                    node "n1" 40 $ linksTo ["n3"],
+                    node "n2" 15 $ linksTo [],
+                    node "n2" 25 $ linksTo ["n4"],
+                    node "n2" 35 $ linksTo ["n4", "n3", "n5"],
+                    node "n3" 10 $ linksTo ["n4", "n2"],
+                    node "n3" 30 $ linksTo ["n4"],
+                    node "n4"  5 $ linksTo [],
+                    node "n4" 15 $ linksTo ["n1"],
+                    node "n4" 25 $ linksTo ["n1", "n5"],
+                    node "n4" 35 $ linksTo []
+                  ]
+  specify "only lower bound" $ withSpider $ \spider -> do
+    mapM_ (addFoundNode spider) input_fns
+    True `shouldBe` False -- TODO: query and check the result
