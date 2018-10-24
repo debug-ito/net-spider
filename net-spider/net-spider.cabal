@@ -48,7 +48,8 @@ library
                         unordered-containers >=0.2.8 && <0.3,
                         hashable >=1.2.6.1 && <1.3,
                         containers >=0.5.10.2 && <0.6,
-                        data-interval
+                        data-interval,
+                        extended-reals
 
 -- executable net-spider
 --   default-language:     Haskell2010

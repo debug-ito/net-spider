@@ -25,7 +25,10 @@ import ServerTest.Common
 import NetSpider.Found
   ( FoundLink(..), LinkState(..), FoundNode(..)
   )
-import NetSpider.Query (Query, defQuery, startsFrom, unifyLinkSamples)
+import NetSpider.Query
+  ( Query, defQuery, startsFrom, unifyLinkSamples, timeInterval,
+    Extended(..), (<..<)
+  )
 import NetSpider.Snapshot
   ( SnapshotLink,
     nodeId, linkNodeTuple, isDirected, linkTimestamp,
@@ -604,4 +607,20 @@ spec_getSnapshot_timeInterval = do
                   ]
   specify "only lower bound" $ withSpider $ \spider -> do
     mapM_ (addFoundNode spider) input_fns
-    True `shouldBe` False -- TODO: query and check the result
+    let q = (defQuery ["n1"]) { timeInterval = (Finite $ fromEpochSecond 30) <..< PosInf
+                              }
+    (raw_nodes, raw_edges) <- getSnapshot spider q
+    let got_nodes = sort raw_nodes
+        got_edges = sort raw_edges
+    map nodeId got_nodes `shouldBe` ["n1", "n2", "n3", "n4", "n5"]
+    map isOnBoundary got_nodes `shouldBe` [False, False, True, False, True]
+    map linkNodeTuple got_edges `shouldBe`
+      [ ("n1", "n3"),
+        ("n2", "n3"),
+        ("n2", "n4"),
+        ("n2", "n5")
+      ]
+    map linkTimestamp got_edges `shouldBe`
+      map fromEpochSecond [40, 35, 35, 35]
+  specify "only upper bound (exclusive)" $ \(_, _) -> True `shouldBe` False -- TODO
+  specify "only upper bound (inclusive)" $ \(_, _) -> True `shouldBe` False -- TODO

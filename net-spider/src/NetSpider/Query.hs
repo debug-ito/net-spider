@@ -11,10 +11,14 @@ module NetSpider.Query
          -- ** accessor functions
          startsFrom,
          unifyLinkSamples,
-         timeInterval
+         timeInterval,
+         -- * Re-exports
+         Interval, (<=..<=), (<..<=), (<=..<), (<..<),
+         Extended(..)
        ) where
 
-import Data.Interval (Interval)
+import Data.ExtendedReal (Extended(..))
+import Data.Interval (Interval, (<=..<=), (<..<=), (<=..<), (<..<))
 import qualified Data.Interval as Interval
 
 import NetSpider.Timestamp (Timestamp)
