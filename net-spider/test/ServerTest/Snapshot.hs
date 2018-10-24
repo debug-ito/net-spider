@@ -6,6 +6,7 @@ import Control.Monad (mapM_)
 import Data.Aeson (Value(..))
 import qualified Data.HashMap.Strict as HM
 import Data.List (sortOn, sort)
+import Data.Maybe (isNothing)
 import Data.Monoid ((<>), mempty)
 import Data.Text (Text, unpack, pack)
 import qualified Data.Text.IO as TIO
@@ -613,7 +614,7 @@ spec_getSnapshot_timeInterval = do
     let got_nodes = sort raw_nodes
         got_edges = sort raw_edges
     map nodeId got_nodes `shouldBe` ["n1", "n2", "n3", "n4", "n5"]
-    map isOnBoundary got_nodes `shouldBe` [False, False, True, False, True]
+    map (isNothing . S.nodeAttributes) got_nodes `shouldBe` [False, False, True, False, True]
     map linkNodeTuple got_edges `shouldBe`
       [ ("n1", "n3"),
         ("n2", "n3"),
@@ -622,5 +623,26 @@ spec_getSnapshot_timeInterval = do
       ]
     map linkTimestamp got_edges `shouldBe`
       map fromEpochSecond [40, 35, 35, 35]
-  specify "only upper bound (exclusive)" $ \(_, _) -> True `shouldBe` False -- TODO
+  specify "only upper bound (exclusive)" $ withSpider $ \spider -> do
+    mapM_ (addFoundNode spider) input_fns
+    let q = (defQuery ["n1"]) { timeInterval = NegInf
+                                               <..< (Finite $ fromEpochSecond 30)
+                              }
+    (raw_nodes, raw_edges) <- getSnapshot spider q
+    let got_nodes = sort raw_nodes
+        got_edges = sort raw_edges
+    map nodeId got_nodes `shouldBe` ["n1", "n2", "n3", "n4", "n5"]
+    map (isNothing . S.nodeAttributes) got_nodes `shouldBe` [False, False, False, False, True]
+    map linkNodeTuple got_edges `shouldBe`
+      [ ("n1", "n2"),
+        ("n1", "n3"),
+        ("n2", "n4"),
+        ("n3", "n2"),
+        ("n3", "n4"),
+        ("n4", "n1"),
+        ("n4", "n5")
+      ]
+    map linkTimestamp got_edges `shouldBe`
+      map fromEpochSecond [20, 20, 25, 10, 10, 25, 25]
   specify "only upper bound (inclusive)" $ \(_, _) -> True `shouldBe` False -- TODO
+  specify "both bounded" $ \(_, _) -> True `shouldBe` False -- TODO
