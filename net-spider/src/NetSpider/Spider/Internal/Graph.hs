@@ -20,6 +20,7 @@ module NetSpider.Spider.Internal.Graph
          gMakeFoundNode,
          gSelectFoundNode,
          gLatestFoundNode,
+         gFilterFoundNodeByTime,
          -- * EFinds
          gFinds,
          gFindsTarget
@@ -33,13 +34,16 @@ import Data.Greskell
   ( WalkType, AEdge,
     GTraversal, Filter, Transform, SideEffect, Walk, liftWalk,
     Binder, newBind,
-    source, sV, sV', sAddV, gHasLabel, gHasId, gHas2, gId, gProperty, gPropertyV, gV,
+    source, sV, sV', sAddV, gHasLabel, gHasId, gHas2, gHas2P, gId, gProperty, gPropertyV, gV,
+    gNot, gIdentity',
     gAddE, gSideEffect, gTo, gFrom, gDrop, gOut, gOrder, gBy2, gValues, gOutE, gInV,
     ($.), (<*.>), (=:),
     ToGTraversal,
-    Key, oDecr, gLimit
+    Key, oDecr, gLimit,
+    pGt, pGte, pLt, pLte
   )
 import Data.Int (Int64)
+import Data.Interval (lowerBound', upperBound')
 import Data.Text (Text, pack)
 import Data.Time.LocalTime (TimeZone(..))
 import Data.Traversable (traverse)
@@ -49,6 +53,7 @@ import NetSpider.Graph
     LinkAttributes(..), NodeAttributes(..)
   )
 import NetSpider.Found (FoundLink(..), LinkState(..), FoundNode(..), linkStateToText)
+import NetSpider.Query (Interval, Extended(..))
 import NetSpider.Timestamp (Timestamp(..), fromEpochSecond)
 import NetSpider.Spider.Config (Spider(..), Config(..))
 
@@ -150,6 +155,25 @@ gSelectFoundNode filterFoundNode = liftWalk filterFoundNode <<< gOut ["is_observ
 
 gLatestFoundNode :: Walk Transform (VFoundNode na) (VFoundNode na)
 gLatestFoundNode = gLimit 1 <<< gOrder [gBy2 keyTimestamp oDecr]
+
+gFilterFoundNodeByTime :: Interval Timestamp -> Binder (Walk Filter (VFoundNode na) (VFoundNode na))
+gFilterFoundNodeByTime interval = do
+  fl <- filterLower
+  fh <- filterUpper
+  return (fh <<< fl)
+  where
+    -- filterLower :: Binder (Walk Filter (VFoundNode na) (VFoundNode na))
+    filterLower = case lowerBound' interval of
+      (PosInf, _) -> return $ gNot gIdentity'
+      (NegInf, _) -> return $ gIdentity'
+      (Finite ts, False) -> fmap (gHas2P keyTimestamp) $ fmap pGt  $ newBind $ epochTime ts
+      (Finite ts, True)  -> fmap (gHas2P keyTimestamp) $ fmap pGte $ newBind $ epochTime ts
+    -- filterUpper :: Binder (Walk Filter (VFoundNode na) (VFoundNode na))
+    filterUpper = case upperBound' interval of
+      (PosInf, _) -> return $ gIdentity'
+      (NegInf, _) -> return $ gNot gIdentity'
+      (Finite ts, False) -> fmap (gHas2P keyTimestamp) $ fmap pLt  $ newBind $ epochTime ts
+      (Finite ts, True)  -> fmap (gHas2P keyTimestamp) $ fmap pLte $ newBind $ epochTime ts
 
 gFinds :: Walk Transform (VFoundNode na) (EFinds la)
 gFinds = gOutE ["finds"]
