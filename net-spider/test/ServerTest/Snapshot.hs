@@ -28,7 +28,7 @@ import NetSpider.Found
   )
 import NetSpider.Query
   ( Query, defQuery, startsFrom, unifyLinkSamples, timeInterval,
-    Extended(..), (<..<)
+    Extended(..), (<..<), (<..<=)
   )
 import NetSpider.Snapshot
   ( SnapshotLink,
@@ -577,6 +577,9 @@ showResponseStatus status = mapM_ showKeyValue $ ("message", Res.message status)
     justValue (_, Nothing) = []
     showKeyValue (key, val) = TIO.hPutStrLn stderr (key <> ": " <> val)
 
+sort2 :: (Ord a, Ord b) => ([a], [b]) -> ([a], [b])
+sort2 (a, b) = (sort a, sort b)
+
 spec_getSnapshot_timeInterval :: SpecWith (Host,Port)
 spec_getSnapshot_timeInterval = do
   let linkTo n = FoundLink
@@ -610,9 +613,7 @@ spec_getSnapshot_timeInterval = do
     mapM_ (addFoundNode spider) input_fns
     let q = (defQuery ["n1"]) { timeInterval = (Finite $ fromEpochSecond 30) <..< PosInf
                               }
-    (raw_nodes, raw_edges) <- getSnapshot spider q
-    let got_nodes = sort raw_nodes
-        got_edges = sort raw_edges
+    (got_nodes, got_edges) <- fmap sort2 $ getSnapshot spider q
     map nodeId got_nodes `shouldBe` ["n1", "n2", "n3", "n4", "n5"]
     map (isNothing . S.nodeAttributes) got_nodes `shouldBe` [False, False, True, False, True]
     map linkNodeTuple got_edges `shouldBe`
@@ -628,9 +629,7 @@ spec_getSnapshot_timeInterval = do
     let q = (defQuery ["n1"]) { timeInterval = NegInf
                                                <..< (Finite $ fromEpochSecond 30)
                               }
-    (raw_nodes, raw_edges) <- getSnapshot spider q
-    let got_nodes = sort raw_nodes
-        got_edges = sort raw_edges
+    (got_nodes, got_edges) <- fmap sort2 $ getSnapshot spider q
     map nodeId got_nodes `shouldBe` ["n1", "n2", "n3", "n4", "n5"]
     map (isNothing . S.nodeAttributes) got_nodes `shouldBe` [False, False, False, False, True]
     map linkNodeTuple got_edges `shouldBe`
@@ -644,5 +643,33 @@ spec_getSnapshot_timeInterval = do
       ]
     map linkTimestamp got_edges `shouldBe`
       map fromEpochSecond [20, 20, 25, 10, 10, 25, 25]
-  specify "only upper bound (inclusive)" $ \(_, _) -> True `shouldBe` False -- TODO
-  specify "both bounded" $ \(_, _) -> True `shouldBe` False -- TODO
+  specify "only upper bound (inclusive)" $ withSpider $ \spider -> do
+    mapM_ (addFoundNode spider) input_fns
+    let q = (defQuery ["n3"]) { timeInterval = NegInf
+                                               <..<= (Finite $ fromEpochSecond 30)
+                              }
+    (got_nodes, got_edges) <- fmap sort2 $ getSnapshot spider q
+    map nodeId got_nodes `shouldBe` ["n1", "n3", "n4", "n5"]
+    map (isNothing . S.nodeAttributes) got_nodes `shouldBe` [False, False, False, True]
+    map linkNodeTuple got_edges `shouldBe`
+      [ ("n3", "n4"),
+        ("n4", "n1"),
+        ("n4", "n5")
+      ]
+    map linkTimestamp got_edges `shouldBe`
+      map fromEpochSecond [30, 25, 25]
+  specify "both bounded" $ withSpider $ \spider -> do
+    mapM_ (addFoundNode spider) input_fns
+    let q = (defQuery ["n2"]) { timeInterval = (Finite $ fromEpochSecond 20)
+                                               <..<= (Finite $ fromEpochSecond 25)
+                              }
+    (got_nodes, got_edges) <- fmap sort2 $ getSnapshot spider q
+    map nodeId got_nodes `shouldBe` ["n1", "n2", "n4", "n5"]
+    map (isNothing . S.nodeAttributes) got_nodes `shouldBe` [True, False, False, True]
+    map linkNodeTuple got_edges `shouldBe`
+      [ ("n2", "n4"),
+        ("n4", "n1"),
+        ("n4", "n5")
+      ]
+    map linkTimestamp got_edges `shouldBe`
+      map fromEpochSecond [25, 25, 25]
