@@ -162,13 +162,11 @@ gFilterFoundNodeByTime interval = do
   fh <- filterUpper
   return (fh <<< fl)
   where
-    -- filterLower :: Binder (Walk Filter (VFoundNode na) (VFoundNode na))
     filterLower = case lowerBound' interval of
       (PosInf, _) -> return $ gNot gIdentity'
       (NegInf, _) -> return $ gIdentity'
       (Finite ts, False) -> fmap (gHas2P keyTimestamp) $ fmap pGt  $ newBind $ epochTime ts
       (Finite ts, True)  -> fmap (gHas2P keyTimestamp) $ fmap pGte $ newBind $ epochTime ts
-    -- filterUpper :: Binder (Walk Filter (VFoundNode na) (VFoundNode na))
     filterUpper = case upperBound' interval of
       (PosInf, _) -> return $ gIdentity'
       (NegInf, _) -> return $ gNot gIdentity'

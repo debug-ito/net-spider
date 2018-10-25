@@ -49,13 +49,15 @@ import NetSpider.Graph.Internal (VFoundNode(..), EFinds(..))
 import NetSpider.Found (FoundNode(..), FoundLink(..), LinkState(..))
 import NetSpider.Pair (Pair)
 import NetSpider.Queue (Queue, newQueue, popQueue, pushQueue)
-import NetSpider.Query (Query, defQuery, startsFrom, unifyLinkSamples)
+import NetSpider.Query (Query, defQuery, startsFrom, unifyLinkSamples, timeInterval, Interval)
 import NetSpider.Snapshot.Internal (SnapshotNode(..), SnapshotLink(..))
 import NetSpider.Spider.Config (Spider(..), Config(..), defConfig)
 import NetSpider.Spider.Internal.Graph
   ( gMakeFoundNode, gAllNodes, gHasNodeID, gHasNodeEID, gNodeEID, gNodeID, gMakeNode, gClearAll,
-    gLatestFoundNode, gSelectFoundNode, gFinds, gFindsTarget, gHasFoundNodeEID, gAllFoundNode
+    gLatestFoundNode, gSelectFoundNode, gFinds, gFindsTarget, gHasFoundNodeEID, gAllFoundNode,
+    gFilterFoundNodeByTime
   )
+import NetSpider.Timestamp (Timestamp)
 import NetSpider.Unify (LinkSampleUnifier, LinkSample(..), LinkSampleID, linkSampleId)
 
 -- | Connect to the WebSocket endpoint of Tinkerpop Gremlin Server
@@ -144,34 +146,39 @@ getSnapshot :: (FromGraphSON n, ToJSON n, Ord n, Hashable n, LinkAttributes fla,
             -> IO ([SnapshotNode n na], [SnapshotLink n sla])
 getSnapshot spider query = do
   ref_state <- newIORef $ initSnapshotState $ startsFrom query
-  recurseVisitNodesForSnapshot spider ref_state
+  recurseVisitNodesForSnapshot spider query ref_state
   -- print =<< readIORef ref_state
   fmap (makeSnapshot $ unifyLinkSamples query) $ readIORef ref_state
 
 
 recurseVisitNodesForSnapshot :: (ToJSON n, Ord n, Hashable n, FromGraphSON n, LinkAttributes fla, NodeAttributes na)
                              => Spider n na fla
+                             -> Query n na fla sla
                              -> IORef (SnapshotState n na fla)
                              -> IO ()
-recurseVisitNodesForSnapshot spider ref_state = go
+recurseVisitNodesForSnapshot spider query ref_state = go
   where
     go = do
       mnext_visit <- getNextVisit
       case mnext_visit of
        Nothing -> return ()
        Just next_visit -> do
-         visitNodeForSnapshot spider ref_state next_visit
+         visitNodeForSnapshot spider query ref_state next_visit
          go
     getNextVisit = atomicModifyIORef' ref_state popUnvisitedNode
     -- TODO: limit number of steps.
 
 -- | Returns the result of query: (latest VFoundNode, list of traversed edges)
 traverseEFindsOneHop :: (FromGraphSON n, NodeAttributes na, LinkAttributes fla)
-                     => Spider n na fla -> EID -> IO (Maybe (VFoundNode na), [(VFoundNode na, EFinds fla, n)])
-traverseEFindsOneHop spider visit_eid = (,) <$> getLatestVFoundNode <*> getTraversedEdges
+                     => Spider n na fla
+                     -> Interval Timestamp
+                     -> EID
+                     -> IO (Maybe (VFoundNode na), [(VFoundNode na, EFinds fla, n)])
+traverseEFindsOneHop spider time_interval visit_eid = (,) <$> getLatestVFoundNode <*> getTraversedEdges
   where
-    foundNodeTraversal = gSelectFoundNode gIdentity -- TODO: select FoundNode to consider
-                         <$.> gHasNodeEID visit_eid <*.> pure gAllNodes
+    foundNodeTraversal = fmap gSelectFoundNode (gFilterFoundNodeByTime time_interval)
+                         <*.> gHasNodeEID visit_eid
+                         <*.> pure gAllNodes
     getLatestVFoundNode = fmap vToMaybe $ Gr.slurpResults =<< submitQuery
       where
         submitQuery = submitB spider binder
@@ -204,15 +211,16 @@ makeLinkSample subject_nid vfn efinds target_nid =
 
 visitNodeForSnapshot :: (ToJSON n, Ord n, Hashable n, FromGraphSON n, LinkAttributes fla, NodeAttributes na)
                      => Spider n na fla
+                     -> Query n na fla sla
                      -> IORef (SnapshotState n na fla)
                      -> n
                      -> IO ()
-visitNodeForSnapshot spider ref_state visit_nid = do
+visitNodeForSnapshot spider query ref_state visit_nid = do
   mvisit_eid <- getVisitedNodeEID
   case mvisit_eid of
    Nothing -> return () -- visit_nid does not exist. Should not markAsVisited it.
    Just visit_eid -> do
-     (mlatest_vfn, hops) <- traverseEFindsOneHop spider visit_eid
+     (mlatest_vfn, hops) <- traverseEFindsOneHop spider (timeInterval query) visit_eid
      markAsVisited $ mlatest_vfn
      modifyIORef ref_state $ addLinkSamples
        $ map (uncurry3 $ makeLinkSample visit_nid) $ filter (hopHasVFN mlatest_vfn) hops
