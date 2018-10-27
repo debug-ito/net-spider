@@ -611,8 +611,8 @@ spec_getSnapshot_timeInterval = do
                   ]
   specify "only lower bound" $ withSpider $ \spider -> do
     mapM_ (addFoundNode spider) input_fns
-    let q = (defQuery ["n1"]) { timeInterval = (Finite $ fromEpochSecond 30) <..< PosInf
-                              }
+    let q = (defQuery ["n1", "n2"]) { timeInterval = (Finite $ fromEpochSecond 30) <..< PosInf
+                                    }
     (got_nodes, got_edges) <- fmap sort2 $ getSnapshot spider q
     map nodeId got_nodes `shouldBe` ["n1", "n2", "n3", "n4", "n5"]
     map (isNothing . S.nodeAttributes) got_nodes `shouldBe` [False, False, True, False, True]
