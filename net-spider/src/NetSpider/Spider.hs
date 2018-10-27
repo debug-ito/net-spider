@@ -24,6 +24,7 @@ import Control.Exception.Safe (throwString)
 import Control.Monad (void)
 import Data.Aeson (ToJSON)
 import Data.Foldable (foldr', toList)
+import Data.List (intercalate)
 import Data.Greskell
   ( runBinder, ($.), (<$.>), (<*.>),
     Binder, ToGreskell(GreskellReturn), AsIterator(IteratorItem), FromGraphSON,
@@ -216,15 +217,27 @@ visitNodeForSnapshot :: (ToJSON n, Ord n, Hashable n, FromGraphSON n, LinkAttrib
                      -> n
                      -> IO ()
 visitNodeForSnapshot spider query ref_state visit_nid = do
-  mvisit_eid <- getVisitedNodeEID
-  case mvisit_eid of
-   Nothing -> return () -- visit_nid does not exist. Should not markAsVisited it.
-   Just visit_eid -> do
-     (mlatest_vfn, hops) <- traverseEFindsOneHop spider (timeInterval query) visit_eid
-     markAsVisited $ mlatest_vfn
-     modifyIORef ref_state $ addLinkSamples
-       $ map (uncurry3 $ makeLinkSample visit_nid) $ filter (hopHasVFN mlatest_vfn) hops
+  cur_state <- readIORef ref_state
+  if isAlreadyVisited cur_state visit_nid
+    then return ()
+    else doVisit
   where
+    doVisit = do
+      mvisit_eid <- getVisitedNodeEID
+      case mvisit_eid of
+       Nothing -> return () -- visit_nid does not exist. Should not markAsVisited it.
+       Just visit_eid -> do
+         (mlatest_vfn, hops) <- traverseEFindsOneHop spider (timeInterval query) visit_eid
+         markAsVisited $ mlatest_vfn
+         let next_hops = filter (hopHasVFN mlatest_vfn) hops
+         -- putStrLn ("-- visit " ++ show visit_nid)
+         -- putStrLn ("   latest vfn: " ++ (show $ fmap vfnTimestamp mlatest_vfn))
+         -- forM_ next_hops $ \(vfn, _, next_nid) -> do
+         --   putStrLn ("   next: " ++ (show $ vfnTimestamp vfn) ++ " -> " ++ show next_nid)
+         modifyIORef ref_state $ addLinkSamples
+           $ map (uncurry3 $ makeLinkSample visit_nid) $ next_hops
+         -- cur_state <- readIORef ref_state
+         -- putStrLn $ debugShowState cur_state
     getVisitedNodeEID = fmap vToMaybe $ Gr.slurpResults =<< submitB spider binder
       where
         binder = gNodeEID <$.> gHasNodeID spider visit_nid <*.> pure gAllNodes
@@ -244,6 +257,19 @@ data SnapshotState n na fla =
   }
   deriving (Show)
 
+-- debugShowState :: Show n => SnapshotState n na fla -> String
+-- debugShowState state = unvisited ++ visited_nodes ++ visited_links
+--   where
+--     unvisited = "unvisitedNodes: "
+--                 ++ (intercalate ", " $ map show $ toList $ ssUnvisitedNodes state)
+--                 ++ "\n"
+--     visited_nodes = "visitedNodes: "
+--                     ++ (intercalate ", " $ map (uncurry showVisitedNode) $ HM.toList $ ssVisitedNodes state)
+--                     ++ "\n"
+--     showVisitedNode nid mvfn = show nid ++ "(" ++ (show $ fmap vfnTimestamp mvfn )  ++  ")"
+--     visited_links = "visitedLinks: "
+--                     ++ (intercalate ", " $ map show $ HM.keys $ ssVisitedLinks state)
+
 emptySnapshotState :: (Ord n, Hashable n) => SnapshotState n na fla
 emptySnapshotState = SnapshotState
                      { ssUnvisitedNodes = mempty,
@@ -257,6 +283,9 @@ initSnapshotState init_unvisited_nodes = emptySnapshotState { ssUnvisitedNodes =
 addVisitedNode :: (Eq n, Hashable n) => n -> Maybe (VFoundNode na) -> SnapshotState n na fla -> SnapshotState n na fla
 addVisitedNode nid mv state = state { ssVisitedNodes = HM.insert nid mv $ ssVisitedNodes state }
 
+isAlreadyVisited :: (Eq n, Hashable n) => SnapshotState n na fla -> n -> Bool
+isAlreadyVisited state nid = HM.member nid $ ssVisitedNodes state
+
 addLinkSample :: (Ord n, Hashable n)
               => LinkSample n fla -> SnapshotState n na fla -> SnapshotState n na fla
 addLinkSample ls state = state { ssVisitedLinks = updatedLinks,
@@ -266,7 +295,7 @@ addLinkSample ls state = state { ssVisitedLinks = updatedLinks,
     link_id = linkSampleId ls
     updatedLinks = HM.insertWith (++) link_id (return ls) $ ssVisitedLinks state
     target_nid = lsTargetNode ls
-    target_already_visited = HM.member target_nid $ ssVisitedNodes state
+    target_already_visited = isAlreadyVisited state target_nid
     updatedUnvisited = if target_already_visited
                        then ssUnvisitedNodes state
                        else pushQueue target_nid $ ssUnvisitedNodes state
