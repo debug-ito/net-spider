@@ -609,9 +609,12 @@ spec_getSnapshot_timeInterval = do
                     node "n4" 25 $ linksTo ["n1", "n5"],
                     node "n4" 35 $ linksTo []
                   ]
+      simple_unifier = unifyStd $ defUnifyStdConfig { negatesLinkSample = \_ _ -> False }
+                       -- Disable negation to simplify the test.
   specify "only lower bound" $ withSpider $ \spider -> do
     mapM_ (addFoundNode spider) input_fns
-    let q = (defQuery ["n1", "n2"]) { timeInterval = (Finite $ fromEpochSecond 30) <..< PosInf
+    let q = (defQuery ["n1", "n2"]) { unifyLinkSamples = simple_unifier,
+                                      timeInterval = (Finite $ fromEpochSecond 30) <..< PosInf
                                     }
     (got_nodes, got_edges) <- fmap sort2 $ getSnapshot spider q
     map nodeId got_nodes `shouldBe` ["n1", "n2", "n3", "n4", "n5"]
@@ -626,7 +629,8 @@ spec_getSnapshot_timeInterval = do
       map fromEpochSecond [40, 35, 35, 35]
   specify "only upper bound (exclusive)" $ withSpider $ \spider -> do
     mapM_ (addFoundNode spider) input_fns
-    let q = (defQuery ["n1"]) { timeInterval = NegInf
+    let q = (defQuery ["n1"]) { unifyLinkSamples = simple_unifier,
+                                timeInterval = NegInf
                                                <..< (Finite $ fromEpochSecond 30)
                               }
     (got_nodes, got_edges) <- fmap sort2 $ getSnapshot spider q
@@ -645,7 +649,8 @@ spec_getSnapshot_timeInterval = do
       map fromEpochSecond [20, 20, 25, 10, 10, 25, 25]
   specify "only upper bound (inclusive)" $ withSpider $ \spider -> do
     mapM_ (addFoundNode spider) input_fns
-    let q = (defQuery ["n3"]) { timeInterval = NegInf
+    let q = (defQuery ["n3"]) { unifyLinkSamples = simple_unifier,
+                                timeInterval = NegInf
                                                <..<= (Finite $ fromEpochSecond 30)
                               }
     (got_nodes, got_edges) <- fmap sort2 $ getSnapshot spider q
@@ -660,7 +665,8 @@ spec_getSnapshot_timeInterval = do
       map fromEpochSecond [30, 25, 25]
   specify "both bounded" $ withSpider $ \spider -> do
     mapM_ (addFoundNode spider) input_fns
-    let q = (defQuery ["n2"]) { timeInterval = (Finite $ fromEpochSecond 20)
+    let q = (defQuery ["n2"]) { unifyLinkSamples = simple_unifier,
+                                timeInterval = (Finite $ fromEpochSecond 20)
                                                <..<= (Finite $ fromEpochSecond 25)
                               }
     (got_nodes, got_edges) <- fmap sort2 $ getSnapshot spider q
