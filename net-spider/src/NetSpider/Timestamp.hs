@@ -6,11 +6,15 @@
 -- 
 module NetSpider.Timestamp
        ( Timestamp(..),
-         fromEpochSecond
+         fromEpochSecond,
+         now
        ) where
 
 import Data.Int (Int64)
-import Data.Time.LocalTime (TimeZone)
+import Data.Time.LocalTime
+  ( TimeZone, getZonedTime, ZonedTime(..), zonedTimeToUTC
+  )
+import Data.Time.Clock.System (utcToSystemTime, SystemTime(..))
 
 -- | Timestamp when graph elements are observed.
 data Timestamp =
@@ -28,3 +32,15 @@ instance Ord Timestamp where
 -- 'Nothing'.
 fromEpochSecond :: Int64 -> Timestamp
 fromEpochSecond sec = Timestamp sec Nothing
+
+-- | Get the current system time.
+now :: IO Timestamp
+now = do
+  zt <- getZonedTime
+  return $ Timestamp { epochTime = ztToEpochTime zt,
+                       timeZone = Just $ zonedTimeZone zt
+                     }
+  where
+    ztToEpochTime zt = stimeToEpochTime $ utcToSystemTime $ zonedTimeToUTC zt
+    stimeToEpochTime stime = systemSeconds stime
+                             + fromIntegral (systemNanoseconds stime `div` 1000000000)
