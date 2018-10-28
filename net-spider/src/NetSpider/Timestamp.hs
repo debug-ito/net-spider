@@ -34,6 +34,9 @@ fromEpochSecond :: Int64 -> Timestamp
 fromEpochSecond sec = Timestamp sec Nothing
 
 -- | Get the current system time.
+--
+-- 'epochTime' is in milliseconds. Its epoch is usually the beginning
+-- of year 1970.
 now :: IO Timestamp
 now = do
   zt <- getZonedTime
@@ -42,5 +45,5 @@ now = do
                      }
   where
     ztToEpochTime zt = stimeToEpochTime $ utcToSystemTime $ zonedTimeToUTC zt
-    stimeToEpochTime stime = systemSeconds stime
-                             + fromIntegral (systemNanoseconds stime `div` 1000000000)
+    stimeToEpochTime stime = (systemSeconds stime * 1000)
+                             + fromIntegral (systemNanoseconds stime `div` 1000000)
