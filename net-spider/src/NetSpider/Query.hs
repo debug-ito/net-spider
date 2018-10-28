@@ -12,16 +12,19 @@ module NetSpider.Query
          startsFrom,
          unifyLinkSamples,
          timeInterval,
+         -- * Utilities
+         secUpTo,
          -- * Re-exports
          Interval, (<=..<=), (<..<=), (<=..<), (<..<),
          Extended(..)
        ) where
 
 import Data.ExtendedReal (Extended(..))
+import Data.Int (Int64)
 import Data.Interval (Interval, (<=..<=), (<..<=), (<=..<), (<..<))
 import qualified Data.Interval as Interval
 
-import NetSpider.Timestamp (Timestamp)
+import NetSpider.Timestamp (Timestamp, addSec)
 import NetSpider.Unify (LinkSampleUnifier, unifyToOne)
 
 -- | Query for snapshot graph. You can get the default 'Query' by
@@ -59,3 +62,9 @@ defQuery ns = Query
                 timeInterval = Interval.whole
               }
 
+-- | @s `secUpTo` ts@ returns the time interval of length @s@ (in
+-- seconds) and up to @ts@. The interval is inclusive for both ends.
+secUpTo :: Int64 -> Timestamp -> Interval Timestamp
+secUpTo len end = Finite start <=..<= Finite end
+  where
+    start = addSec (-len) end
