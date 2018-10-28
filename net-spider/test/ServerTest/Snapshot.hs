@@ -41,7 +41,7 @@ import NetSpider.Spider
   )
 import NetSpider.Spider.Config (defConfig, Config, Host, Port)
 import NetSpider.Unify (unifyStd, UnifyStdConfig(..), defUnifyStdConfig, lsLinkAttributes, latestLinkSample)
-import NetSpider.Timestamp (fromEpochSecond)
+import NetSpider.Timestamp (fromEpochMillisecond)
 
 main :: IO ()
 main = hspec spec
@@ -57,7 +57,7 @@ makeOneNeighborExample spider = do
                          linkAttributes = ()
                        }
       nbs = FoundNode { subjectNode = "n1",
-                        foundAt = fromEpochSecond 100,
+                        foundAt = fromEpochMillisecond 100,
                         neighborLinks = return link,
                         nodeAttributes = ()
                       }
@@ -93,7 +93,7 @@ spec_getSnapshot1 = do
           _ -> error ("Unexpected result: got = " ++ show (got_ns, got_ls))
     nodeId got_n1 `shouldBe` "n1"
     isOnBoundary got_n1 `shouldBe` False
-    nodeTimestamp got_n1 `shouldBe` Just (fromEpochSecond 100)
+    nodeTimestamp got_n1 `shouldBe` Just (fromEpochMillisecond 100)
     S.nodeAttributes got_n1 `shouldBe` Just ()
     nodeId got_n2 `shouldBe` "n2"
     isOnBoundary got_n2 `shouldBe` False
@@ -101,12 +101,12 @@ spec_getSnapshot1 = do
     S.nodeAttributes got_n2 `shouldBe` Nothing -- n1 is not observed.
     linkNodeTuple got_link `shouldBe` ("n1", "n2")
     isDirected got_link `shouldBe` True
-    linkTimestamp got_link `shouldBe` fromEpochSecond 100
+    linkTimestamp got_link `shouldBe` fromEpochMillisecond 100
     S.linkAttributes got_link `shouldBe` ()
   specify "no neighbor" $ withSpider $ \spider -> do
     let nbs :: FoundNode Text () ()
         nbs = FoundNode { subjectNode = "n1",
-                          foundAt = fromEpochSecond 200,
+                          foundAt = fromEpochMillisecond 200,
                           neighborLinks = mempty,
                           nodeAttributes = ()
                         }
@@ -117,7 +117,7 @@ spec_getSnapshot1 = do
           _ -> error ("Unexpected result: got = " ++ show (got_ns, got_ls))
     nodeId got_n1 `shouldBe` "n1"
     isOnBoundary got_n1 `shouldBe` False
-    nodeTimestamp got_n1 `shouldBe` Just (fromEpochSecond 200)
+    nodeTimestamp got_n1 `shouldBe` Just (fromEpochMillisecond 200)
     S.nodeAttributes got_n1 `shouldBe` Just ()
   specify "missing starting node" $ withSpider $ \spider -> do
     makeOneNeighborExample spider
@@ -135,12 +135,12 @@ spec_getSnapshot1 = do
                               linkAttributes = ()
                             }
         nbs1 = FoundNode { subjectNode = "n1",
-                           foundAt = fromEpochSecond 100,
+                           foundAt = fromEpochMillisecond 100,
                            neighborLinks = return link_12,
                            nodeAttributes = ()
                          }
         nbs2 = FoundNode { subjectNode = "n2",
-                           foundAt = fromEpochSecond 200,
+                           foundAt = fromEpochMillisecond 200,
                            neighborLinks = return link_21,
                            nodeAttributes = ()
                          }
@@ -151,21 +151,21 @@ spec_getSnapshot1 = do
           _ -> error ("Unexpected result: got = " ++ show (got_ns, got_ls))
     nodeId got_n1 `shouldBe` "n1"
     isOnBoundary got_n1 `shouldBe` False
-    nodeTimestamp got_n1 `shouldBe` Just (fromEpochSecond 100)
+    nodeTimestamp got_n1 `shouldBe` Just (fromEpochMillisecond 100)
     S.nodeAttributes got_n1 `shouldBe` Just ()
     nodeId got_n2 `shouldBe` "n2"
     isOnBoundary got_n2 `shouldBe` False
-    nodeTimestamp got_n2 `shouldBe` Just (fromEpochSecond 200)
+    nodeTimestamp got_n2 `shouldBe` Just (fromEpochMillisecond 200)
     S.nodeAttributes got_n2 `shouldBe` Just ()
     linkNodeTuple got_l `shouldBe` ("n2", "n1")
     isDirected got_l `shouldBe` True
-    linkTimestamp got_l `shouldBe` fromEpochSecond 200
+    linkTimestamp got_l `shouldBe` fromEpochMillisecond 200
     S.linkAttributes got_l `shouldBe` ()
   specify "multiple findings for a single node" $ withSpider $ \spider -> do
     let fns :: [FoundNode Text AText ()]
         fns = [ FoundNode
                 { subjectNode = "n1",
-                  foundAt = fromEpochSecond 200,
+                  foundAt = fromEpochMillisecond 200,
                   neighborLinks = [ FoundLink
                                     { targetNode = "n2",
                                       linkState = LinkToTarget,
@@ -181,13 +181,13 @@ spec_getSnapshot1 = do
                 },
                 FoundNode
                 { subjectNode = "n1",
-                  foundAt = fromEpochSecond 100,
+                  foundAt = fromEpochMillisecond 100,
                   neighborLinks = mempty,
                   nodeAttributes = AText "at 100"
                 },
                 FoundNode
                 { subjectNode = "n1",
-                  foundAt = fromEpochSecond 150,
+                  foundAt = fromEpochMillisecond 150,
                   neighborLinks = return $ FoundLink
                                   { targetNode = "n2",
                                     linkState = LinkToTarget,
@@ -203,7 +203,7 @@ spec_getSnapshot1 = do
           _ -> error ("Unexpected patter: got = " ++ show (got_ns, got_ls))
     nodeId got_n1 `shouldBe` "n1"
     isOnBoundary got_n1 `shouldBe` False
-    nodeTimestamp got_n1 `shouldBe` Just (fromEpochSecond 200)
+    nodeTimestamp got_n1 `shouldBe` Just (fromEpochMillisecond 200)
     S.nodeAttributes got_n1 `shouldBe` Just (AText "at 200")
     nodeId got_n2 `shouldBe` "n2"
     isOnBoundary got_n2 `shouldBe` False
@@ -215,15 +215,15 @@ spec_getSnapshot1 = do
     S.nodeAttributes got_n3 `shouldBe` Nothing
     linkNodeTuple got_l12 `shouldBe` ("n1", "n2")
     isDirected got_l12 `shouldBe` True
-    linkTimestamp got_l12 `shouldBe` fromEpochSecond 200
+    linkTimestamp got_l12 `shouldBe` fromEpochMillisecond 200
     linkNodeTuple got_l31 `shouldBe` ("n3", "n1")
     isDirected got_l31 `shouldBe` True
-    linkTimestamp got_l31 `shouldBe` fromEpochSecond 200
+    linkTimestamp got_l31 `shouldBe` fromEpochMillisecond 200
   specify "multi-hop neighbors" $ withSpider $ \spider -> do
     let fns :: [FoundNode Text () AText]
         fns = [ FoundNode
                 { subjectNode = intToNodeId 1,
-                  foundAt = fromEpochSecond 100,
+                  foundAt = fromEpochMillisecond 100,
                   neighborLinks = return $ FoundLink
                                   { targetNode = intToNodeId 2,
                                     linkState = LinkToTarget,
@@ -231,12 +231,12 @@ spec_getSnapshot1 = do
                                   },
                   nodeAttributes = ()
                 },
-                middleNode 2 $ fromEpochSecond 50,
-                middleNode 3 $ fromEpochSecond 150,
-                middleNode 4 $ fromEpochSecond 200,
+                middleNode 2 $ fromEpochMillisecond 50,
+                middleNode 3 $ fromEpochMillisecond 150,
+                middleNode 4 $ fromEpochMillisecond 200,
                 FoundNode
                 { subjectNode = intToNodeId 5,
-                  foundAt = fromEpochSecond 150,
+                  foundAt = fromEpochMillisecond 150,
                   neighborLinks = return $ FoundLink
                                   { targetNode = intToNodeId 4,
                                     linkState = LinkToSubject,
@@ -270,40 +270,40 @@ spec_getSnapshot1 = do
     (got_ns, got_ls) <- fmap sortSnapshotElements $ getSnapshotSimple spider "n1"
     nodeId (got_ns ! 0) `shouldBe` "n1"
     isOnBoundary (got_ns ! 0) `shouldBe` False
-    nodeTimestamp (got_ns ! 0) `shouldBe` Just (fromEpochSecond 100)
+    nodeTimestamp (got_ns ! 0) `shouldBe` Just (fromEpochMillisecond 100)
     S.nodeAttributes (got_ns ! 0) `shouldBe` Just ()
     nodeId (got_ns ! 1) `shouldBe` "n2"
     isOnBoundary (got_ns ! 1) `shouldBe` False
-    nodeTimestamp (got_ns ! 1) `shouldBe` Just (fromEpochSecond 50)
+    nodeTimestamp (got_ns ! 1) `shouldBe` Just (fromEpochMillisecond 50)
     S.nodeAttributes (got_ns ! 1) `shouldBe` Just ()
     nodeId (got_ns ! 2) `shouldBe` "n3"
     isOnBoundary (got_ns ! 2) `shouldBe` False
-    nodeTimestamp (got_ns ! 2) `shouldBe` Just (fromEpochSecond 150)
+    nodeTimestamp (got_ns ! 2) `shouldBe` Just (fromEpochMillisecond 150)
     S.nodeAttributes (got_ns ! 2) `shouldBe` Just ()
     nodeId (got_ns ! 3) `shouldBe` "n4"
     isOnBoundary (got_ns ! 3) `shouldBe` False
-    nodeTimestamp (got_ns ! 3) `shouldBe` Just (fromEpochSecond 200)
+    nodeTimestamp (got_ns ! 3) `shouldBe` Just (fromEpochMillisecond 200)
     S.nodeAttributes (got_ns ! 3) `shouldBe` Just ()
     nodeId (got_ns ! 4) `shouldBe` "n5"
     isOnBoundary (got_ns ! 4) `shouldBe` False
-    nodeTimestamp (got_ns ! 4) `shouldBe` Just (fromEpochSecond 150)
+    nodeTimestamp (got_ns ! 4) `shouldBe` Just (fromEpochMillisecond 150)
     S.nodeAttributes (got_ns ! 4) `shouldBe` Just ()
     V.length got_ns `shouldBe` 5
     linkNodeTuple (got_ls ! 0) `shouldBe` ("n1", "n2")
     isDirected (got_ls ! 0) `shouldBe` True
-    linkTimestamp (got_ls ! 0) `shouldBe` fromEpochSecond 100
+    linkTimestamp (got_ls ! 0) `shouldBe` fromEpochMillisecond 100
     S.linkAttributes (got_ls ! 0) `shouldBe` AText "first"
     linkNodeTuple (got_ls ! 1) `shouldBe` ("n2", "n3")
     isDirected (got_ls ! 1) `shouldBe` True
-    linkTimestamp (got_ls ! 1) `shouldBe` fromEpochSecond 150
+    linkTimestamp (got_ls ! 1) `shouldBe` fromEpochMillisecond 150
     S.linkAttributes (got_ls ! 1) `shouldBe` AText "n3 to prev"
     linkNodeTuple (got_ls ! 2) `shouldBe` ("n3", "n4")
     isDirected (got_ls ! 2) `shouldBe` True
-    linkTimestamp (got_ls ! 2) `shouldBe` fromEpochSecond 200
+    linkTimestamp (got_ls ! 2) `shouldBe` fromEpochMillisecond 200
     S.linkAttributes (got_ls ! 2) `shouldBe` AText "n4 to prev"
     linkNodeTuple (got_ls ! 3) `shouldBe` ("n4", "n5")
     isDirected (got_ls ! 3) `shouldBe` True
-    linkTimestamp (got_ls ! 3) `shouldBe` fromEpochSecond 200
+    linkTimestamp (got_ls ! 3) `shouldBe` fromEpochMillisecond 200
     S.linkAttributes (got_ls ! 3) `shouldBe` AText "n4 to next"
     V.length got_ls `shouldBe` 4
 
@@ -313,7 +313,7 @@ spec_getSnapshot2 = do
     let fns :: [FoundNode Text () ()]
         fns = [ FoundNode
                 { subjectNode = "n1",
-                  foundAt = fromEpochSecond 100,
+                  foundAt = fromEpochMillisecond 100,
                   neighborLinks = [ FoundLink
                                     { targetNode = "n2",
                                       linkState = LinkToTarget,
@@ -324,7 +324,7 @@ spec_getSnapshot2 = do
                 },
                 FoundNode
                 { subjectNode = "n2",
-                  foundAt = fromEpochSecond 150,
+                  foundAt = fromEpochMillisecond 150,
                   neighborLinks = [ FoundLink
                                     { targetNode = "n1",
                                       linkState = LinkToSubject,
@@ -340,7 +340,7 @@ spec_getSnapshot2 = do
                 },
                 FoundNode
                 { subjectNode = "n3",
-                  foundAt = fromEpochSecond 100,
+                  foundAt = fromEpochMillisecond 100,
                   neighborLinks = [ FoundLink
                                     { targetNode = "n1",
                                       linkState = LinkToTarget,
@@ -359,28 +359,28 @@ spec_getSnapshot2 = do
     (got_ns, got_ls) <- fmap sortSnapshotElements $ getSnapshotSimple spider "n1"
     nodeId (got_ns ! 0) `shouldBe` "n1"
     isOnBoundary (got_ns ! 0) `shouldBe` False
-    nodeTimestamp (got_ns ! 0) `shouldBe` Just (fromEpochSecond 100)
+    nodeTimestamp (got_ns ! 0) `shouldBe` Just (fromEpochMillisecond 100)
     nodeId (got_ns ! 1) `shouldBe` "n2"
     isOnBoundary (got_ns ! 1) `shouldBe` False
-    nodeTimestamp (got_ns ! 1) `shouldBe` Just (fromEpochSecond 150)
+    nodeTimestamp (got_ns ! 1) `shouldBe` Just (fromEpochMillisecond 150)
     nodeId (got_ns ! 2) `shouldBe` "n3"
     isOnBoundary (got_ns ! 2) `shouldBe` False
-    nodeTimestamp (got_ns ! 2) `shouldBe` Just (fromEpochSecond 100)
+    nodeTimestamp (got_ns ! 2) `shouldBe` Just (fromEpochMillisecond 100)
     V.length got_ns `shouldBe` 3
     linkNodeTuple (got_ls ! 0) `shouldBe` ("n1", "n2")
     isDirected (got_ls ! 0) `shouldBe` True
-    linkTimestamp (got_ls ! 0) `shouldBe` fromEpochSecond 150
+    linkTimestamp (got_ls ! 0) `shouldBe` fromEpochMillisecond 150
     linkNodeTuple (got_ls ! 1) `shouldBe` ("n2", "n3")
     isDirected (got_ls ! 1) `shouldBe` False
-    linkTimestamp (got_ls ! 1) `shouldBe` fromEpochSecond 150
+    linkTimestamp (got_ls ! 1) `shouldBe` fromEpochMillisecond 150
     linkNodeTuple (got_ls ! 2) `shouldBe` ("n3", "n1")
     isDirected (got_ls ! 2) `shouldBe` True
-    linkTimestamp (got_ls ! 2) `shouldBe` fromEpochSecond 100
+    linkTimestamp (got_ls ! 2) `shouldBe` fromEpochMillisecond 100
   specify "multiple links between two nodes" $ withSpider $ \spider -> do
     let fns :: [FoundNode Text () APorts]
         fns = [ FoundNode
                 { subjectNode = "n1",
-                  foundAt = fromEpochSecond 200,
+                  foundAt = fromEpochMillisecond 200,
                   nodeAttributes = (),
                   neighborLinks = [ FoundLink
                                     { targetNode = "n2",
@@ -401,7 +401,7 @@ spec_getSnapshot2 = do
                 },
                 FoundNode
                 { subjectNode = "n2",
-                  foundAt = fromEpochSecond 100,
+                  foundAt = fromEpochMillisecond 100,
                   nodeAttributes = (),
                   neighborLinks = [ FoundLink
                                     { targetNode = "n1",
@@ -429,19 +429,19 @@ spec_getSnapshot2 = do
     let got_ls = sortLinksWithAttr got_ls_raw
     linkNodeTuple (got_ls ! 0) `shouldBe` ("n1", "n2")
     S.linkAttributes (got_ls ! 0) `shouldBe` APorts "p3" "p6"
-    linkTimestamp (got_ls ! 0) `shouldBe` fromEpochSecond 200
+    linkTimestamp (got_ls ! 0) `shouldBe` fromEpochMillisecond 200
     linkNodeTuple (got_ls ! 1) `shouldBe` ("n1", "n2")
     S.linkAttributes (got_ls ! 1) `shouldBe` APorts "p4" "p8"
-    linkTimestamp (got_ls ! 1) `shouldBe` fromEpochSecond 200
+    linkTimestamp (got_ls ! 1) `shouldBe` fromEpochMillisecond 200
     linkNodeTuple (got_ls ! 2) `shouldBe` ("n1", "n2")
     S.linkAttributes (got_ls ! 2) `shouldBe` APorts "p5" "p10"
-    linkTimestamp (got_ls ! 2) `shouldBe` fromEpochSecond 200
+    linkTimestamp (got_ls ! 2) `shouldBe` fromEpochMillisecond 200
     V.length got_ls `shouldBe` 3
   specify "link disappears" $ withSpider $ \spider -> do
     let fns :: [FoundNode Text () ()]
         fns = [ FoundNode
                 { subjectNode = "n1",
-                  foundAt = fromEpochSecond 100,
+                  foundAt = fromEpochMillisecond 100,
                   nodeAttributes = (),
                   neighborLinks = [ FoundLink
                                     { targetNode = "n2",
@@ -452,7 +452,7 @@ spec_getSnapshot2 = do
                 },
                 FoundNode
                 { subjectNode = "n2",
-                  foundAt = fromEpochSecond 200,
+                  foundAt = fromEpochMillisecond 200,
                   nodeAttributes = (),
                   neighborLinks = []
                 }
@@ -469,7 +469,7 @@ spec_getSnapshot2 = do
     let fns :: [FoundNode Text () ()]
         fns = [ FoundNode
                 { subjectNode = "n1",
-                  foundAt = fromEpochSecond 200,
+                  foundAt = fromEpochMillisecond 200,
                   nodeAttributes = (),
                   neighborLinks = [ FoundLink
                                     { targetNode = "n2",
@@ -480,7 +480,7 @@ spec_getSnapshot2 = do
                 },
                 FoundNode
                 { subjectNode = "n2",
-                  foundAt = fromEpochSecond 100,
+                  foundAt = fromEpochMillisecond 100,
                   nodeAttributes = (),
                   neighborLinks = []
                 }
@@ -492,7 +492,7 @@ spec_getSnapshot2 = do
     V.length got_ns `shouldBe` 2
     linkNodeTuple (got_ls ! 0) `shouldBe` ("n1", "n2")
     isDirected (got_ls ! 0) `shouldBe` False
-    linkTimestamp (got_ls ! 0) `shouldBe` fromEpochSecond 200
+    linkTimestamp (got_ls ! 0) `shouldBe` fromEpochMillisecond 200
     V.length got_ls `shouldBe` 1
     -- the n2 observes at t=100 that there is no link to n1, but n1
     -- observes there is a link at t=200.  Spider should consider the
@@ -501,13 +501,13 @@ spec_getSnapshot2 = do
     let fns :: [FoundNode Text () APorts]
         fns = [ FoundNode
                 { subjectNode = "n2",
-                  foundAt = fromEpochSecond 200,
+                  foundAt = fromEpochMillisecond 200,
                   nodeAttributes = (),
                   neighborLinks = links2
                 },
                 FoundNode
                 { subjectNode = "n1",
-                  foundAt = fromEpochSecond 100,
+                  foundAt = fromEpochMillisecond 100,
                   nodeAttributes = (),
                   neighborLinks = links1
                 }
@@ -537,17 +537,17 @@ spec_getSnapshot2 = do
     mapM_ (addFoundNode spider) fns
     (got_ns, got_ls_raw) <- fmap sortSnapshotElements $ getSnapshot spider $ queryWithAPorts "n1"
     nodeId (got_ns ! 0) `shouldBe` "n1"
-    nodeTimestamp (got_ns ! 0) `shouldBe` (Just $ fromEpochSecond 100)
+    nodeTimestamp (got_ns ! 0) `shouldBe` (Just $ fromEpochMillisecond 100)
     nodeId (got_ns ! 1) `shouldBe` "n2"
-    nodeTimestamp (got_ns ! 1) `shouldBe` (Just $ fromEpochSecond 200)
+    nodeTimestamp (got_ns ! 1) `shouldBe` (Just $ fromEpochMillisecond 200)
     V.length got_ns `shouldBe` 2
     let got_ls = sortLinksWithAttr got_ls_raw
     linkNodeTuple (got_ls ! 0) `shouldBe` ("n1", "n2")
     S.linkAttributes (got_ls ! 0) `shouldBe` APorts "p12" "p22"
-    linkTimestamp (got_ls ! 0) `shouldBe` fromEpochSecond 200
+    linkTimestamp (got_ls ! 0) `shouldBe` fromEpochMillisecond 200
     linkNodeTuple (got_ls ! 1) `shouldBe` ("n1", "n2") -- TODO: looks like this link is removed. why?
     S.linkAttributes (got_ls ! 1) `shouldBe` APorts "p13" "p23"
-    linkTimestamp (got_ls ! 1) `shouldBe` fromEpochSecond 200
+    linkTimestamp (got_ls ! 1) `shouldBe` fromEpochMillisecond 200
     V.length got_ls `shouldBe` 2
 
 
@@ -590,7 +590,7 @@ spec_getSnapshot_timeInterval = do
       linksTo ns = map linkTo ns
       node n t ls = FoundNode
                     { subjectNode = n,
-                      foundAt = fromEpochSecond t,
+                      foundAt = fromEpochMillisecond t,
                       neighborLinks = ls,
                       nodeAttributes = ()
                     }
@@ -614,7 +614,7 @@ spec_getSnapshot_timeInterval = do
   specify "only lower bound" $ withSpider $ \spider -> do
     mapM_ (addFoundNode spider) input_fns
     let q = (defQuery ["n1", "n2"]) { unifyLinkSamples = simple_unifier,
-                                      timeInterval = (Finite $ fromEpochSecond 30) <..< PosInf
+                                      timeInterval = (Finite $ fromEpochMillisecond 30) <..< PosInf
                                     }
     (got_nodes, got_edges) <- fmap sort2 $ getSnapshot spider q
     map nodeId got_nodes `shouldBe` ["n1", "n2", "n3", "n4", "n5"]
@@ -626,12 +626,12 @@ spec_getSnapshot_timeInterval = do
         ("n2", "n5")
       ]
     map linkTimestamp got_edges `shouldBe`
-      map fromEpochSecond [40, 35, 35, 35]
+      map fromEpochMillisecond [40, 35, 35, 35]
   specify "only upper bound (exclusive)" $ withSpider $ \spider -> do
     mapM_ (addFoundNode spider) input_fns
     let q = (defQuery ["n1"]) { unifyLinkSamples = simple_unifier,
                                 timeInterval = NegInf
-                                               <..< (Finite $ fromEpochSecond 30)
+                                               <..< (Finite $ fromEpochMillisecond 30)
                               }
     (got_nodes, got_edges) <- fmap sort2 $ getSnapshot spider q
     map nodeId got_nodes `shouldBe` ["n1", "n2", "n3", "n4", "n5"]
@@ -646,12 +646,12 @@ spec_getSnapshot_timeInterval = do
         ("n4", "n5")
       ]
     map linkTimestamp got_edges `shouldBe`
-      map fromEpochSecond [20, 20, 25, 10, 10, 25, 25]
+      map fromEpochMillisecond [20, 20, 25, 10, 10, 25, 25]
   specify "only upper bound (inclusive)" $ withSpider $ \spider -> do
     mapM_ (addFoundNode spider) input_fns
     let q = (defQuery ["n3"]) { unifyLinkSamples = simple_unifier,
                                 timeInterval = NegInf
-                                               <..<= (Finite $ fromEpochSecond 30)
+                                               <..<= (Finite $ fromEpochMillisecond 30)
                               }
     (got_nodes, got_edges) <- fmap sort2 $ getSnapshot spider q
     map nodeId got_nodes `shouldBe` ["n1", "n3", "n4", "n5"]
@@ -662,12 +662,12 @@ spec_getSnapshot_timeInterval = do
         ("n4", "n5")
       ]
     map linkTimestamp got_edges `shouldBe`
-      map fromEpochSecond [30, 25, 25]
+      map fromEpochMillisecond [30, 25, 25]
   specify "both bounded" $ withSpider $ \spider -> do
     mapM_ (addFoundNode spider) input_fns
     let q = (defQuery ["n2"]) { unifyLinkSamples = simple_unifier,
-                                timeInterval = (Finite $ fromEpochSecond 20)
-                                               <..<= (Finite $ fromEpochSecond 25)
+                                timeInterval = (Finite $ fromEpochMillisecond 20)
+                                               <..<= (Finite $ fromEpochMillisecond 25)
                               }
     (got_nodes, got_edges) <- fmap sort2 $ getSnapshot spider q
     map nodeId got_nodes `shouldBe` ["n1", "n2", "n4", "n5"]
@@ -678,4 +678,4 @@ spec_getSnapshot_timeInterval = do
         ("n4", "n5")
       ]
     map linkTimestamp got_edges `shouldBe`
-      map fromEpochSecond [25, 25, 25]
+      map fromEpochMillisecond [25, 25, 25]

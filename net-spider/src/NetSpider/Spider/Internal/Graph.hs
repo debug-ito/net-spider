@@ -54,7 +54,7 @@ import NetSpider.Graph
   )
 import NetSpider.Found (FoundLink(..), LinkState(..), FoundNode(..), linkStateToText)
 import NetSpider.Query (Interval, Extended(..))
-import NetSpider.Timestamp (Timestamp(..), fromEpochSecond)
+import NetSpider.Timestamp (Timestamp(..))
 import NetSpider.Spider.Config (Spider(..), Config(..))
 
 spiderNodeIdKey :: Spider n na fla -> Key VNode n

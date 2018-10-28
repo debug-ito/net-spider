@@ -8,7 +8,7 @@ module NetSpider.Timestamp
        ( -- * The type
          Timestamp(..),
          -- * Construction
-         fromEpochSecond,
+         fromEpochMillisecond,
          now,
          -- * Manipulation
          addSec,
@@ -41,10 +41,10 @@ data Timestamp =
 instance Ord Timestamp where
   compare l r = compare (epochTime l) (epochTime r)
 
--- | Make 'Timestamp' from seconds from the epoch. 'timeZone' is
+-- | Make 'Timestamp' from milliseconds from the epoch. 'timeZone' is
 -- 'Nothing'.
-fromEpochSecond :: Int64 -> Timestamp
-fromEpochSecond sec = Timestamp sec Nothing
+fromEpochMillisecond :: Int64 -> Timestamp
+fromEpochMillisecond msec = Timestamp msec Nothing
 
 -- | Get the current system time.
 now :: IO Timestamp

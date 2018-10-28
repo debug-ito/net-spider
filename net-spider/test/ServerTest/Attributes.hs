@@ -25,7 +25,7 @@ import NetSpider.Spider
 import NetSpider.Spider.Config (Host, Port, Config(..), defConfig)
 import NetSpider.Snapshot (nodeTimestamp, linkTimestamp)
 import qualified NetSpider.Snapshot as S (nodeAttributes, linkAttributes)
-import NetSpider.Timestamp (Timestamp(..), fromEpochSecond)
+import NetSpider.Timestamp (Timestamp(..), fromEpochMillisecond)
 
 main :: IO ()
 main = hspec spec
@@ -42,7 +42,7 @@ typeTestCase :: (FromGraphSON n, ToJSON n, Ord n, Hashable n, Show n, NodeAttrib
 typeTestCase test_label conf n1_id n2_id node_attrs link_attrs =
   specify test_label $ withSpider' conf $ \spider -> do
     let n1 = FoundNode { subjectNode = n1_id,
-                         foundAt = fromEpochSecond 128,
+                         foundAt = fromEpochMillisecond 128,
                          neighborLinks = return link1,
                          nodeAttributes = node_attrs
                        }
