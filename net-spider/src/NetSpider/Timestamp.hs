@@ -7,7 +7,8 @@
 module NetSpider.Timestamp
        ( Timestamp(..),
          fromEpochSecond,
-         now
+         now,
+         addSec
        ) where
 
 import Data.Int (Int64)
@@ -20,6 +21,8 @@ import Data.Time.Clock.System (utcToSystemTime, SystemTime(..))
 data Timestamp =
   Timestamp
   { epochTime :: !Int64,
+    -- ^ Milliseconds since the epoch. The epoch is usually the
+    -- beginning of year 1970.
     timeZone :: !(Maybe TimeZone)
   }
   deriving (Show,Eq)
@@ -34,9 +37,6 @@ fromEpochSecond :: Int64 -> Timestamp
 fromEpochSecond sec = Timestamp sec Nothing
 
 -- | Get the current system time.
---
--- 'epochTime' is in milliseconds. Its epoch is usually the beginning
--- of year 1970.
 now :: IO Timestamp
 now = do
   zt <- getZonedTime
@@ -47,3 +47,7 @@ now = do
     ztToEpochTime zt = stimeToEpochTime $ utcToSystemTime $ zonedTimeToUTC zt
     stimeToEpochTime stime = (systemSeconds stime * 1000)
                              + fromIntegral (systemNanoseconds stime `div` 1000000)
+
+-- | Add time difference (in seconds) to the 'Timestamp'.
+addSec :: Int64 -> Timestamp -> Timestamp
+addSec diff ts = ts { epochTime = (+ (diff * 1000)) $ epochTime ts }
