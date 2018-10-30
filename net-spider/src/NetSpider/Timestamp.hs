@@ -13,15 +13,17 @@ module NetSpider.Timestamp
          -- * Manipulation
          addSec,
          -- * Conversion
+         iso8601Parse,
          fromZonedTime,
          fromUTCTime,
          fromSystemTime,
          fromLocalTime
        ) where
 
+import Control.Applicative ((<|>), (<$>))
 import Data.Int (Int64)
 import Data.Time.LocalTime
-  ( TimeZone, getZonedTime, ZonedTime(..), zonedTimeToUTC, LocalTime, localTimeToUTC
+  ( TimeZone(timeZoneMinutes), getZonedTime, ZonedTime(..), zonedTimeToUTC, LocalTime, localTimeToUTC
   )
 import qualified Data.Time.LocalTime as LocalTime
 import Data.Time.Clock (UTCTime)
@@ -74,6 +76,26 @@ fromLocalTime lt = (fromUTCTime $ localTimeToUTC LocalTime.utc lt) { timeZone = 
 addSec :: Int64 -> Timestamp -> Timestamp
 addSec diff ts = ts { epochTime = (+ (diff * 1000)) $ epochTime ts }
 
--- -- | Parse a string of ISO8601 format into 'Timestamp'.
--- iso8601parse :: MonadFail m => String -> m Timestamp
--- iso8601parse = 
+-- | Parse a string of ISO8601 format into 'Timestamp'.
+--
+-- >>> let timeAndOffset ts = (epochTime ts, fmap timeZoneMinutes $ timeZone ts)
+-- >>> fmap timeAndOffset $ iso8601Parse "2018-10-11T11:20:10"
+-- Just (1539256810000, Nothing)
+-- >>> iso8601Parse "2018-10-11 11:20:10"
+-- Just (1539256810000, Nothing)
+-- >>> iso8601Parse "2015-03-23 03:33Z"
+-- Just (1427081580000, Just 0)
+-- >>> iso8601Parse "1999-01-05 20:34:44.211+09:00"
+-- Just (915536084211, Just 540)
+-- >>> iso8601Parse "2007-08-20T22:25-07:00"
+-- Just (1187673900000, Just (-420))
+iso8601Parse :: String -> Maybe Timestamp
+iso8601Parse s = (fromZonedTime <$> parseZoned s)
+                 <|> (fromUTCTime <$> parseUTC s)
+                 <|> (fromLocalTime <$> parseLocal s)
+  where
+    parserBase = readPTime True defaultTimeLocale
+    parserYMD = parserBase "%Y-%m-%d"
+    parserZoned = undefined
+    -- TODO: うーん、ReadPを直接使うほうがラクそうな気がする。
+
