@@ -121,6 +121,12 @@ parserRead input = either fail return $ readEither input
 parserDec :: Read a => P.ReadP a
 parserDec = parserRead =<< P.munch1 isDigit
 
+parserFracDec :: Read a => P.ReadP a
+parserFracDec = do
+  int <- P.munch1 isDigit
+  frac <- fmap (maybe "" id) $ optional ((:) <$> P.char '.' <*> P.munch1 isDigit)
+  return $ read (int ++ frac)
+
 parserDay :: P.ReadP Day
 parserDay = fromGregorian
             <$> (parserDec <* delim)
@@ -133,7 +139,7 @@ parserTime :: P.ReadP TimeOfDay
 parserTime = TimeOfDay
              <$> parserDec
              <*> (delim *> parserDec)
-             <*> ((delim *> parserDec) P.<++ pure 0)
+             <*> ((delim *> parserFracDec) P.<++ pure 0)
   where
     delim = P.char ':'
 
