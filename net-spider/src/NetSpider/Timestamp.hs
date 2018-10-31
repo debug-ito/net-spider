@@ -20,9 +20,10 @@ module NetSpider.Timestamp
          fromLocalTime
        ) where
 
-import Control.Applicative ((<|>), (<$>), (<*>), (<*), (*>), optional)
+import Control.Applicative ((<$>), (<*>), (<*), (*>), optional)
 import Data.Char (isDigit)
 import Data.Int (Int64)
+import Data.List (sortOn)
 import Data.Time.Calendar (Day, fromGregorian)
 import Data.Time.LocalTime
   ( TimeZone(..), getZonedTime, ZonedTime(..), zonedTimeToUTC, LocalTime(LocalTime), localTimeToUTC,
@@ -96,15 +97,17 @@ addSec diff ts = ts { epochTime = (+ (diff * 1000)) $ epochTime ts }
 -- >>> fmap timeAndOffset $ parseTimestamp "2007/08/20T22:25-07:00"
 -- Just (1187673900000,Just (-420))
 parseTimestamp :: String -> Maybe Timestamp
-parseTimestamp s = case P.readP_to_S parserTimestamp s of
-                    ((ret, _) : _) -> Just ret
-                    _ -> Nothing
+parseTimestamp s = toTs $ sortByLeftover $ P.readP_to_S parserTimestamp s
+  where
+    sortByLeftover = sortOn $ \(_, leftover) -> length leftover
+    toTs ((ret, _) : _) = Just ret
+    toTs [] = Nothing
 
 parserTimestamp :: P.ReadP Timestamp
 parserTimestamp = do
   day <- parserDay <* delim
   time <- parserTime
-  mtz <- optional (parserUTC <|> parserOffset)
+  mtz <- optional (parserUTC P.+++ parserOffset)
   let ltime = LocalTime day time
   case mtz of
    Nothing -> return $ fromLocalTime ltime
@@ -130,7 +133,7 @@ parserTime :: P.ReadP TimeOfDay
 parserTime = TimeOfDay
              <$> parserDec
              <*> (delim *> parserDec)
-             <*> ((delim *> parserDec) <|> pure 0)
+             <*> ((delim *> parserDec) P.<++ pure 0)
   where
     delim = P.char ':'
 
