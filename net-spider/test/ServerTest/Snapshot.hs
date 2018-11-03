@@ -81,6 +81,7 @@ spec_getSnapshot = withServer $ describe "getSnapshotSimple, getSnapshot" $ do
   spec_getSnapshot1
   spec_getSnapshot2
   spec_getSnapshot_timeInterval
+  spec_getSnapshot_foundNodePolicy
 
 
 spec_getSnapshot1 :: SpecWith (Host,Port)
@@ -679,3 +680,36 @@ spec_getSnapshot_timeInterval = do
       ]
     map linkTimestamp got_edges `shouldBe`
       map fromEpochMillisecond [25, 25, 25]
+
+spec_getSnapshot_foundNodePolicy :: SpecWith (Host,Port)
+spec_getSnapshot_foundNodePolicy = do
+  let link n s = FoundLink
+                 { targetNode = n,
+                   linkState = s,
+                   linkAttributes = ()
+                 }
+      links = map (uncurry link)
+      node n t ls = FoundNode
+                    { subjectNode = n,
+                      foundAt = fromEpochMillisecond t,
+                      neighborLinks = ls,
+                      nodeAttributes = ()
+                    }
+      input_fns :: [FoundNode Text () ()]
+      input_fns = [ node "n1" 10 $ links [("n2", LinkToTarget)],
+                    node "n1" 20 $ links [("n3", LinkToSubject)],
+                    node "n1" 30 $ links [("n2", LinkToTarget)],
+                    node "n2" 15 $ links [("n1", LinkToSubject)],
+                    node "n2" 25 $ links [("n4", LinkToTarget)],
+                    node "n2" 35 $ links [("n4", LinkToTarget), ("n1", LinkToSubject)],
+                    node "n3" 17 $ links [],
+                    node "n3" 27 $ links [("n1", LinkToTarget), ("n4", LinkToSubject)],
+                    node "n3" 27 $ links [],
+                    node "n4" 8  $ links [("n2", LinkToSubject)],
+                    node "n4" 18 $ links [],
+                    node "n4" 28 $ links [("n2", LinkToSubject), ("n3", LinkToTarget)]
+                  ]
+      simple_unifier = unifyStd $ defUnifyStdConfig { negatesLinkSample = \_ _ -> False }
+  specify "policyOverwrite with timeInterval" $ withSpider $ \spider -> do
+    mapM_ (addFoundNode spider) input_fns
+    False `shouldBe` True -- TODO
