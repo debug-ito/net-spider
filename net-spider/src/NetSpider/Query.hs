@@ -5,13 +5,17 @@
 --
 -- 
 module NetSpider.Query
-       ( -- * Query type
+       ( -- * Query
          Query,
          defQuery,
          -- ** accessor functions
          startsFrom,
          unifyLinkSamples,
          timeInterval,
+         -- * FoundNodePolicy
+         FoundNodePolicy,
+         policyOverwrite,
+         policyAppend,
          -- * Utilities
          secUpTo,
          -- * Re-exports
@@ -45,11 +49,15 @@ data Query n na fla sla =
     -- ^ See the document of 'LinkSampleUnifier'.
     --
     -- Default: 'unifyToOne'.
-    timeInterval :: Interval Timestamp
+    timeInterval :: Interval Timestamp,
     -- ^ Time interval to query. Only the local findings observed
     -- during this interval are used to make the snapshot graph.
     --
     -- Default: (-infinity, +infinity)
+    foundNodePolicy :: FoundNodePolicy n na
+    -- ^ Policy to treat 'FoundNode's (local findings).
+    --
+    -- Default: 'policyOverwrite'
   }
 
 -- | The default 'Query'.
@@ -59,7 +67,8 @@ defQuery :: Eq n
 defQuery ns = Query
               { startsFrom = ns,
                 unifyLinkSamples = unifyToOne,
-                timeInterval = Interval.whole
+                timeInterval = Interval.whole,
+                foundNodePolicy = policyOverwrite
               }
 
 -- | @s `secUpTo` ts@ returns the time interval of length @s@ (in
@@ -68,3 +77,27 @@ secUpTo :: Int64 -> Timestamp -> Interval Timestamp
 secUpTo len end = Finite start <=..<= Finite end
   where
     start = addSec (-len) end
+
+-- | Policy to treat 'FoundNode's (local findings) when the spider
+-- creates the snapshot graph.
+data FoundNodePolicy n na=
+    PolicyOverwrite
+  | PolicyAppend
+  deriving (Show)
+
+-- | A 'FoundNode' always overwrites old 'FoundNode's, so only the
+-- latest one is valid.
+--
+-- This policy is appropriate when you can always get the complete
+-- neighbor information of a given node at once.
+policyOverwrite :: FoundNodePolicy n na
+policyOverwrite = PolicyOverwrite
+
+-- | A 'FoundNode' appends neighbor information to old
+-- 'FoundNode's. When the spider makes the snapshot graph, it
+-- aggregates all 'FoundNode's in the query range.
+--
+-- This policy is appropriate when you can only get part of neighbor
+-- information of a given node at once.
+policyAppend :: FoundNodePolicy n na
+policyAppend = PolicyAppend
