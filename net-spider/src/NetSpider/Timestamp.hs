@@ -14,6 +14,7 @@ module NetSpider.Timestamp
          addSec,
          -- * Conversion
          parseTimestamp,
+         fromS,
          fromZonedTime,
          fromUTCTime,
          fromSystemTime,
@@ -81,6 +82,12 @@ fromLocalTime lt = (fromUTCTime $ localTimeToUTC LocalTime.utc lt) { timeZone = 
 -- | Add time difference (in seconds) to the 'Timestamp'.
 addSec :: Int64 -> Timestamp -> Timestamp
 addSec diff ts = ts { epochTime = (+ (diff * 1000)) $ epochTime ts }
+
+-- | Unsafe version of 'parseTimestamp'.
+fromS :: String -> Timestamp
+fromS s = maybe (error msg) id $ parseTimestamp s
+  where
+    msg = "Fail to parse " ++ s
 
 -- | Parse a string into 'Timestamp'. The format is like ISO8601 with
 -- a little relaxation.
