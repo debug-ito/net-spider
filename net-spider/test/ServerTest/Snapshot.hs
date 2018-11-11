@@ -683,12 +683,12 @@ spec_getSnapshot_timeInterval = do
 
 spec_getSnapshot_foundNodePolicy :: SpecWith (Host,Port)
 spec_getSnapshot_foundNodePolicy = do
-  let link n s = FoundLink
+  let linkTo n = FoundLink
                  { targetNode = n,
-                   linkState = s,
+                   linkState = LinkToTarget,
                    linkAttributes = ()
                  }
-      links = map (uncurry link)
+      linksTo = map linkTo
       node n t ls = FoundNode
                     { subjectNode = n,
                       foundAt = fromEpochMillisecond t,
@@ -696,18 +696,18 @@ spec_getSnapshot_foundNodePolicy = do
                       nodeAttributes = ()
                     }
       input_fns :: [FoundNode Text () ()]
-      input_fns = [ node "n1" 10 $ links [("n2", LinkToTarget)],
-                    node "n1" 20 $ links [("n3", LinkToSubject)],
-                    node "n1" 30 $ links [("n2", LinkToTarget)],
-                    node "n2" 15 $ links [("n1", LinkToSubject)],
-                    node "n2" 25 $ links [("n4", LinkToTarget)],
-                    node "n2" 35 $ links [("n4", LinkToTarget), ("n1", LinkToSubject)],
-                    node "n3" 17 $ links [],
-                    node "n3" 27 $ links [("n1", LinkToTarget), ("n4", LinkToSubject)],
-                    node "n3" 37 $ links [],
-                    node "n4" 8  $ links [("n2", LinkToSubject)],
-                    node "n4" 18 $ links [],
-                    node "n4" 28 $ links [("n2", LinkToSubject), ("n3", LinkToTarget)]
+      input_fns = [ node "n1" 10 $ linksTo ["n2"],
+                    node "n1" 20 $ linksTo ["n3"],
+                    node "n1" 30 $ linksTo ["n2"],
+                    node "n2" 15 $ linksTo ["n1"],
+                    node "n2" 25 $ linksTo ["n4"],
+                    node "n2" 35 $ linksTo ["n4", "n1"],
+                    node "n3" 17 $ linksTo [],
+                    node "n3" 27 $ linksTo ["n1", "n4"],
+                    node "n3" 37 $ linksTo [],
+                    node "n4" 8  $ linksTo ["n2"],
+                    node "n4" 18 $ linksTo [],
+                    node "n4" 28 $ linksTo ["n2", "n3"]
                   ]
       simple_unifier = unifyStd $ defUnifyStdConfig { negatesLinkSample = \_ _ -> False }
   specify "policyOverwrite with timeInterval" $ withSpider $ \spider -> do
@@ -719,10 +719,11 @@ spec_getSnapshot_foundNodePolicy = do
                 }
     (got_nodes, got_edges) <- fmap sort2 $ getSnapshot spider query
     map linkNodeTuple got_edges `shouldBe`
-      [ ("n3", "n1"),
-        ("n4", "n3")
+      [ ("n1", "n3"),
+        ("n3", "n1"),
+        ("n3", "n4")
       ]
-    map linkTimestamp got_edges `shouldBe` map fromEpochMillisecond [27, 27]
+    map linkTimestamp got_edges `shouldBe` map fromEpochMillisecond [20, 27, 27]
     map nodeId got_nodes `shouldBe` ["n1", "n3", "n4"]
     map (isNothing . S.nodeAttributes) got_nodes `shouldBe` [False, False, False]
   specify "policyAppend with timeInterval" $ withSpider $ \spider -> do
@@ -735,11 +736,15 @@ spec_getSnapshot_foundNodePolicy = do
     (got_nodes, got_edges) <- fmap sort2 $ getSnapshot spider query
     map linkNodeTuple got_edges `shouldBe`
       [ ("n1", "n2"),
+        ("n1", "n3"),
+        ("n2", "n1"),
         ("n2", "n4"),
         ("n3", "n1"),
+        ("n3", "n4"),
+        ("n4", "n2"),
         ("n4", "n3")
       ]
     map linkTimestamp got_edges `shouldBe`
-      map fromEpochMillisecond [30, 27, 28, 28]
+      map fromEpochMillisecond [30, 20, 15, 25, 27, 27, 28, 28]
     map nodeId got_nodes `shouldBe` ["n1", "n2", "n3", "n4"]
     map (isNothing . S.nodeAttributes) got_nodes `shouldBe` [False, False, False, False]
