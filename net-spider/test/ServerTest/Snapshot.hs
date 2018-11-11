@@ -27,8 +27,8 @@ import NetSpider.Found
   ( FoundLink(..), LinkState(..), FoundNode(..)
   )
 import NetSpider.Query
-  ( Query, defQuery, startsFrom, unifyLinkSamples, timeInterval,
-    Extended(..), (<..<), (<..<=)
+  ( Query, defQuery, startsFrom, unifyLinkSamples, timeInterval, foundNodePolicy,
+    Extended(..), (<..<), (<..<=), (<=..<=), policyOverwrite, policyAppend
   )
 import NetSpider.Snapshot
   ( SnapshotLink,
@@ -704,7 +704,7 @@ spec_getSnapshot_foundNodePolicy = do
                     node "n2" 35 $ links [("n4", LinkToTarget), ("n1", LinkToSubject)],
                     node "n3" 17 $ links [],
                     node "n3" 27 $ links [("n1", LinkToTarget), ("n4", LinkToSubject)],
-                    node "n3" 27 $ links [],
+                    node "n3" 37 $ links [],
                     node "n4" 8  $ links [("n2", LinkToSubject)],
                     node "n4" 18 $ links [],
                     node "n4" 28 $ links [("n2", LinkToSubject), ("n3", LinkToTarget)]
@@ -712,4 +712,34 @@ spec_getSnapshot_foundNodePolicy = do
       simple_unifier = unifyStd $ defUnifyStdConfig { negatesLinkSample = \_ _ -> False }
   specify "policyOverwrite with timeInterval" $ withSpider $ \spider -> do
     mapM_ (addFoundNode spider) input_fns
-    False `shouldBe` True -- TODO
+    let query = (defQuery ["n1"])
+                { timeInterval = NegInf <..<= (Finite $ fromEpochMillisecond 27),
+                  foundNodePolicy = policyOverwrite,
+                  unifyLinkSamples = simple_unifier
+                }
+    (got_nodes, got_edges) <- fmap sort2 $ getSnapshot spider query
+    map linkNodeTuple got_edges `shouldBe`
+      [ ("n3", "n1"),
+        ("n4", "n3")
+      ]
+    map linkTimestamp got_edges `shouldBe` map fromEpochMillisecond [27, 27]
+    map nodeId got_nodes `shouldBe` ["n1", "n3", "n4"]
+    map (isNothing . S.nodeAttributes) got_nodes `shouldBe` [False, False, False]
+  specify "policyAppend with timeInterval" $ withSpider $ \spider -> do
+    mapM_ (addFoundNode spider) input_fns
+    let query = (defQuery ["n1"])
+                { timeInterval = (Finite $ fromEpochMillisecond 15) <=..<= (Finite $ fromEpochMillisecond 30),
+                  foundNodePolicy = policyAppend,
+                  unifyLinkSamples = simple_unifier
+                }
+    (got_nodes, got_edges) <- fmap sort2 $ getSnapshot spider query
+    map linkNodeTuple got_edges `shouldBe`
+      [ ("n1", "n2"),
+        ("n2", "n4"),
+        ("n3", "n1"),
+        ("n4", "n3")
+      ]
+    map linkTimestamp got_edges `shouldBe`
+      map fromEpochMillisecond [30, 27, 28, 28]
+    map nodeId got_nodes `shouldBe` ["n1", "n2", "n3", "n4"]
+    map (isNothing . S.nodeAttributes) got_nodes `shouldBe` [False, False, False, False]

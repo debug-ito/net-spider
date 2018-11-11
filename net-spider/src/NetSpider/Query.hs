@@ -12,6 +12,7 @@ module NetSpider.Query
          startsFrom,
          unifyLinkSamples,
          timeInterval,
+         foundNodePolicy,
          -- * FoundNodePolicy
          FoundNodePolicy,
          policyOverwrite,
