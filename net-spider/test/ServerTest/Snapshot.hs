@@ -40,7 +40,11 @@ import NetSpider.Spider
   ( Spider, addFoundNode, getSnapshotSimple, getSnapshot
   )
 import NetSpider.Spider.Config (defConfig, Config, Host, Port)
-import NetSpider.Unify (unifyStd, UnifyStdConfig(..), defUnifyStdConfig, lsLinkAttributes, latestLinkSample)
+import NetSpider.Unify
+  ( unifyStd, UnifyStdConfig(..), defUnifyStdConfig,
+    lsLinkAttributes, lsSubjectNode,
+    latestLinkSample
+  )
 import NetSpider.Timestamp (fromEpochMillisecond)
 
 main :: IO ()
@@ -709,7 +713,9 @@ spec_getSnapshot_foundNodePolicy = do
                     node "n4" 18 $ linksTo [],
                     node "n4" 28 $ linksTo ["n2", "n3"]
                   ]
-      simple_unifier = unifyStd $ defUnifyStdConfig { negatesLinkSample = \_ _ -> False }
+      simple_unifier = unifyStd $ defUnifyStdConfig { makeLinkSubId = \ls -> lsSubjectNode ls,
+                                                      negatesLinkSample = \_ _ -> False
+                                                    }
   specify "policyOverwrite with timeInterval" $ withSpider $ \spider -> do
     mapM_ (addFoundNode spider) input_fns
     let query = (defQuery ["n1"])
