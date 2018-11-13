@@ -50,7 +50,12 @@ import NetSpider.Graph.Internal (VFoundNode(..), EFinds(..))
 import NetSpider.Found (FoundNode(..), FoundLink(..), LinkState(..))
 import NetSpider.Pair (Pair)
 import NetSpider.Queue (Queue, newQueue, popQueue, pushQueue)
-import NetSpider.Query (Query, defQuery, startsFrom, unifyLinkSamples, timeInterval, Interval)
+import NetSpider.Query
+  ( Query, defQuery, startsFrom, unifyLinkSamples, timeInterval,
+    foundNodePolicy,
+    Interval
+  )
+import NetSpider.Query.Internal (FoundNodePolicy(..))
 import NetSpider.Snapshot.Internal (SnapshotNode(..), SnapshotLink(..))
 import NetSpider.Spider.Config (Spider(..), Config(..), defConfig)
 import NetSpider.Spider.Internal.Graph
@@ -229,7 +234,7 @@ visitNodeForSnapshot spider query ref_state visit_nid = do
        Just visit_eid -> do
          (mlatest_vfn, hops) <- traverseEFindsOneHop spider (timeInterval query) visit_eid
          markAsVisited $ mlatest_vfn
-         let next_hops = filter (hopHasVFN mlatest_vfn) hops
+         let next_hops = filterVFNs mlatest_vfn $ hops
          -- putStrLn ("-- visit " ++ show visit_nid)
          -- putStrLn ("   latest vfn: " ++ (show $ fmap vfnTimestamp mlatest_vfn))
          -- forM_ next_hops $ \(vfn, _, next_nid) -> do
@@ -243,6 +248,9 @@ visitNodeForSnapshot spider query ref_state visit_nid = do
         binder = gNodeEID <$.> gHasNodeID spider visit_nid <*.> pure gAllNodes
     markAsVisited mvfn = modifyIORef ref_state $ addVisitedNode visit_nid mvfn
     uncurry3 f (a,b,c) = f a b c
+    filterVFNs mvfn = filter $ case foundNodePolicy query of
+      PolicyOverwrite -> hopHasVFN mvfn
+      PolicyAppend -> const True
     hopHasVFN Nothing _ = True
     hopHasVFN (Just vfn1) (vfn2, _, _) = vfnId vfn1 == vfnId vfn2
 

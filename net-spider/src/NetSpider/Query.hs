@@ -31,6 +31,7 @@ import qualified Data.Interval as Interval
 
 import NetSpider.Timestamp (Timestamp, addSec)
 import NetSpider.Unify (LinkSampleUnifier, unifyToOne)
+import NetSpider.Query.Internal (FoundNodePolicy(..))
 
 -- | Query for snapshot graph. You can get the default 'Query' by
 -- 'defQuery' function, and customize its fields by the accessor
@@ -78,13 +79,6 @@ secUpTo :: Int64 -> Timestamp -> Interval Timestamp
 secUpTo len end = Finite start <=..<= Finite end
   where
     start = addSec (-len) end
-
--- | Policy to treat 'FoundNode's (local findings) when the spider
--- creates the snapshot graph.
-data FoundNodePolicy n na=
-    PolicyOverwrite
-  | PolicyAppend
-  deriving (Show)
 
 -- | A 'FoundNode' always overwrites old 'FoundNode's, so only the
 -- latest one is valid.
