@@ -234,7 +234,7 @@ visitNodeForSnapshot spider query ref_state visit_nid = do
        Just visit_eid -> do
          (mlatest_vfn, hops) <- traverseEFindsOneHop spider (timeInterval query) visit_eid
          markAsVisited $ mlatest_vfn
-         let next_hops = filterVFNs mlatest_vfn $ hops
+         let next_hops = filterHops mlatest_vfn $ hops
          -- putStrLn ("-- visit " ++ show visit_nid)
          -- putStrLn ("   latest vfn: " ++ (show $ fmap vfnTimestamp mlatest_vfn))
          -- forM_ next_hops $ \(vfn, _, next_nid) -> do
@@ -248,9 +248,10 @@ visitNodeForSnapshot spider query ref_state visit_nid = do
         binder = gNodeEID <$.> gHasNodeID spider visit_nid <*.> pure gAllNodes
     markAsVisited mvfn = modifyIORef ref_state $ addVisitedNode visit_nid mvfn
     uncurry3 f (a,b,c) = f a b c
-    filterVFNs mvfn = filter $ case foundNodePolicy query of
-      PolicyOverwrite -> hopHasVFN mvfn
-      PolicyAppend -> const True
+    filterHops mvfn =
+      case foundNodePolicy query of
+       PolicyOverwrite -> filter (hopHasVFN mvfn)
+       PolicyAppend -> id
     hopHasVFN Nothing _ = True
     hopHasVFN (Just vfn1) (vfn2, _, _) = vfnId vfn1 == vfnId vfn2
 
