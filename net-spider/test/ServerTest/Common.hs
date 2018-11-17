@@ -26,10 +26,10 @@ import NetSpider.Found (LinkState(..))
 import NetSpider.Graph (NodeAttributes(..), LinkAttributes(..), VNode)
 import NetSpider.Pair (Pair(..))
 import NetSpider.Spider.Config
-  ( Host, Port, Spider, Config(..), defConfig, LogLevel(..)
+  ( Host, Port, Config(..), defConfig, LogLevel(..)
   )
 import NetSpider.Spider
-  ( connectWith, close, clearAll
+  ( connectWith, close, clearAll, Spider
   )
 import NetSpider.Snapshot
   ( SnapshotNode, SnapshotLink

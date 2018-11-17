@@ -55,7 +55,8 @@ import NetSpider.Graph
 import NetSpider.Found (FoundLink(..), LinkState(..), FoundNode(..), linkStateToText)
 import NetSpider.Query (Interval, Extended(..))
 import NetSpider.Timestamp (Timestamp(..))
-import NetSpider.Spider.Config (Spider(..), Config(..))
+import NetSpider.Spider.Config (Config(..))
+import NetSpider.Spider.Internal.Spider (Spider(..))
 
 spiderNodeIdKey :: Spider n na fla -> Key VNode n
 spiderNodeIdKey = nodeIdKey . spiderConfig
