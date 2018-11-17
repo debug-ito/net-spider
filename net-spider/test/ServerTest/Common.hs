@@ -26,7 +26,7 @@ import NetSpider.Found (LinkState(..))
 import NetSpider.Graph (NodeAttributes(..), LinkAttributes(..), VNode)
 import NetSpider.Pair (Pair(..))
 import NetSpider.Spider.Config
-  ( Host, Port, Spider, Config(..), defConfig
+  ( Host, Port, Spider, Config(..), defConfig, LogLevel(..)
   )
 import NetSpider.Spider
   ( connectWith, close, clearAll
@@ -42,7 +42,7 @@ withServer :: SpecWith (Host,Port) -> Spec
 withServer = before $ needEnvHostPort Need "NET_SPIDER_TEST"
 
 withSpider :: Eq n => (Spider n na fla -> IO ()) -> (Host, Port) -> IO ()
-withSpider = withSpider' defConfig
+withSpider = withSpider' $ defConfig { logThreshold = LevelWarn }
 
 withSpider' :: Config n na fla -> (Spider n na fla -> IO ()) -> (Host, Port) -> IO ()
 withSpider' orig_conf action (host, port) = bracket (connectWith conf) close $ \spider -> do

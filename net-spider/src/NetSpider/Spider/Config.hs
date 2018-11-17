@@ -10,9 +10,11 @@ module NetSpider.Spider.Config
          Config(..),
          defConfig,
          Host,
-         Port
+         Port,
+         LogLevel(..)
        ) where
 
+import Control.Monad.Logger (LogLevel(..))
 import Data.Greskell (Key)
 import Network.Greskell.WebSocket (Host, Port)
 
@@ -47,9 +49,12 @@ data Config n na fla =
     wsPort :: Gr.Port,
     -- ^ Port of WebSocket endpoint of Tinkerpop Gremlin
     -- Server. Default: 8182
-    nodeIdKey :: Key VNode n
+    nodeIdKey :: Key VNode n,
     -- ^ Name of vertex property that stores the node ID. Default:
     -- \"@node_id\".
+    logThreshold :: LogLevel
+    -- ^ Logs with the level higher than or equal to this threshold
+    -- are printed. Default: 'LevelWarn'.
   }
 
 defConfig :: Config n na fla
@@ -57,6 +62,8 @@ defConfig =
   Config
   { wsHost = "localhost",
     wsPort = 8182,
-    nodeIdKey = "@node_id"
+    nodeIdKey = "@node_id",
+    logThreshold = LevelWarn
   }
+
 

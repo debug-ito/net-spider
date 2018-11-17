@@ -21,7 +21,9 @@ module NetSpider.Spider
        ) where
 
 import Control.Exception.Safe (throwString)
-import Control.Monad (void)
+import Control.Monad (void, mapM_)
+import Control.Monad.Logger (LogLevel, LoggingT)
+import qualified Control.Monad.Logger as Log
 import Data.Aeson (ToJSON)
 import Data.Foldable (foldr', toList)
 import Data.List (intercalate)
@@ -38,8 +40,9 @@ import Data.HashSet (HashSet)
 import qualified Data.HashSet as HS
 import Data.IORef (IORef, modifyIORef, newIORef, readIORef, atomicModifyIORef')
 import Data.Maybe (catMaybes, mapMaybe, listToMaybe)
-import Data.Monoid (mempty)
+import Data.Monoid (mempty, (<>))
 import Data.List (sortOn)
+import Data.Text (Text, pack)
 import Data.Vector (Vector)
 import qualified Data.Vector as V
 import Network.Greskell.WebSocket (Host, Port)
@@ -63,7 +66,7 @@ import NetSpider.Spider.Internal.Graph
     gLatestFoundNode, gSelectFoundNode, gFinds, gFindsTarget, gHasFoundNodeEID, gAllFoundNode,
     gFilterFoundNodeByTime
   )
-import NetSpider.Timestamp (Timestamp)
+import NetSpider.Timestamp (Timestamp, showEpochTime)
 import NetSpider.Unify (LinkSampleUnifier, LinkSample(..), LinkSampleID, linkSampleId)
 
 -- | Connect to the WebSocket endpoint of Tinkerpop Gremlin Server
@@ -91,6 +94,20 @@ submitB sp b = Gr.submit (spiderClient sp) script mbs
   where
     (script, bs) = runBinder b
     mbs = Just bs
+
+runLogger :: Spider n na fla -> LoggingT IO a -> IO a
+runLogger spider act = Log.runStderrLoggingT $ Log.filterLogger fil act
+  where
+    fil _ level = level >= (logThreshold $ spiderConfig spider)
+
+logDebug :: Spider n na fla -> Text -> IO ()
+logDebug spider msg = runLogger spider $ Log.logDebugN msg
+
+logWarn :: Spider n na fla -> Text -> IO ()
+logWarn spider msg = runLogger spider $ Log.logWarnN msg
+
+spack :: Show a => a -> Text
+spack = pack . show
 
 -- | Clear all content in the NetSpider database. This is mainly for
 -- testing.
@@ -137,7 +154,7 @@ getOrMakeNode spider nid = do
 --
 -- This function is very simple, and should be used only for small
 -- graphs.
-getSnapshotSimple :: (FromGraphSON n, ToJSON n, Ord n, Hashable n, LinkAttributes fla, NodeAttributes na)
+getSnapshotSimple :: (FromGraphSON n, ToJSON n, Ord n, Hashable n, Show n, LinkAttributes fla, NodeAttributes na)
                   => Spider n na fla
                   -> n -- ^ ID of the node where it starts traversing.
                   -> IO ([SnapshotNode n na], [SnapshotLink n fla])
@@ -146,7 +163,7 @@ getSnapshotSimple spider start_nid = getSnapshot spider $ defQuery [start_nid]
 
 -- | Get the snapshot graph from the history graph as specified by the
 -- 'Query'.
-getSnapshot :: (FromGraphSON n, ToJSON n, Ord n, Hashable n, LinkAttributes fla, NodeAttributes na)
+getSnapshot :: (FromGraphSON n, ToJSON n, Ord n, Hashable n, Show n, LinkAttributes fla, NodeAttributes na)
             => Spider n na fla
             -> Query n na fla sla
             -> IO ([SnapshotNode n na], [SnapshotLink n sla])
@@ -157,7 +174,7 @@ getSnapshot spider query = do
   fmap (makeSnapshot $ unifyLinkSamples query) $ readIORef ref_state
 
 
-recurseVisitNodesForSnapshot :: (ToJSON n, Ord n, Hashable n, FromGraphSON n, LinkAttributes fla, NodeAttributes na)
+recurseVisitNodesForSnapshot :: (ToJSON n, Ord n, Hashable n, FromGraphSON n, Show n, LinkAttributes fla, NodeAttributes na)
                              => Spider n na fla
                              -> Query n na fla sla
                              -> IORef (SnapshotState n na fla)
@@ -215,30 +232,38 @@ makeLinkSample subject_nid vfn efinds target_nid =
                lsLinkAttributes = efLinkAttributes efinds
              }
 
-visitNodeForSnapshot :: (ToJSON n, Ord n, Hashable n, FromGraphSON n, LinkAttributes fla, NodeAttributes na)
+visitNodeForSnapshot :: (ToJSON n, Ord n, Hashable n, FromGraphSON n, Show n, LinkAttributes fla, NodeAttributes na)
                      => Spider n na fla
                      -> Query n na fla sla
                      -> IORef (SnapshotState n na fla)
                      -> n
                      -> IO ()
 visitNodeForSnapshot spider query ref_state visit_nid = do
+  logDebug spider ("Visiting node " <> spack visit_nid <> " ...")
   cur_state <- readIORef ref_state
   if isAlreadyVisited cur_state visit_nid
-    then return ()
+    then logAndQuit
     else doVisit
   where
+    logAndQuit = do
+      logDebug spider ("Node " <> spack visit_nid <> " is already visited. Skip.")
+      return ()
     doVisit = do
       mvisit_eid <- getVisitedNodeEID
       case mvisit_eid of
-       Nothing -> return () -- visit_nid does not exist. Should not markAsVisited it.
+       Nothing -> do
+         logWarn spider ("Node " <> spack visit_nid <> " does not exist.")
+         return ()
        Just visit_eid -> do
          (mlatest_vfn, hops) <- traverseEFindsOneHop spider (timeInterval query) visit_eid
          markAsVisited $ mlatest_vfn
+         logLatestVFN mlatest_vfn
          let next_hops = filterHops mlatest_vfn $ hops
          -- putStrLn ("-- visit " ++ show visit_nid)
          -- putStrLn ("   latest vfn: " ++ (show $ fmap vfnTimestamp mlatest_vfn))
          -- forM_ next_hops $ \(vfn, _, next_nid) -> do
          --   putStrLn ("   next: " ++ (show $ vfnTimestamp vfn) ++ " -> " ++ show next_nid)
+         mapM_ logHop next_hops
          modifyIORef ref_state $ addLinkSamples
            $ map (uncurry3 $ makeLinkSample visit_nid) $ next_hops
          -- cur_state <- readIORef ref_state
@@ -247,6 +272,11 @@ visitNodeForSnapshot spider query ref_state visit_nid = do
       where
         binder = gNodeEID <$.> gHasNodeID spider visit_nid <*.> pure gAllNodes
     markAsVisited mvfn = modifyIORef ref_state $ addVisitedNode visit_nid mvfn
+    logLatestVFN Nothing = logDebug spider ("No local finding is found for node " <> spack visit_nid)
+    logLatestVFN (Just vfn) = logDebug spider ( "Node " <> spack visit_nid
+                                                <> ": latest local finding is at "
+                                                <> (showEpochTime $ vfnTimestamp vfn)
+                                              )
     uncurry3 f (a,b,c) = f a b c
     filterHops mvfn =
       case foundNodePolicy query of
@@ -254,6 +284,10 @@ visitNodeForSnapshot spider query ref_state visit_nid = do
        PolicyAppend -> id
     hopHasVFN Nothing _ = True
     hopHasVFN (Just vfn1) (vfn2, _, _) = vfnId vfn1 == vfnId vfn2
+    logHop (vfn, _, next_nid) = logDebug spider ( "Link " <> spack visit_nid
+                                                  <> " -> " <> spack next_nid
+                                                  <> " at " <> (showEpochTime $ vfnTimestamp vfn)
+                                                )
 
 -- | The state kept while making the snapshot graph.
 data SnapshotState n na fla =
