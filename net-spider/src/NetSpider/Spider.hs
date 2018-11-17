@@ -22,8 +22,6 @@ module NetSpider.Spider
 
 import Control.Exception.Safe (throwString)
 import Control.Monad (void, mapM_)
-import Control.Monad.Logger (LogLevel, LoggingT)
-import qualified Control.Monad.Logger as Log
 import Data.Aeson (ToJSON)
 import Data.Foldable (foldr', toList)
 import Data.List (intercalate)
@@ -60,12 +58,14 @@ import NetSpider.Query
   )
 import NetSpider.Query.Internal (FoundNodePolicy(..))
 import NetSpider.Snapshot.Internal (SnapshotNode(..), SnapshotLink(..))
-import NetSpider.Spider.Config (Spider(..), Config(..), defConfig)
+import NetSpider.Spider.Config (Config(..), defConfig)
 import NetSpider.Spider.Internal.Graph
   ( gMakeFoundNode, gAllNodes, gHasNodeID, gHasNodeEID, gNodeEID, gNodeID, gMakeNode, gClearAll,
     gLatestFoundNode, gSelectFoundNode, gFinds, gFindsTarget, gHasFoundNodeEID, gAllFoundNode,
     gFilterFoundNodeByTime
   )
+import NetSpider.Spider.Internal.Log (runLogger, logDebug, logWarn)
+import NetSpider.Spider.Internal.Spider (Spider(..))
 import NetSpider.Timestamp (Timestamp, showEpochTime)
 import NetSpider.Unify (LinkSampleUnifier, LinkSample(..), LinkSampleID, linkSampleId)
 
@@ -94,17 +94,6 @@ submitB sp b = Gr.submit (spiderClient sp) script mbs
   where
     (script, bs) = runBinder b
     mbs = Just bs
-
-runLogger :: Spider n na fla -> LoggingT IO a -> IO a
-runLogger spider act = Log.runStderrLoggingT $ Log.filterLogger fil act
-  where
-    fil _ level = level >= (logThreshold $ spiderConfig spider)
-
-logDebug :: Spider n na fla -> Text -> IO ()
-logDebug spider msg = runLogger spider $ Log.logDebugN msg
-
-logWarn :: Spider n na fla -> Text -> IO ()
-logWarn spider msg = runLogger spider $ Log.logWarnN msg
 
 spack :: Show a => a -> Text
 spack = pack . show
@@ -376,6 +365,8 @@ makeSnapshotNode state nid =
       case HM.lookup nid $ ssVisitedNodes state of
        Nothing -> (True, Nothing)
        Just mv -> (False, mv)
+
+-- TODO: WriterLoggingTを使ってログを実装する。
 
 -- | The input 'LinkSample's must be for the equivalent
 -- 'LinkSampleID'. The output is list of 'SnapshotLink's, each of
