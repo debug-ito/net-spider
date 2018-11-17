@@ -18,13 +18,15 @@ module NetSpider.Timestamp
          fromZonedTime,
          fromUTCTime,
          fromSystemTime,
-         fromLocalTime
+         fromLocalTime,
+         showEpochTime
        ) where
 
 import Control.Applicative ((<$>), (<*>), (<*), (*>), optional)
 import Data.Char (isDigit)
 import Data.Int (Int64)
 import Data.List (sortOn)
+import Data.Text (Text, pack)
 import Data.Time.Calendar (Day, fromGregorian)
 import Data.Time.LocalTime
   ( TimeZone(..), getZonedTime, ZonedTime(..), zonedTimeToUTC, LocalTime(LocalTime), localTimeToUTC,
@@ -54,6 +56,10 @@ instance Ord Timestamp where
 -- 'Nothing'.
 fromEpochMillisecond :: Int64 -> Timestamp
 fromEpochMillisecond msec = Timestamp msec Nothing
+
+-- | Show 'epochTime' of 'Timestamp' as 'Text'.
+showEpochTime :: Timestamp -> Text
+showEpochTime = pack . show . epochTime
 
 -- | Get the current system time.
 now :: IO Timestamp
