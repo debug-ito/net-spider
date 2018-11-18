@@ -21,7 +21,7 @@ module NetSpider.Spider
        ) where
 
 import Control.Exception.Safe (throwString)
-import Control.Monad (void, mapM_)
+import Control.Monad (void, mapM_, mapM)
 import Data.Aeson (ToJSON)
 import Data.Foldable (foldr', toList)
 import Data.List (intercalate)
@@ -64,7 +64,10 @@ import NetSpider.Spider.Internal.Graph
     gLatestFoundNode, gSelectFoundNode, gFinds, gFindsTarget, gHasFoundNodeEID, gAllFoundNode,
     gFilterFoundNodeByTime
   )
-import NetSpider.Spider.Internal.Log (runLogger, logDebug, logWarn)
+import NetSpider.Spider.Internal.Log
+  ( runLogger, logDebug, logWarn, LogLine, logLine,
+    runWriterLoggingM, WriterLoggingM
+  )
 import NetSpider.Spider.Internal.Spider (Spider(..))
 import NetSpider.Timestamp (Timestamp, showEpochTime)
 import NetSpider.Unify (LinkSampleUnifier, LinkSample(..), LinkSampleID, linkSampleId)
@@ -159,9 +162,9 @@ getSnapshot :: (FromGraphSON n, ToJSON n, Ord n, Hashable n, Show n, LinkAttribu
 getSnapshot spider query = do
   ref_state <- newIORef $ initSnapshotState $ startsFrom query
   recurseVisitNodesForSnapshot spider query ref_state
-  -- print =<< readIORef ref_state
-  fmap (makeSnapshot $ unifyLinkSamples query) $ readIORef ref_state
-
+  (nodes, links, logs) <- fmap (makeSnapshot $ unifyLinkSamples query) $ readIORef ref_state
+  mapM_ (logLine spider) logs
+  return (nodes, links)
 
 recurseVisitNodesForSnapshot :: (ToJSON n, Ord n, Hashable n, FromGraphSON n, Show n, LinkAttributes fla, NodeAttributes na)
                              => Spider n na fla
@@ -345,13 +348,15 @@ popUnvisitedNode state = (updated, popped)
 makeSnapshot :: (Eq n, Hashable n)
              => LinkSampleUnifier n na fla sla
              -> SnapshotState n na fla
-             -> ([SnapshotNode n na], [SnapshotLink n sla])
-makeSnapshot unifier state = (nodes, links)
+             -> ([SnapshotNode n na], [SnapshotLink n sla], [LogLine])
+makeSnapshot unifier state = (nodes, links, logs)
   where
     nodes = visited_nodes ++ boundary_nodes
     visited_nodes = map (makeSnapshotNode state) $ HM.keys $ ssVisitedNodes state
     boundary_nodes = map (makeSnapshotNode state) $ toList $ ssUnvisitedNodes state
-    links = mconcat $ map (makeSnapshotLinks unifier state) $ HM.elems $ ssVisitedLinks state
+    (links, logs) = runWriterLoggingM $ fmap mconcat
+                    $ mapM (makeSnapshotLinks unifier state) $ HM.elems $ ssVisitedLinks state
+    
 
 makeSnapshotNode :: (Eq n, Hashable n) => SnapshotState n na fla -> n -> SnapshotNode n na
 makeSnapshotNode state nid =
@@ -366,8 +371,6 @@ makeSnapshotNode state nid =
        Nothing -> (True, Nothing)
        Just mv -> (False, mv)
 
--- TODO: WriterLoggingTを使ってログを実装する。
-
 -- | The input 'LinkSample's must be for the equivalent
 -- 'LinkSampleID'. The output is list of 'SnapshotLink's, each of
 -- which corresponds to a subgroup of 'LinkSample's.
@@ -375,10 +378,10 @@ makeSnapshotLinks :: (Eq n, Hashable n)
                   => LinkSampleUnifier n na fla sla
                   -> SnapshotState n na fla
                   -> [LinkSample n fla]
-                  -> [SnapshotLink n sla]
-makeSnapshotLinks _ _ [] = []
+                  -> WriterLoggingM [SnapshotLink n sla]
+makeSnapshotLinks _ _ [] = return []
 makeSnapshotLinks unifier state link_samples@(head_sample : _) =
-  mapMaybe makeSnapshotLink $ doUnify link_samples
+  return $ mapMaybe makeSnapshotLink $ doUnify link_samples
   where
     makeEndNode getter = makeSnapshotNode state $ getter $ head_sample
     doUnify = unifier (makeEndNode lsSubjectNode) (makeEndNode lsTargetNode)
