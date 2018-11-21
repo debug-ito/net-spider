@@ -49,6 +49,7 @@ import qualified Network.Greskell.WebSocket as Gr
 import NetSpider.Graph (EID, LinkAttributes, NodeAttributes)
 import NetSpider.Graph.Internal (VFoundNode(..), EFinds(..))
 import NetSpider.Found (FoundNode(..), FoundLink(..), LinkState(..))
+import NetSpider.Log (runWriterLoggingM, WriterLoggingM, logDebugW, LogLine)
 import NetSpider.Pair (Pair)
 import NetSpider.Queue (Queue, newQueue, popQueue, pushQueue)
 import NetSpider.Query
@@ -65,8 +66,7 @@ import NetSpider.Spider.Internal.Graph
     gFilterFoundNodeByTime
   )
 import NetSpider.Spider.Internal.Log
-  ( runLogger, logDebug, logWarn, LogLine, logLine,
-    runWriterLoggingM, WriterLoggingM, logDebugW
+  ( runLogger, logDebug, logWarn, logLine
   )
 import NetSpider.Spider.Internal.Spider (Spider(..))
 import NetSpider.Timestamp (Timestamp, showEpochTime)
@@ -381,7 +381,7 @@ makeSnapshotLinks :: (Eq n, Hashable n, Show n)
                   -> WriterLoggingM [SnapshotLink n sla]
 makeSnapshotLinks _ _ [] = return []
 makeSnapshotLinks unifier state link_samples@(head_sample : _) = do
-  let unified = doUnify link_samples
+  unified <- doUnify link_samples
   logUnified unified
   return $ mapMaybe makeSnapshotLink unified
   where

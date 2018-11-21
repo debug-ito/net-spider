@@ -28,6 +28,7 @@ import Data.Maybe (mapMaybe)
 import GHC.Exts (groupWith)
 
 import NetSpider.Found (FoundLink, LinkState)
+import NetSpider.Log (WriterLoggingM)
 import NetSpider.Pair (Pair(..))
 import NetSpider.Snapshot (SnapshotNode, nodeTimestamp, nodeId, SnapshotLink)
 import NetSpider.Timestamp (Timestamp)
@@ -86,7 +87,7 @@ linkSampleId l = Pair (lsSubjectNode l, lsTargetNode l)
 --   obtained from both of the end nodes to make the link attributes
 --   of 'SnapshotLink'. This function is supposed to convert the link
 --   attribute type.
-type LinkSampleUnifier n na fla sla = SnapshotNode n na -> SnapshotNode n na -> [LinkSample n fla] -> [LinkSample n sla]
+type LinkSampleUnifier n na fla sla = SnapshotNode n na -> SnapshotNode n na -> [LinkSample n fla] -> WriterLoggingM [LinkSample n sla]
 
 -- | Unify 'LinkSample's to one. This is the sensible unifier if there
 -- is at most one physical link for a given pair of nodes.
@@ -148,7 +149,7 @@ defUnifyStdConfig = UnifyStdConfig
 --    'negatesLinkSample' returns 'True' for either of the end nodes,
 --    the link is removed from the final result.
 unifyStd :: (Eq n, Ord lsid) => UnifyStdConfig n na fla sla lsid -> LinkSampleUnifier n na fla sla
-unifyStd conf lnode rnode = mapMaybe forGroup . groupWith (makeLinkSubId conf)
+unifyStd conf lnode rnode = return . mapMaybe forGroup . groupWith (makeLinkSubId conf)
   where
     forGroup samples = maybeNegates rnode
                        =<< maybeNegates lnode
