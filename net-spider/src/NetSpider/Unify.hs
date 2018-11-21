@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 -- |
 -- Module: NetSpider.Unify
 -- Description: LinkSampleUnifier type
@@ -21,14 +22,16 @@ module NetSpider.Unify
          defNegatesLinkSample
        ) where
 
+import Control.Monad (mapM)
 import Data.Foldable (maximumBy)
 import Data.Function (on)
 import Data.Hashable (Hashable(hashWithSalt))
-import Data.Maybe (mapMaybe)
+import Data.Maybe (catMaybes)
+import Data.Monoid ((<>))
 import GHC.Exts (groupWith)
 
 import NetSpider.Found (FoundLink, LinkState)
-import NetSpider.Log (WriterLoggingM)
+import NetSpider.Log (WriterLoggingM, logDebugW, spack)
 import NetSpider.Pair (Pair(..))
 import NetSpider.Snapshot (SnapshotNode, nodeTimestamp, nodeId, SnapshotLink)
 import NetSpider.Timestamp (Timestamp)
@@ -91,14 +94,14 @@ type LinkSampleUnifier n na fla sla = SnapshotNode n na -> SnapshotNode n na -> 
 
 -- | Unify 'LinkSample's to one. This is the sensible unifier if there
 -- is at most one physical link for a given pair of nodes.
-unifyToOne :: Eq n => LinkSampleUnifier n na la la
+unifyToOne :: (Eq n, Show n) => LinkSampleUnifier n na la la
 unifyToOne = unifyStd defUnifyStdConfig
 
 -- | Unify 'LinkSample's to possibly multiple samples. The input
 -- samples are partitioned to groups based on the link sub-ID, defined
 -- by the given getter function. Each group represents one of the
 -- final samples.
-unifyToMany :: (Eq n, Ord lsid)
+unifyToMany :: (Eq n, Show n, Ord lsid)
             => (LinkSample n fla -> lsid) -- ^ Getter of the link sub-ID
             -> LinkSampleUnifier n na fla fla
 unifyToMany getKey = unifyStd conf
@@ -148,16 +151,31 @@ defUnifyStdConfig = UnifyStdConfig
 -- 3. After merge, the link is checked against its end nodes. If
 --    'negatesLinkSample' returns 'True' for either of the end nodes,
 --    the link is removed from the final result.
-unifyStd :: (Eq n, Ord lsid) => UnifyStdConfig n na fla sla lsid -> LinkSampleUnifier n na fla sla
-unifyStd conf lnode rnode = return . mapMaybe forGroup . groupWith (makeLinkSubId conf)
+unifyStd :: (Eq n, Show n, Ord lsid) => UnifyStdConfig n na fla sla lsid -> LinkSampleUnifier n na fla sla
+unifyStd conf lnode rnode input_samples = do
+  let groups = groupWith (makeLinkSubId conf) input_samples
+  logDebug ( "Group " <> (spack $ length input_samples) <> " samples into "
+             <> (spack $ length groups) <> " groups by link sub-ID."
+           )
+  fmap catMaybes $ mapM forGroup $ zip groups ([0 ..] :: [Int])
   where
-    forGroup samples = maybeNegates rnode
-                       =<< maybeNegates lnode
-                       =<< mergeSamples conf (samplesFor samples lnode) (samplesFor samples rnode)
+    logDebug msg = logDebugW ("unifyStd: " <> msg)
     samplesFor samples sn = filter (\s -> nodeId sn == (lsSubjectNode s)) samples
-    maybeNegates sn sample = if negatesLinkSample conf sn sample
-                             then Nothing
-                             else Just sample
+    forGroup (samples, group_i) = 
+      case mergeSamples conf (samplesFor samples lnode) (samplesFor samples rnode) of
+       Nothing -> do
+         logDebugG ("No link after mergeSamples")
+         return Nothing
+       ml -> maybeNegates rnode =<< maybeNegates lnode ml
+      where
+        logDebugG msg = logDebug ("group " <> spack group_i <> ": "  <> msg)
+        maybeNegates _ Nothing = return Nothing
+        maybeNegates sn (Just sample) =
+          if negatesLinkSample conf sn sample
+          then do
+            logDebugG ("Merged sample is negated by node " <> (spack $ nodeId sn))
+            return Nothing
+          else return $ Just sample
 
 -- | Get the 'LinkSample' that has the latest (biggest) timestamp.
 latestLinkSample :: [LinkSample n la] -> Maybe (LinkSample n la)

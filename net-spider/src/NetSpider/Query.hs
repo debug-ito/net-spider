@@ -63,7 +63,7 @@ data Query n na fla sla =
   }
 
 -- | The default 'Query'.
-defQuery :: Eq n
+defQuery :: (Eq n, Show n)
          => [n] -- ^ 'startsFrom' field.
          -> Query n na fla fla
 defQuery ns = Query
