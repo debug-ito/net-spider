@@ -49,7 +49,7 @@ import qualified Network.Greskell.WebSocket as Gr
 import NetSpider.Graph (EID, LinkAttributes, NodeAttributes)
 import NetSpider.Graph.Internal (VFoundNode(..), EFinds(..))
 import NetSpider.Found (FoundNode(..), FoundLink(..), LinkState(..))
-import NetSpider.Log (runWriterLoggingM, WriterLoggingM, logDebugW, LogLine)
+import NetSpider.Log (runWriterLoggingM, WriterLoggingM, logDebugW, LogLine, spack)
 import NetSpider.Pair (Pair)
 import NetSpider.Queue (Queue, newQueue, popQueue, pushQueue)
 import NetSpider.Query
@@ -97,9 +97,6 @@ submitB sp b = Gr.submit (spiderClient sp) script mbs
   where
     (script, bs) = runBinder b
     mbs = Just bs
-
-spack :: Show a => a -> Text
-spack = pack . show
 
 -- | Clear all content in the NetSpider database. This is mainly for
 -- testing.
