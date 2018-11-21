@@ -66,7 +66,7 @@ import NetSpider.Spider.Internal.Graph
   )
 import NetSpider.Spider.Internal.Log
   ( runLogger, logDebug, logWarn, LogLine, logLine,
-    runWriterLoggingM, WriterLoggingM
+    runWriterLoggingM, WriterLoggingM, logDebugW
   )
 import NetSpider.Spider.Internal.Spider (Spider(..))
 import NetSpider.Timestamp (Timestamp, showEpochTime)
@@ -345,7 +345,7 @@ popUnvisitedNode state = (updated, popped)
     updated = state { ssUnvisitedNodes = updatedUnvisited }
     (popped, updatedUnvisited) = popQueue $ ssUnvisitedNodes state
 
-makeSnapshot :: (Eq n, Hashable n)
+makeSnapshot :: (Eq n, Hashable n, Show n)
              => LinkSampleUnifier n na fla sla
              -> SnapshotState n na fla
              -> ([SnapshotNode n na], [SnapshotLink n sla], [LogLine])
@@ -374,17 +374,24 @@ makeSnapshotNode state nid =
 -- | The input 'LinkSample's must be for the equivalent
 -- 'LinkSampleID'. The output is list of 'SnapshotLink's, each of
 -- which corresponds to a subgroup of 'LinkSample's.
-makeSnapshotLinks :: (Eq n, Hashable n)
+makeSnapshotLinks :: (Eq n, Hashable n, Show n)
                   => LinkSampleUnifier n na fla sla
                   -> SnapshotState n na fla
                   -> [LinkSample n fla]
                   -> WriterLoggingM [SnapshotLink n sla]
 makeSnapshotLinks _ _ [] = return []
-makeSnapshotLinks unifier state link_samples@(head_sample : _) =
-  return $ mapMaybe makeSnapshotLink $ doUnify link_samples
+makeSnapshotLinks unifier state link_samples@(head_sample : _) = do
+  let unified = doUnify link_samples
+  logUnified unified
+  return $ mapMaybe makeSnapshotLink unified
   where
     makeEndNode getter = makeSnapshotNode state $ getter $ head_sample
     doUnify = unifier (makeEndNode lsSubjectNode) (makeEndNode lsTargetNode)
+    logUnified unified = logDebugW ( "Unify link [" <> (spack $ lsSubjectNode head_sample) <> "]-["
+                                     <> (spack $ lsTargetNode head_sample) <> "]: "
+                                     <> "from " <> (spack $ length link_samples) <> " samples "
+                                     <> "to " <> (spack $ length unified) <> " samples"
+                                   )
     makeSnapshotLink unified_sample = do
       case lsLinkState unified_sample of
        LinkUnused -> Nothing

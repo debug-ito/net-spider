@@ -11,7 +11,8 @@ module NetSpider.Spider.Internal.Log
          logWarn,
          LogLine,
          WriterLoggingM,
-         runWriterLoggingM
+         runWriterLoggingM,
+         logDebugW
        ) where
 
 import Control.Monad.Logger (LogLevel, LoggingT)
@@ -42,3 +43,6 @@ type WriterLoggingM = Log.WriterLoggingT Identity
 
 runWriterLoggingM :: WriterLoggingM a -> (a, [LogLine])
 runWriterLoggingM = runIdentity . Log.runWriterLoggingT
+
+logDebugW :: Text -> WriterLoggingM ()
+logDebugW = Log.logDebugN
