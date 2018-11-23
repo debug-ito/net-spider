@@ -3,7 +3,10 @@
 -- Description: Types and functions for basic logging
 -- Maintainer: Toshio Ito <debug.ito@gmail.com>
 --
--- 
+-- This module is rather for internal use, but end-users can use it,
+-- e.g. to implement the unifier.
+--
+-- @since 0.2.0.0
 module NetSpider.Log
        ( LogLine,
          WriterLoggingM,

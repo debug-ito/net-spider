@@ -56,10 +56,14 @@ data Query n na fla sla =
     -- during this interval are used to make the snapshot graph.
     --
     -- Default: (-infinity, +infinity)
+    --
+    -- @since 0.2.0.0
     foundNodePolicy :: FoundNodePolicy n na
     -- ^ Policy to treat 'FoundNode's (local findings).
     --
     -- Default: 'policyOverwrite'
+    --
+    -- @since 0.2.0.0
   }
 
 -- | The default 'Query'.
@@ -75,6 +79,8 @@ defQuery ns = Query
 
 -- | @s `secUpTo` ts@ returns the time interval of length @s@ (in
 -- seconds) and up to @ts@. The interval is inclusive for both ends.
+--
+-- @since 0.2.0.0
 secUpTo :: Int64 -> Timestamp -> Interval Timestamp
 secUpTo len end = Finite start <=..<= Finite end
   where
@@ -85,6 +91,8 @@ secUpTo len end = Finite start <=..<= Finite end
 --
 -- This policy is appropriate when you can always get the complete
 -- neighbor information of a given node at once.
+--
+-- @since 0.2.0.0
 policyOverwrite :: FoundNodePolicy n na
 policyOverwrite = PolicyOverwrite
 
@@ -94,5 +102,7 @@ policyOverwrite = PolicyOverwrite
 --
 -- This policy is appropriate when you can only get part of neighbor
 -- information of a given node at once.
+--
+-- @since 0.2.0.0
 policyAppend :: FoundNodePolicy n na
 policyAppend = PolicyAppend

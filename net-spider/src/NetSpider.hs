@@ -33,7 +33,6 @@
 -- == Utility
 --
 -- * "NetSpider.Pair"
+-- * "NetSpider.Log"
 module NetSpider
        () where
-
-

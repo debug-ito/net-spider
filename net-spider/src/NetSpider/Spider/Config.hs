@@ -36,6 +36,8 @@ data Config n na fla =
     logThreshold :: LogLevel
     -- ^ Logs with the level higher than or equal to this threshold
     -- are printed. Default: 'LevelWarn'.
+    --
+    -- @since 0.2.0.0
   }
 
 defConfig :: Config n na fla

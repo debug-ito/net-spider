@@ -54,24 +54,33 @@ instance Ord Timestamp where
 
 -- | Make 'Timestamp' from milliseconds from the epoch. 'timeZone' is
 -- 'Nothing'.
+--
+-- @since 0.2.0.0
 fromEpochMillisecond :: Int64 -> Timestamp
 fromEpochMillisecond msec = Timestamp msec Nothing
 
 -- | Show 'epochTime' of 'Timestamp' as 'Text'.
+--
+-- @since 0.2.0.0
 showEpochTime :: Timestamp -> Text
 showEpochTime = pack . show . epochTime
 
 -- | Get the current system time.
+--
+-- @since 0.2.0.0
 now :: IO Timestamp
 now = fmap fromZonedTime $ getZonedTime
 
+-- | @since 0.2.0.0
 fromZonedTime :: ZonedTime -> Timestamp
 fromZonedTime zt =
   (fromUTCTime $ zonedTimeToUTC zt) { timeZone = Just $ zonedTimeZone zt }
 
+-- | @since 0.2.0.0
 fromUTCTime :: UTCTime -> Timestamp
 fromUTCTime ut = (fromSystemTime $ utcToSystemTime ut) { timeZone = Just LocalTime.utc }
 
+-- | @since 0.2.0.0
 fromSystemTime :: SystemTime -> Timestamp
 fromSystemTime stime = Timestamp { epochTime = epoch_time,
                                    timeZone = Nothing
@@ -82,14 +91,20 @@ fromSystemTime stime = Timestamp { epochTime = epoch_time,
 
 -- | Covert 'LocalTime' to 'Timestamp' assuming it's in UTC time
 -- zone. The 'timeZone' field is 'Nothing'.
+--
+-- @since 0.2.0.0
 fromLocalTime :: LocalTime -> Timestamp
 fromLocalTime lt = (fromUTCTime $ localTimeToUTC LocalTime.utc lt) { timeZone = Nothing }
 
 -- | Add time difference (in seconds) to the 'Timestamp'.
+--
+-- @since 0.2.0.0
 addSec :: Int64 -> Timestamp -> Timestamp
 addSec diff ts = ts { epochTime = (+ (diff * 1000)) $ epochTime ts }
 
 -- | Unsafe version of 'parseTimestamp'.
+--
+-- @since 0.2.0.0
 fromS :: String -> Timestamp
 fromS s = maybe (error msg) id $ parseTimestamp s
   where
@@ -109,6 +124,8 @@ fromS s = maybe (error msg) id $ parseTimestamp s
 -- Just (915536084211,Just 540)
 -- >>> fmap timeAndOffset $ parseTimestamp "2007/08/20T22:25-07:00"
 -- Just (1187673900000,Just (-420))
+--
+-- @since 0.2.0.0
 parseTimestamp :: String -> Maybe Timestamp
 parseTimestamp s = toTs $ sortByLeftover $ P.readP_to_S parserTimestamp s
   where
