@@ -35,6 +35,7 @@ Maintaining the graph database is delegated to [Tinkerpop Gremlin Server](http:/
 * [Basic usage](#basic-usage)
 * [The Spider type](#the-spider-type)
 * [Node and link attributes](#node-and-link-attributes)
+* [Snapshot graph for a specific time interval](#snapshot-graph-for-a-specific-time-interval)
 * [Multiple links between a pair of nodes](#multiple-links-between-a-pair-of-nodes)
 * [Merge local findings by end nodes of a link](#merge-local-findings-by-end-nodes-of-a-link)
 
@@ -316,6 +317,19 @@ Now let's update the PacketCount. To do that, just add a local finding with a ne
 
 Just like `FoundNode` has `nodeAttributes` field, `FoundLink` has `linkAttributes` field. To store your data type as link attributes, make that data type an instance of `LinkAttributes` class.
 
+## Snapshot graph for a specific time interval
+
+In the above examples, net-spider creates a snapshot graph from the whole history graph. However, local findings in the history graph usually become invalid if they are too old. In that case, you should filter the history graph with a certain time interval.
+
+TODO: make history
+
+
+To specify the time interval, use `getSnapshot` function instead of `getSnapshotSimple`, and pass an apropriate `Query` to it.
+
+
+TODO: send query
+
+
 ## Multiple links between a pair of nodes
 
 By default, net-spider assumes there is at most one link between a pair of nodes. If it is possible in your application that there are more than one links between a pair of nodes, you have to tell `Spider` how to distinguish those links.
@@ -385,7 +399,7 @@ doWithSpider spider = do
   addFoundNode spider finding1
 ```
 
-To get the correct snapshot graph, you have to tell `Spider` to distinguish the links by the port names as well as the switch names. To do that, use `getSnapshot` function instead of `getSnapshotSimple`, and pass an apropriate `Query` to it.
+To get the correct snapshot graph, you have to tell `Spider` to distinguish the links by the port names as well as the switch names. To do that, use `unifyLinkSamples` field in the `Query` object.
 
 ```haskell multi-link
   let linkSubIdWithPorts :: LinkSample Text Ports -> Pair (Text,Text)
