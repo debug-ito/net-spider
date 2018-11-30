@@ -88,7 +88,7 @@ import NetSpider.Spider
   (Spider, connectWS, close, addFoundNode, clearAll, getSnapshotSimple)
 import NetSpider.Found
   (FoundNode(..), FoundLink(..), LinkState(LinkBidirectional))
-import NetSpider.Timestamp (fromEpochSecond)
+import NetSpider.Timestamp (fromEpochMillisecond)
 import NetSpider.Snapshot
   (nodeId, nodeTimestamp, linkNodePair, linkTimestamp)
 
@@ -108,7 +108,7 @@ doWithSpider :: Spider Text () () -> IO ()
 doWithSpider spider = do
   let finding1 = FoundNode
                  { subjectNode = "switch1",
-                   foundAt = fromEpochSecond 1534769618,
+                   foundAt = fromEpochMillisecond 1534769618000,
                    neighborLinks = links1,
                    nodeAttributes = ()
                  }
@@ -134,7 +134,7 @@ OK, let's observe the switch2 and input that local finding as well.
 ```haskell basic
   let finding2 = FoundNode
                  { subjectNode = "switch2",
-                   foundAt = fromEpochSecond 1534770022,
+                   foundAt = fromEpochMillisecond 1534770022000,
                    neighborLinks = links2,
                    nodeAttributes = ()
                  }
@@ -176,8 +176,8 @@ The snapshot graph is expressed as lists of `SnapshotNode`s and `SnapshotLink`s.
                                 "switch3",
                                 "switch4"
                               ]
-  map nodeTimestamp nodes `shouldBe` [ Just $ fromEpochSecond 1534769618,
-                                       Just $ fromEpochSecond 1534770022,
+  map nodeTimestamp nodes `shouldBe` [ Just $ fromEpochMillisecond 1534769618000,
+                                       Just $ fromEpochMillisecond 1534770022000,
                                        Nothing,
                                        Nothing
                                      ]
@@ -185,9 +185,9 @@ The snapshot graph is expressed as lists of `SnapshotNode`s and `SnapshotLink`s.
                                                ("switch1", "switch3"),
                                                ("switch2", "switch4")
                                              ]
-  map linkTimestamp links `shouldBe` [ fromEpochSecond 1534770022,
-                                       fromEpochSecond 1534769618,
-                                       fromEpochSecond 1534770022
+  map linkTimestamp links `shouldBe` [ fromEpochMillisecond 1534770022000,
+                                       fromEpochMillisecond 1534769618000,
+                                       fromEpochMillisecond 1534770022000
                                      ]
 ```
 
@@ -224,7 +224,7 @@ import NetSpider.Spider
   (Spider, connectWS, close, clearAll, addFoundNode, getSnapshotSimple)
 import NetSpider.Found (FoundNode(..), FoundLink(..))
 import NetSpider.Graph (NodeAttributes(..))
-import NetSpider.Timestamp (fromEpochSecond)
+import NetSpider.Timestamp (fromEpochMillisecond)
 import NetSpider.Snapshot (nodeId, nodeTimestamp)
 import qualified NetSpider.Snapshot as Sn
 
@@ -266,7 +266,7 @@ doWithSpider spider = do
   clearAll spider
   let finding1 = FoundNode
                  { subjectNode = "switch1",
-                   foundAt = fromEpochSecond 1536496858,
+                   foundAt = fromEpochMillisecond 1536496858000,
                    neighborLinks = [],
                    nodeAttributes = attrs1
                  }
@@ -282,7 +282,7 @@ Of course, you can retrieve the node attributes in the snapshot graph.
 ```haskell attrs
   (raw_nodes1, []) <- getSnapshotSimple spider "switch1"
   map nodeId raw_nodes1 `shouldBe` ["switch1"]
-  map nodeTimestamp raw_nodes1 `shouldBe` [Just $ fromEpochSecond 1536496858]
+  map nodeTimestamp raw_nodes1 `shouldBe` [Just $ fromEpochMillisecond 1536496858000]
   map Sn.nodeAttributes raw_nodes1 `shouldBe`
     [ Just PacketCount { transmitCount = 15242,
                          receiveCount = 22301
@@ -295,7 +295,7 @@ Now let's update the PacketCount. To do that, just add a local finding with a ne
 ```haskell attrs
   let finding2 = FoundNode
                  { subjectNode = "switch1",
-                   foundAt = fromEpochSecond 1536669543,
+                   foundAt = fromEpochMillisecond 1536669543000,
                    neighborLinks = [],
                    nodeAttributes = attrs2
                  }
@@ -307,7 +307,7 @@ Now let's update the PacketCount. To do that, just add a local finding with a ne
   
   (raw_nodes2, []) <- getSnapshotSimple spider "switch1"
   map nodeId raw_nodes2 `shouldBe` ["switch1"]
-  map nodeTimestamp raw_nodes2 `shouldBe` [Just $ fromEpochSecond 1536669543]
+  map nodeTimestamp raw_nodes2 `shouldBe` [Just $ fromEpochMillisecond 1536669543000]
   map Sn.nodeAttributes raw_nodes2 `shouldBe`
     [ Just PacketCount { transmitCount = 20112,
                          receiveCount = 28544
@@ -319,12 +319,50 @@ Just like `FoundNode` has `nodeAttributes` field, `FoundLink` has `linkAttribute
 
 ## Snapshot graph for a specific time interval
 
-In the above examples, net-spider creates a snapshot graph from the whole history graph. However, local findings in the history graph usually become invalid if they are too old. In that case, you should filter the history graph with a certain time interval.
+In the above examples, net-spider creates a snapshot graph that expresses the latest state of the network. You can get a snapshot graph at a specific time in past by specifying the time interval of your query.
 
-TODO: make history
+```haskell time-interval
+import NetSpider.Spider
+  (Spider, connectWS, close, clearAll, addFoundNode, getSnapshot)
+import NetSpider.Found (FoundNode(..), FoundLink(..), LinkState(LinkBidirectional))
+import NetSpider.Timestamp (fromEpochMillisecond)
 
+main = hspec $ specify "node attributes" $ do
+  (host, port) <- needEnvHostPort Need "NET_SPIDER_TEST"
+  bracket (connectWS host port) close $ doWithSpider
 
-To specify the time interval, use `getSnapshot` function instead of `getSnapshotSimple`, and pass an apropriate `Query` to it.
+doWithSpider :: Spider Text () () -> IO ()
+doWithSpider spider = do
+  clearAll spider
+  let finding1 = FoundNode
+                 { subjectNode = "switch1",
+                   foundAt = fromEpochMillisecond 1543537000000,
+                   nodeAttributes = (),
+                   neighborLinks = [link2]
+                 }
+      finding2 = FoundNode
+                 { subjectNode = "switch1",
+                   foundAt = fromEpochMillisecond 1543539000000,
+                   nodeAttributes = (),
+                   neighborLinks = [link2, link3]
+                 }
+      link2 = FoundLink
+              { targetNode = "switch2",
+                linkState = LinkBidirectional,
+                linkAttributes = ()
+              }
+      link3 = FoundLink
+              { targetNode = "switch3",
+                linkState = LinkBidirectional,
+                linkAttributes = ()
+              }
+  addFoundNode spider finding1
+  addFoundNode spider finding2
+```
+
+In the above example, "switch1" had only one link to "switch2" at first, but 200 seconds later it also got a link to "switch3".
+
+To get the snapshot graph of the old state of the network, use `getSnapshot` function instead of `getSnapshotSimple`. `getSnapshot` function takes a `Query` object, in which you can specify the time interval for the history graph.
 
 
 TODO: send query
@@ -349,7 +387,7 @@ import NetSpider.Snapshot (linkNodeTuple)
 import qualified NetSpider.Snapshot as Sn
 import NetSpider.Spider
   (Spider, connectWS, close, clearAll, addFoundNode, getSnapshot)
-import NetSpider.Timestamp (fromEpochSecond)
+import NetSpider.Timestamp (fromEpochMillisecond)
 import NetSpider.Unify (LinkSample(..), unifyStd, defUnifyStdConfig, makeLinkSubId)
 
 data Ports =
@@ -381,7 +419,7 @@ doWithSpider spider = do
   clearAll spider
   let finding1 = FoundNode
                  { subjectNode = "switch1",
-                   foundAt = fromEpochSecond 1536842590,
+                   foundAt = fromEpochMillisecond 1536842590000,
                    neighborLinks = links1,
                    nodeAttributes = ()
                  }
@@ -447,7 +485,7 @@ import NetSpider.Snapshot
 import qualified NetSpider.Snapshot as Sn
 import NetSpider.Spider
   (Spider, connectWS, close, clearAll, addFoundNode, getSnapshot)
-import NetSpider.Timestamp (fromEpochSecond)
+import NetSpider.Timestamp (fromEpochMillisecond)
 import NetSpider.Unify
   ( LinkSample(lsLinkAttributes),
     unifyStd, defUnifyStdConfig, mergeSamples, latestLinkSample,
@@ -481,7 +519,7 @@ inputFindings spider = do
   clearAll spider
   let finding1 = FoundNode
                  { subjectNode = "switch1",
-                   foundAt = fromEpochSecond 1537189070,
+                   foundAt = fromEpochMillisecond 1537189070000,
                    nodeAttributes = (),
                    neighborLinks = [link1]
                  }
@@ -492,7 +530,7 @@ inputFindings spider = do
               }
       finding2 = FoundNode
                  { subjectNode = "switch2",
-                   foundAt = fromEpochSecond 1537189388,
+                   foundAt = fromEpochMillisecond 1537189388000,
                    nodeAttributes = (),
                    neighborLinks = [link2]
                  }
@@ -561,7 +599,7 @@ inspectSnapshot spider = do
   length raw_links `shouldBe` 1
   let [got_link] = raw_links
   linkNodeTuple got_link `shouldBe` ("switch2", "switch1")
-  linkTimestamp got_link `shouldBe` fromEpochSecond 1537189388
+  linkTimestamp got_link `shouldBe` fromEpochMillisecond 1537189388000
   [sourceNodeRxSignal got_link, destNodeRxSignal got_link] `shouldMatchList`
     [("switch1", Just $ RxSignal (-4.3)), ("switch2", Just $ RxSignal (-5.5))]
 ```

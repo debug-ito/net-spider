@@ -69,6 +69,23 @@ test-suite readme-attrs
   else
     buildable: False
 
+test-suite readme-time-interval
+  type:                 exitcode-stdio-1.0
+  default-language:     Haskell2010
+  ghc-options:          -Wall -fno-warn-unused-imports "-with-rtsopts=-M512m" -fno-warn-missing-signatures -pgmL markdown-unlit
+                        "-optL=common time-interval"
+  main-is:              README.lhs
+  other-extensions:     OverloadedStrings
+  if flag(server-test)
+    build-depends:        base,
+                          hspec, 
+                          net-spider, safe-exceptions, hspec-need-env, text,
+                          markdown-unlit,
+                          greskell
+  else
+    buildable: False
+
+
 test-suite readme-multi-link
   type:                 exitcode-stdio-1.0
   default-language:     Haskell2010
