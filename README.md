@@ -319,12 +319,14 @@ Just like `FoundNode` has `nodeAttributes` field, `FoundLink` has `linkAttribute
 
 ## Snapshot graph for a specific time interval
 
-In the above examples, net-spider creates a snapshot graph that expresses the latest state of the network. You can get a snapshot graph at a specific time in past by specifying the time interval of your query.
+In the above examples, net-spider creates a snapshot graph that expresses the latest state of the network. You can also get a snapshot graph at a specific time in past by specifying the time interval of your query.
 
 ```haskell time-interval
 import NetSpider.Spider
   (Spider, connectWS, close, clearAll, addFoundNode, getSnapshot)
 import NetSpider.Found (FoundNode(..), FoundLink(..), LinkState(LinkBidirectional))
+import NetSpider.Query (defQuery, timeInterval, Extended(NegInf, Finite), (<=..<=))
+import NetSpider.Snapshot (linkNodeTuple)
 import NetSpider.Timestamp (fromEpochMillisecond)
 
 main = hspec $ specify "node attributes" $ do
@@ -365,7 +367,19 @@ In the above example, "switch1" had only one link to "switch2" at first, but 200
 To get the snapshot graph of the old state of the network, use `getSnapshot` function instead of `getSnapshotSimple`. `getSnapshot` function takes a `Query` object, in which you can specify the time interval for the history graph.
 
 
-TODO: send query
+```haskell time-interval
+  let query = (defQuery ["switch1"]) { timeInterval = time_interval }
+      time_interval = NegInf <=..<= Finite (fromEpochMillisecond 1543538000000)
+  (_, raw_links) <- getSnapshot spider query
+```
+
+Above, we make a query for a time interval of (-∞ <= t <= 1543538000000). This exludes the local finding that observes a link to "switch3".
+
+```haskell time-interval
+  map linkNodeTuple raw_links `shouldBe` [("switch1", "switch2")]
+```
+
+By limiting the upper bound of the time interval of the query, you can get a snapshot graph in past.
 
 
 ## Multiple links between a pair of nodes
