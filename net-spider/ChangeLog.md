@@ -3,6 +3,7 @@
 ## 0.2.0.0  --
 
 * Add `Log` module.
+* Confirmed test with base-4.12, time-1.9, containers-0.6
 
 ### Query module
 
