@@ -1,6 +1,6 @@
 # Revision history for net-spider
 
-## 0.2.0.0  --
+## 0.2.0.0  -- 2018-12-10
 
 * Add `Log` module.
 * Confirmed test with base-4.12, time-1.9, containers-0.6
@@ -41,6 +41,7 @@
   monad.
 * [BREAKING CHANGE] Now `unifyToOne`, `unifyToMany` and `unifyStd`
   require `(Show n)` constraint.
+
 
 ## 0.1.0.0  -- 2018-09-24
 
