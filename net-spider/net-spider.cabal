@@ -20,7 +20,8 @@ library
   -- default-extensions:   
   other-extensions:     OverloadedStrings,
                         GeneralizedNewtypeDeriving,
-                        TypeFamilies
+                        TypeFamilies,
+                        FlexibleInstances
   exposed-modules:      NetSpider,
                         NetSpider.Input,
                         NetSpider.Output,
