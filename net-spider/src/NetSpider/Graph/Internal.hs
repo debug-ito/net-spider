@@ -1,4 +1,4 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving, TypeFamilies, OverloadedStrings #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving, TypeFamilies, OverloadedStrings, FlexibleInstances #-}
 -- |
 -- Module: NetSpider.Graph.Internal
 -- Description: 
@@ -25,8 +25,10 @@ import Data.Greskell
     AVertexProperty(..), AVertex(..), AProperty, AEdge(..),
     Walk, SideEffect,
     Binder, Parser, PropertyMapList, PropertyMapSingle, GValue,
-    gIdentity
+    gIdentity, gProperty,
+    newBind, allProperties, propertyKey, propertyValue
   )
+import qualified Data.Greskell as Greskell
 import Data.Text (Text, unpack)
 import Data.Time.LocalTime (TimeZone(..))
 
@@ -142,6 +144,14 @@ class NodeAttributes ps where
 instance NodeAttributes () where
   writeNodeAttributes _ = return gIdentity
   parseNodeAttributes _ = return ()
+
+instance (FromGraphSON v, ToJSON v) => NodeAttributes (PropertyMapList AVertexProperty v) where
+  writeNodeAttributes ps = fmap mconcat $ mapM toPropStep $ allProperties ps
+    where
+      toPropStep prop = do
+        bval <- newBind $ propertyValue prop
+        return $ gProperty (Greskell.key $ propertyKey prop) bval
+  parseNodeAttributes = traverse parseGraphSON
 
 -- | Class of user-defined types for link attributes. Its content is
 -- stored in the NetSpider database.
