@@ -146,6 +146,7 @@ instance NodeAttributes () where
   writeNodeAttributes _ = return gIdentity
   parseNodeAttributes _ = return ()
 
+-- | Straightforward implementation.
 instance (FromGraphSON v, ToJSON v) => NodeAttributes (PropertyMapList AVertexProperty v) where
   writeNodeAttributes = writeAllProperties
   parseNodeAttributes = traverse parseGraphSON
@@ -162,4 +163,9 @@ class LinkAttributes ps where
 instance LinkAttributes () where
   writeLinkAttributes _ = return gIdentity
   parseLinkAttributes _ = return ()
+
+-- | Straightforward implementation
+instance (FromGraphSON v, ToJSON v) => LinkAttributes (PropertyMapSingle AProperty v) where
+  writeLinkAttributes = writeAllProperties
+  parseLinkAttributes = traverse parseGraphSON
   
