@@ -29,6 +29,7 @@ import Data.Greskell
     newBind, allProperties, propertyKey, propertyValue
   )
 import qualified Data.Greskell as Greskell
+import Data.Greskell.Extra (writeAllProperties)
 import Data.Text (Text, unpack)
 import Data.Time.LocalTime (TimeZone(..))
 
@@ -146,11 +147,7 @@ instance NodeAttributes () where
   parseNodeAttributes _ = return ()
 
 instance (FromGraphSON v, ToJSON v) => NodeAttributes (PropertyMapList AVertexProperty v) where
-  writeNodeAttributes ps = fmap mconcat $ mapM toPropStep $ allProperties ps
-    where
-      toPropStep prop = do
-        bval <- newBind $ propertyValue prop
-        return $ gProperty (Greskell.key $ propertyKey prop) bval
+  writeNodeAttributes = writeAllProperties
   parseNodeAttributes = traverse parseGraphSON
 
 -- | Class of user-defined types for link attributes. Its content is
