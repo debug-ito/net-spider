@@ -8,7 +8,8 @@ module NetSpider.Pangraph
        ( makePangraph,
          makeVertex,
          makeEdge,
-         ToAttributes(..)
+         ToAttributes(..),
+         spackBS
        ) where
 
 import Data.ByteString (ByteString)
@@ -24,7 +25,7 @@ import qualified Pangraph as P
 makeVertex :: (Show n, ToAttributes na) => SnapshotNode n na -> P.Vertex
 makeVertex sn = P.makeVertex vid attrs
   where
-    vid = spack $ nodeId sn
+    vid = spackBS $ nodeId sn
     attrs = case nodeAttributes sn of
       Nothing -> []
       Just a -> toAttributes a
@@ -33,8 +34,8 @@ makeVertex sn = P.makeVertex vid attrs
 makeEdge :: (Show n, ToAttributes la) => SnapshotLink n la -> P.Edge
 makeEdge sl = P.makeEdge (src, dest) attrs
   where
-    src = spack $ sourceNode sl
-    dest = spack $ destinationNode sl
+    src = spackBS $ sourceNode sl
+    dest = spackBS $ destinationNode sl
     attrs = toAttributes $ linkAttributes sl
     -- how about timestamp and isLinkDirected?
 
@@ -42,8 +43,8 @@ makePangraph :: (Show n, ToAttributes na, ToAttributes la)
              => [SnapshotNode n na] -> [SnapshotLink n la] -> Maybe P.Pangraph
 makePangraph ns ls = P.makePangraph (map makeVertex ns) (map makeEdge ls)
 
-spack :: Show a => a -> ByteString
-spack = encodeUtf8 . pack . show
+spackBS :: Show a => a -> ByteString
+spackBS = encodeUtf8 . pack . show
 
 -- | Data types that can be converted into a list of Pangraph
 -- 'P.Attribute's.
@@ -56,4 +57,4 @@ instance ToAttributes () where
 
 -- | Show key and value to make 'P.Attribute'.
 instance (Show k, Show v) => ToAttributes [(k,v)] where
-  toAttributes = map (\(k, v) -> (spack k, spack v))
+  toAttributes = map (\(k, v) -> (spackBS k, spackBS v))
