@@ -15,6 +15,7 @@ module NetSpider.Pangraph
        ) where
 
 import Data.ByteString (ByteString)
+import Data.Greskell.Graph (PropertyMap(allProperties), Property(..))
 import Data.Text (pack)
 import Data.Text.Encoding (encodeUtf8)
 import Data.Time.LocalTime (TimeZone(..))
@@ -98,3 +99,8 @@ instance ToAttributes () where
 -- | Make 'P.Attribute' from key-value pairs.
 instance (ToAtom k, ToAtom v) => ToAttributes [(k,v)] where
   toAttributes = map (\(k, v) -> (toAtom k, toAtom v))
+
+instance (PropertyMap m, Property p, ToAtom v) => ToAttributes (m p v) where
+  toAttributes = toAttributes . map toPair . allProperties
+    where
+      toPair p = (propertyKey p, propertyValue p)

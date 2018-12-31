@@ -27,7 +27,8 @@ library
                         bytestring,
                         text,
                         pangraph,
-                        time
+                        time,
+                        greskell
 
 -- executable net-spider-pangraph
 --   default-language:     Haskell2010
