@@ -19,7 +19,8 @@ library
   ghc-options:          -Wall -fno-warn-unused-imports
   -- default-extensions:   
   other-extensions:     FlexibleInstances, OverloadedStrings
-  exposed-modules:      NetSpider.Pangraph
+  exposed-modules:      NetSpider.Pangraph,
+                        NetSpider.Pangraph.Atom
   -- other-modules:        
   build-depends:        base,
                         net-spider,

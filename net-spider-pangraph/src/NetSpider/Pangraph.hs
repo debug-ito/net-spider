@@ -11,7 +11,6 @@ module NetSpider.Pangraph
          makeEdge,
          ToAttributes(..),
          -- * Utility
-         spackBS,
          timestampAttributes
        ) where
 
@@ -26,6 +25,8 @@ import NetSpider.Snapshot
   )
 import NetSpider.Timestamp (Timestamp(..), showEpochTime)
 import qualified Pangraph as P
+
+import NetSpider.Pangraph.Atom (ToAtom(..))
 
 -- | Make Pangraph 'P.Attribute's from 'Timestamp'.
 --
@@ -42,8 +43,8 @@ timestampAttributes ts = epoch : tz_attrs
     epoch = ("@timestamp", encodeUtf8 $ showEpochTime ts)
     tz_attrs = case timeZone ts of
       Nothing -> []
-      Just tz -> [ ("@tz_offset_min", spackBS $ timeZoneMinutes tz),
-                   ("@tz_summer_only", spackBS $ timeZoneSummerOnly tz),
+      Just tz -> [ ("@tz_offset_min", toAtom $ timeZoneMinutes tz),
+                   ("@tz_summer_only", toAtom $ timeZoneSummerOnly tz),
                    ("@tz_name", encodeUtf8 $ pack $ timeZoneName tz)
                  ]
 
@@ -57,12 +58,12 @@ maybeList (Just l) = l
 -- 'P.Vertex'. 'nodeTimestamp' is converted by 'timestampAttributes',
 -- if present. 'isOnBoundary' is stored as \"\@is_on_boundary\"
 -- attribute, if present.  respectively.
-makeVertex :: (Show n, ToAttributes na) => SnapshotNode n na -> P.Vertex
+makeVertex :: (ToAtom n, ToAttributes na) => SnapshotNode n na -> P.Vertex
 makeVertex sn = P.makeVertex vid attrs
   where
-    vid = spackBS $ nodeId sn
+    vid = toAtom $ nodeId sn
     attrs = (maybeList $ fmap timestampAttributes $ nodeTimestamp sn)
-            ++ [("@is_on_boundary", spackBS $ isOnBoundary sn)]
+            ++ [("@is_on_boundary", toAtom $ isOnBoundary sn)]
             ++ (maybeList $ fmap toAttributes $ nodeAttributes sn)
 
 -- | Make Pangraph 'P.Edge' from 'SnapshotLink'.
@@ -71,24 +72,19 @@ makeVertex sn = P.makeVertex vid attrs
 -- 'P.Edge'. 'linkTimestamp' is converted by
 -- 'timestampAttributes'. 'isDirected' is stored as \"\@is_directed\"
 -- attribute..
-makeEdge :: (Show n, ToAttributes la) => SnapshotLink n la -> P.Edge
+makeEdge :: (ToAtom n, ToAttributes la) => SnapshotLink n la -> P.Edge
 makeEdge sl = P.makeEdge (src, dest) attrs
   where
-    src = spackBS $ sourceNode sl
-    dest = spackBS $ destinationNode sl
+    src = toAtom $ sourceNode sl
+    dest = toAtom $ destinationNode sl
     attrs = (timestampAttributes $ linkTimestamp sl)
-            ++ [("@is_directed", spackBS $ isDirected sl)]
+            ++ [("@is_directed", toAtom $ isDirected sl)]
             ++ (toAttributes $ linkAttributes sl)
 
 -- | Make a 'P.Pangraph'.
-makePangraph :: (Show n, ToAttributes na, ToAttributes la)
+makePangraph :: (ToAtom n, ToAttributes na, ToAttributes la)
              => [SnapshotNode n na] -> [SnapshotLink n la] -> Maybe P.Pangraph
 makePangraph ns ls = P.makePangraph (map makeVertex ns) (map makeEdge ls)
-
--- | 'show' the argument, encode it in UTF-8 and 'pack' to
--- 'ByteString'.
-spackBS :: Show a => a -> ByteString
-spackBS = encodeUtf8 . pack . show
 
 -- | Data types that can be converted into a list of Pangraph
 -- 'P.Attribute's.
@@ -99,6 +95,6 @@ class ToAttributes a where
 instance ToAttributes () where
   toAttributes () = []
 
--- | Show key and value to make 'P.Attribute'.
-instance (Show k, Show v) => ToAttributes [(k,v)] where
-  toAttributes = map (\(k, v) -> (spackBS k, spackBS v))
+-- | Make 'P.Attribute' from key-value pairs.
+instance (ToAtom k, ToAtom v) => ToAttributes [(k,v)] where
+  toAttributes = map (\(k, v) -> (toAtom k, toAtom v))
