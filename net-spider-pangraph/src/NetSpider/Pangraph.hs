@@ -7,14 +7,17 @@
 module NetSpider.Pangraph
        ( -- * Converters
          makePangraph,
+         makePangraphIO,
          makeVertex,
          makeEdge,
          ToAttributes(..),
          -- * Utility
-         timestampAttributes
+         timestampAttributes,
+         writePangraph
        ) where
 
 import Data.ByteString (ByteString)
+import qualified Data.ByteString as BS
 import Data.Greskell.Graph (PropertyMap(allProperties), Property(..))
 import Data.Text (pack)
 import Data.Text.Encoding (encodeUtf8)
@@ -26,6 +29,8 @@ import NetSpider.Snapshot
   )
 import NetSpider.Timestamp (Timestamp(..), showEpochTime)
 import qualified Pangraph as P
+import qualified Pangraph.GraphML.Writer as GraphML
+import System.IO.Error (userError, ioError)
 
 import NetSpider.Pangraph.Atom (ToAtom(..))
 
@@ -104,3 +109,15 @@ instance (PropertyMap m, Property p, ToAtom v) => ToAttributes (m p v) where
   toAttributes = toAttributes . map toPair . allProperties
     where
       toPair p = (propertyKey p, propertyValue p)
+
+-- | Like 'makePangraph', but result of 'Nothing' is converted to an
+-- IO exception.
+makePangraphIO :: (ToAtom n, ToAttributes na, ToAttributes la)
+               => [SnapshotNode n na] -> [SnapshotLink n la] -> IO P.Pangraph
+makePangraphIO ns ls = case makePangraph ns ls of
+                         Just p -> return p
+                         Nothing -> ioError $ userError ("Malformed graph")
+
+-- | Write 'P.Pangraph' to the given file in GraphML format.
+writePangraph :: P.Pangraph -> FilePath -> IO ()
+writePangraph p file = BS.writeFile file $ GraphML.write p
