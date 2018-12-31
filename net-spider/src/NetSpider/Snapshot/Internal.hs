@@ -1,9 +1,12 @@
 -- |
 -- Module: NetSpider.Snapshot.Internal
--- Description: 
+-- Description: Implementation of Snapshot graph types
 -- Maintainer: Toshio Ito <debug.ito@gmail.com>
 --
 -- __this module is internal. End-users should not use this.__
+--
+-- Implementation of Snapshot graph types. This module is for internal
+-- and testing purposes only.
 module NetSpider.Snapshot.Internal
        ( SnapshotLink(..),
          linkNodeTuple,
