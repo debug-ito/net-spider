@@ -47,7 +47,7 @@ test-suite spec
   -- default-extensions:   
   -- other-extensions:     
   other-modules:        NetSpider.PangraphSpec
-  build-depends:        base, net-spider-pangraph,
+  build-depends:        base, net-spider-pangraph, text, pangraph, net-spider,
                         hspec
 
 test-suite doctest
