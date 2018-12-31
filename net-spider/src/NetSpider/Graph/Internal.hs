@@ -146,7 +146,8 @@ instance NodeAttributes () where
   writeNodeAttributes _ = return gIdentity
   parseNodeAttributes _ = return ()
 
--- | Straightforward implementation.
+-- | Straightforward implementation. Note that 'writeNodeAttributes'
+-- does not write meta-properties of the 'AVertexProperty'.
 instance (FromGraphSON v, ToJSON v) => NodeAttributes (PropertyMapList AVertexProperty v) where
   writeNodeAttributes = writeAllProperties
   parseNodeAttributes = traverse parseGraphSON
