@@ -18,10 +18,14 @@ library
   hs-source-dirs:       src
   ghc-options:          -Wall -fno-warn-unused-imports
   -- default-extensions:   
-  -- other-extensions:     
+  other-extensions:     FlexibleInstances
   exposed-modules:      NetSpider.Pangraph
   -- other-modules:        
-  build-depends:        base
+  build-depends:        base,
+                        net-spider,
+                        bytestring,
+                        text,
+                        pangraph
 
 -- executable net-spider-pangraph
 --   default-language:     Haskell2010
