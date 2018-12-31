@@ -14,17 +14,33 @@ module NetSpider.Pangraph
 import Data.ByteString (ByteString)
 import Data.Text (pack)
 import Data.Text.Encoding (encodeUtf8)
-import NetSpider.Snapshot (SnapshotNode, SnapshotLink)
+import NetSpider.Snapshot
+  ( SnapshotNode, SnapshotLink,
+    nodeId, nodeAttributes,
+    sourceNode, destinationNode, linkAttributes
+  )
 import qualified Pangraph as P
 
-makeVertex :: SnapshotNode n na -> P.Vertex
-makeVertex = undefined
+makeVertex :: (Show n, ToAttributes na) => SnapshotNode n na -> P.Vertex
+makeVertex sn = P.makeVertex vid attrs
+  where
+    vid = spack $ nodeId sn
+    attrs = case nodeAttributes sn of
+      Nothing -> []
+      Just a -> toAttributes a
+    -- how about timestamp and isBoundary?
 
-makeEdge :: SnapshotLink n fla -> P.Edge
-makeEdge = undefined
+makeEdge :: (Show n, ToAttributes la) => SnapshotLink n la -> P.Edge
+makeEdge sl = P.makeEdge (src, dest) attrs
+  where
+    src = spack $ sourceNode sl
+    dest = spack $ destinationNode sl
+    attrs = toAttributes $ linkAttributes sl
+    -- how about timestamp and isLinkDirected?
 
-makePangraph :: [SnapshotNode n na] -> [SnapshotLink n fla] -> Maybe P.Pangraph
-makePangraph = undefined
+makePangraph :: (Show n, ToAttributes na, ToAttributes la)
+             => [SnapshotNode n na] -> [SnapshotLink n la] -> Maybe P.Pangraph
+makePangraph ns ls = P.makePangraph (map makeVertex ns) (map makeEdge ls)
 
 spack :: Show a => a -> ByteString
 spack = encodeUtf8 . pack . show
