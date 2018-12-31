@@ -35,7 +35,7 @@ library
                         NetSpider.Pair,
                         NetSpider.Query,
                         NetSpider.Log,
-                        NetSpider.Snapshot.Internal,
+                        NetSpider.Snapshot.Internal
   other-modules:        NetSpider.Graph.Internal,
                         NetSpider.Spider.Internal.Graph,
                         NetSpider.Spider.Internal.Log,
