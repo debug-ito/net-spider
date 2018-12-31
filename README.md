@@ -218,7 +218,8 @@ Nodes and links in your history graph can have time-varying attributes. You can 
 For example, let's monitor the total number of packets that the switch has transmitted and received. First, we define the data type for the node attributes.
 
 ```haskell attrs
-import Data.Greskell (newBind, gProperty, parseOneValue)
+import Data.Greskell (parseOneValue)
+import Data.Greskell.Extra (writePropertyKeyValues)
 
 import NetSpider.Spider
   (Spider, connectWS, close, clearAll, addFoundNode, getSnapshotSimple)
@@ -241,10 +242,10 @@ Second, make it instance of `NodeAttributes` class and implement its methods. Th
 
 ```haskell attrs
 instance NodeAttributes PacketCount where
-  writeNodeAttributes packet_count = do
-    tx_count <- newBind $ transmitCount packet_count
-    rx_count <- newBind $ receiveCount packet_count
-    return (gProperty "tx_count" tx_count <<< gProperty "rx_count" rx_count)
+  writeNodeAttributes packet_count =
+    writePropertyKeyValues [ ("tx_count", transmitCount packet_count),
+                             ("rx_count", receiveCount packet_count)
+                           ]
   parseNodeAttributes props =
     PacketCount
     <$> parseOneValue "tx_count" props
@@ -391,7 +392,8 @@ For example, if you use link aggregation, you often connect a pair of switches w
 So, let's define the data type for port names first.
 
 ```haskell multi-link
-import Data.Greskell (newBind, gProperty, parseOneValue)
+import Data.Greskell (parseOneValue)
+import Data.Greskell.Extra (writePropertyKeyValues)
 
 import NetSpider.Found (FoundNode(..), FoundLink(..), LinkState(..))
 import NetSpider.Graph (LinkAttributes(..))
@@ -412,10 +414,10 @@ data Ports =
   deriving (Show,Eq,Ord)
 
 instance LinkAttributes Ports where
-  writeLinkAttributes ports = do
-    sp <- newBind $ subjectPort ports
-    tp <- newBind $ targetPort ports
-    return $ gProperty "sport" sp <<< gProperty "tport" tp
+  writeLinkAttributes ports =
+    writePropertyKeyValues [ ("sport", subjectPort ports),
+                             ("tport", targetPort ports)
+                           ]
   parseLinkAttributes props =
     Ports <$> parseOneValue "sport" props <*> parseOneValue "tport" props
 ```
