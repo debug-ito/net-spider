@@ -18,10 +18,14 @@ library
   hs-source-dirs:       src
   ghc-options:          -Wall -fno-warn-unused-imports
   -- default-extensions:   
-  -- other-extensions:     
+  other-extensions:     OverloadedStrings
   exposed-modules:      NetSpider.RPL
   -- other-modules:        
-  build-depends:        base
+  build-depends:        base,
+                        aeson,
+                        greskell,
+                        net-spider,
+                        text
 
 -- executable net-spider-rpl
 --   default-language:     Haskell2010
