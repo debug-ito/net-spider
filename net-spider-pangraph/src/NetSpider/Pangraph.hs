@@ -1,7 +1,7 @@
 {-# LANGUAGE FlexibleInstances, OverloadedStrings #-}
 -- |
 -- Module: NetSpider.Pangraph
--- Description:
+-- Description: Conversion between NetSpider and Pangraph
 -- Maintainer: Toshio Ito <debug.ito@gmail.com>
 -- 
 module NetSpider.Pangraph
