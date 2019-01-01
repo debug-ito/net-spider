@@ -9,11 +9,17 @@ module NetSpider.RPL
          LocalNode(..),
          SRNode(..),
          RPLNode(..),
+         FindingType(..),
+         nodeFindingType,
          NeighborType(..),
          RSSI,
          LocalLink(..),
          SRLink(..),
-         RPLLink(..)
+         RPLLink(..),
+         linkFindingType,
+         MergedRPLLink(..),
+         MergedLocalLink(..),
+         rplUnifierConf
        ) where
 
 import Data.Aeson (ToJSON(toJSON))
@@ -27,6 +33,8 @@ import Data.Greskell.Extra (writePropertyKeyValues)
 import Data.Monoid ((<>))
 import Data.Text (Text, unpack)
 import NetSpider.Graph (NodeAttributes(..), LinkAttributes(..))
+import NetSpider.Unify (UnifyStdConfig, lsLinkAttributes)
+import qualified NetSpider.Unify as Unify
 
 type Rank = Word
 
@@ -46,6 +54,10 @@ data RPLNode = RPLLocalNode LocalNode
 data FindingType = FindingLocal
                  | FindingSR
                  deriving (Show,Eq,Ord)
+
+nodeFindingType :: RPLNode -> FindingType
+nodeFindingType (RPLLocalNode _) = FindingLocal
+nodeFindingType (RPLSRNode _) = FindingSR
 
 parseText :: (PropertyMap m, Property p) => Text -> m p GValue -> Parser Text
 parseText key = parseOneValue key
@@ -132,6 +144,10 @@ data RPLLink = RPLLocalLink LocalLink
              | RPLSRLink SRLink
              deriving (Show,Eq,Ord)
 
+linkFindingType :: RPLLink -> FindingType
+linkFindingType (RPLLocalLink _) = FindingLocal
+linkFindingType (RPLSRLink _) = FindingSR
+
 instance LinkAttributes RPLLink where
   writeLinkAttributes (RPLLocalLink ll) = do
     ft_steps <- writeFindingTypeProps FindingLocal
@@ -155,4 +171,25 @@ instance LinkAttributes RPLLink where
         <*> parseOneValue "metric" ps
         <*> parseOneValue "rssi" ps
       parseSR = return $ RPLSRLink SRLink
+
+data MergedLocalLink =
+  MergedLocalLink
+  { fromSource :: !LocalLink,
+    fromDest :: !LocalLink
+  }
+  deriving (Show,Eq,Ord)
+
+data MergedRPLLink = MergedRPLLocalLink MergedLocalLink
+                   | MergedRPLSRLink SRLink
+                   deriving (Show,Eq,Ord)
+
+rplUnifierConf :: Eq n => UnifyStdConfig n RPLNode RPLLink MergedRPLLink FindingType
+rplUnifierConf = Unify.UnifyStdConfig
+                 { Unify.makeLinkSubId = makeSubId,
+                   Unify.mergeSamples = merger,
+                   Unify.negatesLinkSample = \_ _ -> False
+                 }
+  where
+    makeSubId ls = linkFindingType $ lsLinkAttributes ls
+    merger = undefined -- TODO
     
