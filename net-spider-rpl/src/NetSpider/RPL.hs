@@ -43,22 +43,50 @@ data RPLNode = RPLLocalNode LocalNode
              | RPLSRNode SRNode
              deriving (Show,Eq,Ord)
 
+data FindingType = FindingLocal
+                 | FindingSR
+                 deriving (Show,Eq,Ord)
+
 parseText :: (PropertyMap m, Property p) => Text -> m p GValue -> Parser Text
 parseText key = parseOneValue key
 
+writeFindingTypeProps :: Element e => FindingType -> Binder (Walk SideEffect e e)
+writeFindingTypeProps ft = writePropertyKeyValues [("finding_type", Aeson.String ft_str)]
+  where
+    ft_str = case ft of
+               FindingLocal -> "local"
+               FindingSR -> "sr"
+
+parseFindingTypeProps :: (PropertyMap m, Property p) => m p GValue -> Parser FindingType
+parseFindingTypeProps ps = do
+  ft <- parseText "finding_type" ps
+  case ft of
+    "local" -> return FindingLocal
+    "sr" -> return FindingSR
+    _ -> fail ("Unknown finding type: " <> unpack ft)
+
+instance NodeAttributes FindingType where
+  writeNodeAttributes = writeFindingTypeProps
+  parseNodeAttributes = parseFindingTypeProps
+
+instance LinkAttributes FindingType where
+  writeLinkAttributes = writeFindingTypeProps
+  parseLinkAttributes = parseFindingTypeProps
+
 instance NodeAttributes RPLNode where
-  writeNodeAttributes (RPLLocalNode ln) = writePropertyKeyValues pairs
+  writeNodeAttributes (RPLLocalNode ln) = do
+    ft <- writeFindingTypeProps FindingLocal
+    other <- writePropertyKeyValues pairs
+    return (ft <> other)
     where
-      pairs = [ ("type", Aeson.String "local"),
-                ("rank", toJSON $ rank ln)
+      pairs = [ ("rank", toJSON $ rank ln)
               ]
-  writeNodeAttributes (RPLSRNode _) = writePropertyKeyValues [ ("type", Aeson.String "sr") ]
+  writeNodeAttributes (RPLSRNode _) = writeFindingTypeProps FindingSR
   parseNodeAttributes ps = do
-    t <- parseText "type" ps
-    case t of
-      "local" -> parseLocal
-      "sr" -> parseSR
-      _ -> fail ("Unknown finding type: " <> unpack t)
+    ft <- parseFindingTypeProps ps
+    case ft of
+      FindingLocal -> parseLocal
+      FindingSR -> parseSR
     where
       parseLocal = fmap RPLLocalNode $ LocalNode <$> parseOneValue "rank" ps
       parseSR = return $ RPLSRNode SRNode
@@ -106,21 +134,20 @@ data RPLLink = RPLLocalLink LocalLink
 
 instance LinkAttributes RPLLink where
   writeLinkAttributes (RPLLocalLink ll) = do
+    ft_steps <- writeFindingTypeProps FindingLocal
     nt_steps <- writeNeighborTypeProps $ neighborType ll
     other <- writePropertyKeyValues pairs
-    return (nt_steps <> other)
+    return (ft_steps <> nt_steps <> other)
     where
-      pairs = [ ("type", Aeson.String "local"),
-                ("metric", toJSON $ metric ll),
+      pairs = [ ("metric", toJSON $ metric ll),
                 ("rssi", toJSON $ rssi ll)
               ]
-  writeLinkAttributes (RPLSRLink _) = writePropertyKeyValues [("type", Aeson.String "sr")]
+  writeLinkAttributes (RPLSRLink _) = writeFindingTypeProps FindingSR
   parseLinkAttributes ps = do
-    t <- parseText "type" ps
-    case t of
-      "local" -> parseLocal
-      "sr" -> parseSR
-      _ -> fail ("Unknown type: " <> unpack t)
+    ft <- parseFindingTypeProps ps
+    case ft of
+      FindingLocal -> parseLocal
+      FindingSR -> parseSR
     where
       parseLocal =
         fmap RPLLocalLink $ LocalLink
