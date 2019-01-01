@@ -1,5 +1,15 @@
 # Revision history for net-spider
 
+## 0.2.1.0  -- XXX
+
+* Export `Snapshot.Internal` module. This module is only for internal
+  use.
+
+### Graph module
+
+* Add `NodeAttributes` instance to `PropertyMapList`.
+* Add `LinkAttributes` instance to `PropertyMapSingle`.
+
 ## 0.2.0.0  -- 2018-12-10
 
 * Add `Log` module.

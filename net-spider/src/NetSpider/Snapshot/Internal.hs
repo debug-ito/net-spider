@@ -7,6 +7,8 @@
 --
 -- Implementation of Snapshot graph types. This module is for internal
 -- and testing purposes only.
+--
+-- @since 0.2.1.0
 module NetSpider.Snapshot.Internal
        ( SnapshotLink(..),
          linkNodeTuple,

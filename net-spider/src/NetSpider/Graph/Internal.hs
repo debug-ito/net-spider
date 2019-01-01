@@ -148,6 +148,8 @@ instance NodeAttributes () where
 
 -- | Straightforward implementation. Note that 'writeNodeAttributes'
 -- does not write meta-properties of the 'AVertexProperty'.
+--
+-- @since 0.2.1.0
 instance (FromGraphSON v, ToJSON v) => NodeAttributes (PropertyMapList AVertexProperty v) where
   writeNodeAttributes = writeAllProperties
   parseNodeAttributes = traverse parseGraphSON
@@ -166,6 +168,8 @@ instance LinkAttributes () where
   parseLinkAttributes _ = return ()
 
 -- | Straightforward implementation
+--
+-- @since 0.2.1.0
 instance (FromGraphSON v, ToJSON v) => LinkAttributes (PropertyMapSingle AProperty v) where
   writeLinkAttributes = writeAllProperties
   parseLinkAttributes = traverse parseGraphSON
