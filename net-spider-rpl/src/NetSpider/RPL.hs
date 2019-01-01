@@ -19,7 +19,10 @@ module NetSpider.RPL
 import Data.Aeson (ToJSON(toJSON))
 import qualified Data.Aeson as Aeson
 import Data.Aeson.Types (Parser)
-import Data.Greskell (PropertyMap, Property, GValue, parseOneValue)
+import Data.Greskell
+  ( PropertyMap, Property, GValue, parseOneValue,
+    Binder, Walk, SideEffect, Element
+  )
 import Data.Greskell.Extra (writePropertyKeyValues)
 import Data.Monoid ((<>))
 import Data.Text (Text, unpack)
@@ -40,8 +43,8 @@ data RPLNode = RPLLocalNode LocalNode
              | RPLSRNode SRNode
              deriving (Show,Eq,Ord)
 
-parseFindingType :: (PropertyMap m, Property p) => m p GValue -> Parser Text
-parseFindingType = parseOneValue "type"
+parseText :: (PropertyMap m, Property p) => Text -> m p GValue -> Parser Text
+parseText key = parseOneValue key
 
 instance NodeAttributes RPLNode where
   writeNodeAttributes (RPLLocalNode ln) = writePropertyKeyValues pairs
@@ -51,7 +54,7 @@ instance NodeAttributes RPLNode where
               ]
   writeNodeAttributes (RPLSRNode _) = writePropertyKeyValues [ ("type", Aeson.String "sr") ]
   parseNodeAttributes ps = do
-    t <- parseFindingType ps
+    t <- parseText "type" ps
     case t of
       "local" -> parseLocal
       "sr" -> parseSR
@@ -64,6 +67,25 @@ data NeighborType = PreferredParent
                   | ParentCandidate
                   | OtherNeighbor
                   deriving (Show,Eq,Ord,Enum,Bounded)
+
+writeNeighborTypeProps :: Element e => NeighborType -> Binder (Walk SideEffect e e)
+writeNeighborTypeProps nt = writePropertyKeyValues [("neighbor_type", nt_str)]
+  where
+    nt_str :: Text
+    nt_str = case nt of
+      PreferredParent -> "preferred_parent"
+      ParentCandidate -> "parent_candidate"
+      OtherNeighbor -> "other_neighbor"
+
+instance LinkAttributes NeighborType where
+  writeLinkAttributes = writeNeighborTypeProps
+  parseLinkAttributes ps = do
+    t <- parseText "neighbor_type" ps
+    case t of
+      "preferred_parent" -> return PreferredParent
+      "parent_candidate" -> return ParentCandidate
+      "other_neighbor" -> return OtherNeighbor
+      _ -> fail ("Unknown neighbor_type: " <> unpack t)
 
 type RSSI = Int
 
@@ -81,3 +103,29 @@ data SRLink = SRLink
 data RPLLink = RPLLocalLink LocalLink
              | RPLSRLink SRLink
              deriving (Show,Eq,Ord)
+
+instance LinkAttributes RPLLink where
+  writeLinkAttributes (RPLLocalLink ll) = do
+    nt_steps <- writeNeighborTypeProps $ neighborType ll
+    other <- writePropertyKeyValues pairs
+    return (nt_steps <> other)
+    where
+      pairs = [ ("type", Aeson.String "local"),
+                ("metric", toJSON $ metric ll),
+                ("rssi", toJSON $ rssi ll)
+              ]
+  writeLinkAttributes (RPLSRLink _) = writePropertyKeyValues [("type", Aeson.String "sr")]
+  parseLinkAttributes ps = do
+    t <- parseText "type" ps
+    case t of
+      "local" -> parseLocal
+      "sr" -> parseSR
+      _ -> fail ("Unknown type: " <> unpack t)
+    where
+      parseLocal =
+        fmap RPLLocalLink $ LocalLink
+        <$> parseLinkAttributes ps
+        <*> parseOneValue "metric" ps
+        <*> parseOneValue "rssi" ps
+      parseSR = return $ RPLSRLink SRLink
+    
