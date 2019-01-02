@@ -94,6 +94,8 @@ data LocalLink =
   LocalLink
   { neighborType :: !NeighborType,
     -- ^ Type of the neighbor at the other end of this link.
+    neighborRank :: !Rank,
+    -- ^ Observed rank of the neighbor.
     metric :: !Rank,
     -- ^ Link metric of this link.
     rssi :: !(Maybe RSSI)
@@ -107,18 +109,21 @@ instance LinkAttributes LocalLink where
     other <- writePropertyKeyValues pairs
     return (adaptWalk nt_steps <> other)
     where
-      pairs = [ ("metric", toJSON $ metric ll),
+      pairs = [ ("neighbor_rank", toJSON $ neighborRank ll),
+                ("metric", toJSON $ metric ll),
                 ("rssi", toJSON $ rssi ll)
               ]
   parseLinkAttributes ps =
     LocalLink
     <$> parseLinkAttributes ps
+    <*> parseOneValue "neighbor_rank" ps
     <*> parseOneValue "metric" ps
     <*> parseOneValue "rssi" ps
 
 toAttributesPrefix :: Atom -> LocalLink -> [Pan.Attribute]
 toAttributesPrefix prefix ll = 
   [ (prefix <> "neighbor_type", toAtom $ neighborTypeToText $ neighborType ll),
+    (prefix <> "neighbor_rank", toAtom $ neighborRank ll),
     (prefix <> "metric", toAtom $ metric ll)
   ]
   ++
