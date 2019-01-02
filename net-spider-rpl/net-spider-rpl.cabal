@@ -22,7 +22,8 @@ library
   exposed-modules:      NetSpider.RPL,
                         NetSpider.RPL.FindingID,
                         NetSpider.RPL.Local,
-                        NetSpider.RPL.SR
+                        NetSpider.RPL.SR,
+                        NetSpider.RPL.ContikiNG
   -- other-modules:        
   build-depends:        base,
                         aeson,
