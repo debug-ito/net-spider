@@ -37,6 +37,8 @@ import NetSpider.Graph (NodeAttributes(..), LinkAttributes(..))
 import NetSpider.Unify (UnifyStdConfig, lsLinkAttributes, latestLinkSample)
 import qualified NetSpider.Unify as Unify
 
+import NetSpider.RPL.FindingID (FindingType(..))
+
 -- | RPL rank
 type Rank = Word
 
@@ -57,16 +59,6 @@ data SRNode = SRNode
 data RPLNode = RPLLocalNode LocalNode
              | RPLSRNode SRNode
              deriving (Show,Eq,Ord)
-
--- | Type of local finding.
-data FindingType = FindingLocal
-                   -- ^ Local finding is observed locally at an
-                   -- individual node.
-                 | FindingSR
-                   -- ^ Local finding is observed in the
-                   -- source-routing (SR) table. Basically only for
-                   -- RPL non-storing mode.
-                 deriving (Show,Eq,Ord)
 
 nodeFindingType :: RPLNode -> FindingType
 nodeFindingType (RPLLocalNode _) = FindingLocal
