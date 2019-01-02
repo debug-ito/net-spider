@@ -36,23 +36,35 @@ import NetSpider.Graph (NodeAttributes(..), LinkAttributes(..))
 import NetSpider.Unify (UnifyStdConfig, lsLinkAttributes, latestLinkSample)
 import qualified NetSpider.Unify as Unify
 
+-- | RPL rank
 type Rank = Word
 
+-- | Node attributes observed locally at an individual node.
 data LocalNode =
   LocalNode
   { rank :: !Rank
+    -- ^ RPL rank
   }
   deriving (Show,Eq,Ord)
 
+-- | Node attributes observed in the Source-routing (SR)
+-- table. Basically only for RPL non-storing mode.
 data SRNode = SRNode
             deriving (Show,Eq,Ord)
 
+-- | Node attributes unifying 'LocalNode' and 'SRNode'.
 data RPLNode = RPLLocalNode LocalNode
              | RPLSRNode SRNode
              deriving (Show,Eq,Ord)
 
+-- | Type of local finding.
 data FindingType = FindingLocal
+                   -- ^ Local finding is observed locally at an
+                   -- individual node.
                  | FindingSR
+                   -- ^ Local finding is observed in the
+                   -- source-routing (SR) table. Basically only for
+                   -- RPL non-storing mode.
                  deriving (Show,Eq,Ord)
 
 nodeFindingType :: RPLNode -> FindingType
@@ -103,9 +115,14 @@ instance NodeAttributes RPLNode where
       parseLocal = fmap RPLLocalNode $ LocalNode <$> parseOneValue "rank" ps
       parseSR = return $ RPLSRNode SRNode
 
+-- | Classification of RPL neighbors.
 data NeighborType = PreferredParent
+                    -- ^ The neighbor is the preferred parent.
                   | ParentCandidate
+                    -- ^ The neighbor is not the preferred parent, but
+                    -- is in the parent set.
                   | OtherNeighbor
+                    -- ^ The neighbor is not in the parent set.
                   deriving (Show,Eq,Ord,Enum,Bounded)
 
 writeNeighborTypeProps :: Element e => NeighborType -> Binder (Walk SideEffect e e)
@@ -127,19 +144,26 @@ instance LinkAttributes NeighborType where
       "other_neighbor" -> return OtherNeighbor
       _ -> fail ("Unknown neighbor_type: " <> unpack t)
 
+-- | Type of RSSI (Radio Signal Strength Indicator) in dBm.
 type RSSI = Int
 
+-- | Link attributes observed locally at an individual node.
 data LocalLink =
   LocalLink
   { neighborType :: !NeighborType,
+    -- ^ Type of the neighbor at the other end of this link.
     metric :: !Rank,
+    -- ^ Link metric of this link.
     rssi :: !(Maybe RSSI)
+    -- ^ RSSI observed via this link.
   }
   deriving (Show,Eq,Ord)
 
+-- | Link attributes observed in the source-routing (SR) table.
 data SRLink = SRLink
             deriving (Show,Eq,Ord)
 
+-- | Link attributes unifying 'LocalLink' and 'SRLink'.
 data RPLLink = RPLLocalLink LocalLink
              | RPLSRLink SRLink
              deriving (Show,Eq,Ord)
@@ -172,6 +196,8 @@ instance LinkAttributes RPLLink where
         <*> parseOneValue "rssi" ps
       parseSR = return $ RPLSRLink SRLink
 
+-- | Link attributes merging two 'LocalLink's from the two end nodes
+-- of the link.
 data MergedLocalLink =
   MergedLocalLink
   { fromSource :: !LocalLink,
@@ -179,10 +205,13 @@ data MergedLocalLink =
   }
   deriving (Show,Eq,Ord)
 
+-- | Link attributes merging two 'RPLLink's from the two end nodes of
+-- the link.
 data MergedRPLLink = MergedRPLLocalLink MergedLocalLink
                    | MergedRPLSRLink SRLink
                    deriving (Show,Eq,Ord)
 
+-- | 'UnifyStdConfig' for RPL data model.
 rplUnifierConf :: Eq n => UnifyStdConfig n RPLNode RPLLink MergedRPLLink FindingType
 rplUnifierConf = Unify.UnifyStdConfig
                  { Unify.makeLinkSubId = makeSubId,
@@ -213,8 +242,3 @@ rplUnifierConf = Unify.UnifyStdConfig
           else sub_link { lsLinkAttributes = MergedRPLLocalLink $ MergedLocalLink sub_ll $ Just main_ll }
     getLsLinkAttrs ls = (ls, lsLinkAttributes ls)
     doMergeSR main_link main_sl _ = main_link { lsLinkAttributes = MergedRPLSRLink main_sl }
-  
-  
-
-
-    
