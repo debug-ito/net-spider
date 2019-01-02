@@ -33,7 +33,7 @@ import Data.Greskell.Extra (writePropertyKeyValues)
 import Data.Monoid ((<>))
 import Data.Text (Text, unpack)
 import NetSpider.Graph (NodeAttributes(..), LinkAttributes(..))
-import NetSpider.Unify (UnifyStdConfig, lsLinkAttributes)
+import NetSpider.Unify (UnifyStdConfig, lsLinkAttributes, latestLinkSample)
 import qualified NetSpider.Unify as Unify
 
 type Rank = Word
@@ -175,7 +175,7 @@ instance LinkAttributes RPLLink where
 data MergedLocalLink =
   MergedLocalLink
   { fromSource :: !LocalLink,
-    fromDest :: !LocalLink
+    fromDest :: !(Maybe LocalLink)
   }
   deriving (Show,Eq,Ord)
 
@@ -191,5 +191,30 @@ rplUnifierConf = Unify.UnifyStdConfig
                  }
   where
     makeSubId ls = linkFindingType $ lsLinkAttributes ls
-    merger = undefined -- TODO
+    merger llinks rlinks =
+      case (latestLinkSample llinks, latestLinkSample rlinks) of
+        (Nothing, Nothing) -> Nothing
+        (Just ll, Nothing) -> Just $ doMerge ll Nothing
+        (Nothing, Just rl) -> Just $ doMerge rl Nothing
+        (Just ll, Just rl) -> Just $ doMerge ll $ Just rl
+    doMerge main_link msub_link =
+      case lsLinkAttributes main_link of
+        RPLLocalLink ll -> doMergeLocal main_link ll msub_link
+        RPLSRLink sl -> doMergeSR main_link sl msub_link
+    doMergeLocal main_link main_ll msub_link =
+      case fmap getLsLinkAttrs $ msub_link of
+        Nothing -> main_link
+                   { lsLinkAttributes = MergedRPLLocalLink $ MergedLocalLink main_ll Nothing }
+        Just (_, RPLSRLink _) -> main_link
+                                 { lsLinkAttributes = MergedRPLLocalLink $ MergedLocalLink main_ll Nothing }
+        Just (sub_link, RPLLocalLink sub_ll) ->
+          if neighborType main_ll <= neighborType sub_ll
+          then main_link { lsLinkAttributes = MergedRPLLocalLink $ MergedLocalLink main_ll $ Just sub_ll }
+          else sub_link { lsLinkAttributes = MergedRPLLocalLink $ MergedLocalLink sub_ll $ Just main_ll }
+    getLsLinkAttrs ls = (ls, lsLinkAttributes ls)
+    doMergeSR main_link main_sl _ = main_link { lsLinkAttributes = MergedRPLSRLink main_sl }
+  
+  
+
+
     
