@@ -50,7 +50,7 @@ extra-deps:
 - pangraph-0.2.1
 - greskell-core-0.1.2.4
 - greskell-websocket-0.1.1.2
-- ../greskell/greskell
+- greskell-0.2.3.0
 
 ## - greskell-websocket-0.1.0.0
 ## - greskell-core-0.1.2.2
