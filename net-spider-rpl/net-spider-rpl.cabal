@@ -28,6 +28,7 @@ library
                         aeson,
                         greskell,
                         net-spider,
+                        net-spider-pangraph,
                         text,
                         ip,
                         hashable

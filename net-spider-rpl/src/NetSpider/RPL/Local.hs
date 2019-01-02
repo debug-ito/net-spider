@@ -11,6 +11,8 @@ module NetSpider.RPL.Local
     MergedLocalLink(..),
     Rank,
     NeighborType(..),
+    neighborTypeToText,
+    neighborTypeFromText,
     RSSI,
     localUnifierConf
   ) where
@@ -26,6 +28,8 @@ import Data.Greskell.Extra (writePropertyKeyValues)
 import Data.Monoid ((<>))
 import Data.Text (Text, unpack)
 import NetSpider.Graph (NodeAttributes(..), LinkAttributes(..))
+import qualified NetSpider.Pangraph as Pan
+import NetSpider.Pangraph.Atom (toAtom, Atom)
 import NetSpider.Unify (UnifyStdConfig, lsLinkAttributes, latestLinkSample)
 import qualified NetSpider.Unify as Unify
 
@@ -59,28 +63,28 @@ data NeighborType = PreferredParent
                     -- ^ The neighbor is not in the parent set.
                   deriving (Show,Eq,Ord,Enum,Bounded)
 
-parseText :: (PropertyMap m, Property p) => Text -> m p GValue -> Parser Text
-parseText key = parseOneValue key
+neighborTypeToText :: NeighborType -> Text
+neighborTypeToText nt = case nt of
+  PreferredParent -> "preferred_parent"
+  ParentCandidate -> "parent_candidate"
+  OtherNeighbor -> "other_neighbor"
+
+neighborTypeFromText :: Text -> Maybe NeighborType
+neighborTypeFromText t = case t of
+  "preferred_parent" -> return PreferredParent
+  "parent_candidate" -> return ParentCandidate
+  "other_neighbor" -> return OtherNeighbor
+  _ -> Nothing
 
 -- | Unsafely convert walk's type signature
 adaptWalk :: (Element e1, Element e2) => Walk SideEffect e1 e1 -> Walk SideEffect e2 e2
 adaptWalk = bimap undefined undefined
 
 instance LinkAttributes NeighborType where
-  writeLinkAttributes nt = writePropertyKeyValues [("neighbor_type", nt_str)]
+  writeLinkAttributes nt = writePropertyKeyValues [("neighbor_type", neighborTypeToText nt)]
+  parseLinkAttributes ps = fromT =<< parseOneValue "neighbor_type" ps
     where
-      nt_str :: Text
-      nt_str = case nt of
-        PreferredParent -> "preferred_parent"
-        ParentCandidate -> "parent_candidate"
-        OtherNeighbor -> "other_neighbor"
-  parseLinkAttributes ps = do
-    t <- parseText "neighbor_type" ps
-    case t of
-      "preferred_parent" -> return PreferredParent
-      "parent_candidate" -> return ParentCandidate
-      "other_neighbor" -> return OtherNeighbor
-      _ -> fail ("Unknown neighbor_type: " <> unpack t)
+      fromT t = maybe (fail ("Unknown neighbor type: " <> unpack t)) return $ neighborTypeFromText t
 
 -- | Type of RSSI (Radio Signal Strength Indicator) in dBm.
 type RSSI = Int
@@ -111,6 +115,20 @@ instance LinkAttributes LocalLink where
     <$> parseLinkAttributes ps
     <*> parseOneValue "metric" ps
     <*> parseOneValue "rssi" ps
+
+toAttributesPrefix :: Atom -> LocalLink -> [Pan.Attribute]
+toAttributesPrefix prefix ll = 
+  [ (prefix <> "neighbor_type", toAtom $ neighborTypeToText $ neighborType ll),
+    (prefix <> "metric", toAtom $ metric ll)
+  ]
+  ++
+  ( case rssi ll of
+      Nothing -> []
+      Just rssi_val -> [(prefix <> "rssi", toAtom rssi_val)]
+  )
+
+instance Pan.ToAttributes LocalLink where
+  toAttributes = toAttributesPrefix ""
 
 -- | Link attributes merging two 'LocalLink's from the two end nodes
 -- of the link.
@@ -147,3 +165,12 @@ localUnifierConf = Unify.UnifyStdConfig
             sub_ll = lsLinkAttributes sub_link
       where
         main_ll = lsLinkAttributes main_link
+
+instance Pan.ToAttributes MergedLocalLink where
+  toAttributes ml =
+    toAttributesPrefix "source_" (fromSource ml)
+    ++
+    ( case fromDest ml of
+        Nothing -> []
+        Just dl -> toAttributesPrefix "dest_" dl
+    )

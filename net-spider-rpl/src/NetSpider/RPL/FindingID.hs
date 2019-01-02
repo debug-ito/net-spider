@@ -26,6 +26,7 @@ import qualified Data.Text as T
 import GHC.Generics (Generic)
 import Net.IPv6 (IPv6(..))
 import qualified Net.IPv6 as IPv6
+import NetSpider.Pangraph.Atom (ToAtom(..))
 
 -- | Type of local finding.
 data FindingType = FindingLocal
@@ -97,3 +98,6 @@ instance Hashable FindingID where
       ft = findingType fid
       addrA = ipv6A $ nodeAddress fid
       addrB = ipv6B $ nodeAddress fid
+
+instance ToAtom FindingID where
+  toAtom = toAtom . idToText
