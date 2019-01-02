@@ -25,9 +25,10 @@ module NetSpider.RPL
 import Data.Aeson (ToJSON(toJSON))
 import qualified Data.Aeson as Aeson
 import Data.Aeson.Types (Parser)
+import Data.Bifunctor (bimap)
 import Data.Greskell
   ( PropertyMap, Property, GValue, parseOneValue,
-    Binder, Walk, SideEffect, Element
+    Binder, Walk, SideEffect, Element, gIdentity
   )
 import Data.Greskell.Extra (writePropertyKeyValues)
 import Data.Monoid ((<>))
@@ -74,6 +75,10 @@ nodeFindingType (RPLSRNode _) = FindingSR
 parseText :: (PropertyMap m, Property p) => Text -> m p GValue -> Parser Text
 parseText key = parseOneValue key
 
+-- | Unsafely convert walk's type signature
+adaptWalk :: (Element e1, Element e2) => Walk SideEffect e1 e1 -> Walk SideEffect e2 e2
+adaptWalk = bimap undefined undefined
+
 writeFindingTypeProps :: Element e => FindingType -> Binder (Walk SideEffect e e)
 writeFindingTypeProps ft = writePropertyKeyValues [("finding_type", Aeson.String ft_str)]
   where
@@ -97,23 +102,31 @@ instance LinkAttributes FindingType where
   writeLinkAttributes = writeFindingTypeProps
   parseLinkAttributes = parseFindingTypeProps
 
-instance NodeAttributes RPLNode where
-  writeNodeAttributes (RPLLocalNode ln) = do
-    ft <- writeFindingTypeProps FindingLocal
-    other <- writePropertyKeyValues pairs
-    return (ft <> other)
+instance NodeAttributes LocalNode where
+  writeNodeAttributes ln = writePropertyKeyValues pairs
     where
       pairs = [ ("rank", toJSON $ rank ln)
               ]
-  writeNodeAttributes (RPLSRNode _) = writeFindingTypeProps FindingSR
+  parseNodeAttributes ps = LocalNode <$> parseOneValue "rank" ps
+
+instance NodeAttributes SRNode where
+  writeNodeAttributes _ = return gIdentity
+  parseNodeAttributes _ = return SRNode
+
+instance NodeAttributes RPLNode where
+  writeNodeAttributes (RPLLocalNode ln) = do
+    ft_steps <- writeFindingTypeProps FindingLocal
+    ln_steps <- writeNodeAttributes ln
+    return (ft_steps <> adaptWalk ln_steps)
+  writeNodeAttributes (RPLSRNode sn) = do
+    ft_steps <- writeFindingTypeProps FindingSR
+    sn_steps <- writeNodeAttributes sn
+    return (ft_steps <> adaptWalk sn_steps)
   parseNodeAttributes ps = do
     ft <- parseFindingTypeProps ps
     case ft of
-      FindingLocal -> parseLocal
-      FindingSR -> parseSR
-    where
-      parseLocal = fmap RPLLocalNode $ LocalNode <$> parseOneValue "rank" ps
-      parseSR = return $ RPLSRNode SRNode
+      FindingLocal -> fmap RPLLocalNode $ parseNodeAttributes ps
+      FindingSR -> fmap RPLSRNode $ parseNodeAttributes ps
 
 -- | Classification of RPL neighbors.
 data NeighborType = PreferredParent
@@ -125,17 +138,14 @@ data NeighborType = PreferredParent
                     -- ^ The neighbor is not in the parent set.
                   deriving (Show,Eq,Ord,Enum,Bounded)
 
-writeNeighborTypeProps :: Element e => NeighborType -> Binder (Walk SideEffect e e)
-writeNeighborTypeProps nt = writePropertyKeyValues [("neighbor_type", nt_str)]
-  where
-    nt_str :: Text
-    nt_str = case nt of
-      PreferredParent -> "preferred_parent"
-      ParentCandidate -> "parent_candidate"
-      OtherNeighbor -> "other_neighbor"
-
 instance LinkAttributes NeighborType where
-  writeLinkAttributes = writeNeighborTypeProps
+  writeLinkAttributes nt = writePropertyKeyValues [("neighbor_type", nt_str)]
+    where
+      nt_str :: Text
+      nt_str = case nt of
+        PreferredParent -> "preferred_parent"
+        ParentCandidate -> "parent_candidate"
+        OtherNeighbor -> "other_neighbor"
   parseLinkAttributes ps = do
     t <- parseText "neighbor_type" ps
     case t of
@@ -172,29 +182,39 @@ linkFindingType :: RPLLink -> FindingType
 linkFindingType (RPLLocalLink _) = FindingLocal
 linkFindingType (RPLSRLink _) = FindingSR
 
-instance LinkAttributes RPLLink where
-  writeLinkAttributes (RPLLocalLink ll) = do
-    ft_steps <- writeFindingTypeProps FindingLocal
-    nt_steps <- writeNeighborTypeProps $ neighborType ll
+instance LinkAttributes LocalLink where
+  writeLinkAttributes ll = do
+    nt_steps <- writeLinkAttributes $ neighborType ll
     other <- writePropertyKeyValues pairs
-    return (ft_steps <> nt_steps <> other)
+    return (adaptWalk nt_steps <> other)
     where
       pairs = [ ("metric", toJSON $ metric ll),
                 ("rssi", toJSON $ rssi ll)
               ]
-  writeLinkAttributes (RPLSRLink _) = writeFindingTypeProps FindingSR
+  parseLinkAttributes ps =
+    LocalLink
+    <$> parseLinkAttributes ps
+    <*> parseOneValue "metric" ps
+    <*> parseOneValue "rssi" ps
+
+instance LinkAttributes SRLink where
+  writeLinkAttributes _ = return gIdentity
+  parseLinkAttributes _ = return SRLink
+
+instance LinkAttributes RPLLink where
+  writeLinkAttributes (RPLLocalLink ll) = do
+    ft_steps <- writeFindingTypeProps FindingLocal
+    other <- writeLinkAttributes ll
+    return (ft_steps <> adaptWalk other)
+  writeLinkAttributes (RPLSRLink sl) = do
+    ft_steps <- writeFindingTypeProps FindingSR
+    other <- writeLinkAttributes sl
+    return (ft_steps <> adaptWalk other)
   parseLinkAttributes ps = do
     ft <- parseFindingTypeProps ps
     case ft of
-      FindingLocal -> parseLocal
-      FindingSR -> parseSR
-    where
-      parseLocal =
-        fmap RPLLocalLink $ LocalLink
-        <$> parseLinkAttributes ps
-        <*> parseOneValue "metric" ps
-        <*> parseOneValue "rssi" ps
-      parseSR = return $ RPLSRLink SRLink
+      FindingLocal -> RPLLocalLink <$> parseLinkAttributes ps
+      FindingSR -> RPLSRLink <$> parseLinkAttributes ps
 
 -- | Link attributes merging two 'LocalLink's from the two end nodes
 -- of the link.
