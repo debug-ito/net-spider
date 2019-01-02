@@ -13,7 +13,9 @@ module NetSpider.Pangraph
          ToAttributes(..),
          -- * Utility
          timestampAttributes,
-         writePangraph
+         writePangraph,
+         -- * Re-exports
+         Attribute
        ) where
 
 import Data.ByteString (ByteString)
@@ -28,13 +30,14 @@ import NetSpider.Snapshot
     sourceNode, destinationNode, linkAttributes, linkTimestamp, isDirected
   )
 import NetSpider.Timestamp (Timestamp(..), showEpochTime)
+import Pangraph (Attribute)
 import qualified Pangraph as P
 import qualified Pangraph.GraphML.Writer as GraphML
 import System.IO.Error (userError, ioError)
 
 import NetSpider.Pangraph.Atom (ToAtom(..))
 
--- | Make Pangraph 'P.Attribute's from 'Timestamp'.
+-- | Make Pangraph 'Attribute's from 'Timestamp'.
 --
 -- >>> import NetSpider.Timestamp (fromS)
 -- >>> timestampAttributes $ fromS "2018-10-11T11:23:05"
@@ -43,7 +46,7 @@ import NetSpider.Pangraph.Atom (ToAtom(..))
 -- [("@timestamp","1537660132000"),("@tz_offset_min","540"),("@tz_summer_only","False"),("@tz_name","")]
 -- >>> timestampAttributes $ fromS "2018-12-30T22:00:12.109-04:00"
 -- [("@timestamp","1546221612109"),("@tz_offset_min","-240"),("@tz_summer_only","False"),("@tz_name","")]
-timestampAttributes :: Timestamp -> [P.Attribute]
+timestampAttributes :: Timestamp -> [Attribute]
 timestampAttributes ts = epoch : tz_attrs
   where
     epoch = ("@timestamp", encodeUtf8 $ showEpochTime ts)
@@ -93,15 +96,15 @@ makePangraph :: (ToAtom n, ToAttributes na, ToAttributes la)
 makePangraph ns ls = P.makePangraph (map makeVertex ns) (map makeEdge ls)
 
 -- | Data types that can be converted into a list of Pangraph
--- 'P.Attribute's.
+-- 'Attribute's.
 class ToAttributes a where
-  toAttributes :: a -> [P.Attribute]
+  toAttributes :: a -> [Attribute]
 
 -- | No attribute.
 instance ToAttributes () where
   toAttributes () = []
 
--- | Make 'P.Attribute' from key-value pairs.
+-- | Make 'Attribute' from key-value pairs.
 instance (ToAtom k, ToAtom v) => ToAttributes [(k,v)] where
   toAttributes = map (\(k, v) -> (toAtom k, toAtom v))
 
