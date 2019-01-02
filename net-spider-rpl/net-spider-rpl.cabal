@@ -20,7 +20,9 @@ library
   -- default-extensions:   
   other-extensions:     OverloadedStrings, DeriveGeneric
   exposed-modules:      NetSpider.RPL,
-                        NetSpider.RPL.FindingID
+                        NetSpider.RPL.FindingID,
+                        NetSpider.RPL.Local,
+                        NetSpider.RPL.SR
   -- other-modules:        
   build-depends:        base,
                         aeson,
