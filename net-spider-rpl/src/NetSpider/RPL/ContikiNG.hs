@@ -5,25 +5,92 @@
 --
 -- 
 module NetSpider.RPL.ContikiNG
-  ( pLocalNode,
+  ( parseFile,
+    pLocalNode,
     pNeighbor
   ) where
 
-import Control.Applicative ((<|>))
+import Control.Applicative ((<|>), (<$>), (<*>), (*>), many)
 import Control.Monad (void)
 import Data.Bits (shift)
 import Data.Char (isDigit, isHexDigit)
+import Data.List (sortOn, reverse)
 import Data.Monoid ((<>))
 import Data.Text (pack)
 import Data.Word (Word16)
 import Net.IPv6 (IPv6)
 import qualified Net.IPv6 as IPv6
+import NetSpider.Found (FoundNode(..), FoundLink(..), LinkState(LinkToTarget))
+import NetSpider.Timestamp (Timestamp)
+import System.IO (withFile, IOMode(ReadMode), hGetLine, hIsEOF)
 import qualified Text.ParserCombinators.ReadP as P
 import Text.Read (readEither)
 
+import NetSpider.RPL.FindingID (FindingID(FindingID), FindingType(FindingLocal))
 import qualified NetSpider.RPL.Local as Local
 
 type Parser = P.ReadP
+
+runParser :: Parser a -> String -> Maybe a
+runParser p input = extract $ sortPairs $ P.readP_to_S p input
+  where
+    sortPairs = sortOn $ \(_, rest) -> length rest
+    extract [] = Nothing
+    extract ((a,_) : _) = Just a
+
+parseFile :: Parser Timestamp -> FilePath -> IO [FoundNode FindingID Local.LocalNode Local.LocalLink]
+parseFile pTimestamp input_file = withFile input_file ReadMode $ onHandle
+  where
+    onHandle h = go []
+      where
+        go acc = do
+          mfn <- parseFoundNode pTimestamp $ tryGetLine h
+          case mfn of
+            Nothing -> return $ reverse acc
+            Just fn -> go (fn : acc)
+    tryGetLine h = do
+      eof <- hIsEOF h
+      if eof
+        then return Nothing
+        else Just <$> hGetLine h
+
+parseFoundNode :: Parser Timestamp -> IO (Maybe String) -> IO (Maybe (FoundNode FindingID Local.LocalNode Local.LocalLink))
+parseFoundNode pTimestamp getL = impl
+  where
+    impl = do
+      mline <- getL
+      case mline of
+        Nothing -> return Nothing
+        Just line -> 
+          case runParser ((,) <$> pTimestamp <*> pLocalNode) line of
+            Nothing -> impl
+            Just (ts, (addr, ln)) -> do
+              mns <- parseNeighbors pTimestamp getL
+              case mns of
+                Nothing -> return Nothing
+                Just ns -> 
+                  return $ Just $ FoundNode { subjectNode = FindingID FindingLocal addr,
+                                              foundAt = ts,
+                                              neighborLinks = map toFoundLink ns,
+                                              nodeAttributes = ln
+                                            }
+    toFoundLink (neighbor_addr, ll) =
+      FoundLink { targetNode = FindingID FindingLocal neighbor_addr,
+                  linkState = LinkToTarget,
+                  linkAttributes = ll
+                }
+
+parseNeighbors :: Parser Timestamp -> IO (Maybe String) -> IO (Maybe [(IPv6, Local.LocalLink)])
+parseNeighbors pTimestamp getL = go []
+  where
+    go acc = do
+      mline <- getL
+      case mline of
+        Nothing -> return Nothing
+        Just line -> 
+          case runParser (pTimestamp *> pNeighbor) line of
+            Nothing -> return $ Just $ reverse acc
+            Just n -> go (n : acc)
 
 isAddressChar :: Char -> Bool
 isAddressChar c = isHexDigit c || c == ':'
