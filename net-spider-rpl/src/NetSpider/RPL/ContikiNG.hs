@@ -7,10 +7,10 @@
 module NetSpider.RPL.ContikiNG
   ( parseFile,
     pLocalNode,
-    pNeighbor
+    pLocalNeighbor
   ) where
 
-import Control.Applicative ((<|>), (<$>), (<*>), (*>), many)
+import Control.Applicative ((<|>), (<$>), (<*>), (*>), (<*), many)
 import Control.Monad (void)
 import Data.Bits (shift)
 import Data.Char (isDigit, isHexDigit)
@@ -79,7 +79,7 @@ parseFoundNode pTimestamp getL = impl
                   linkState = LinkToTarget,
                   linkAttributes = ll
                 }
-
+--- TODO: this functions should be deprecated by pNeighbors
 parseNeighbors :: Parser Timestamp -> IO (Maybe String) -> IO (Maybe [(IPv6, Local.LocalLink)])
 parseNeighbors pTimestamp getL = go []
   where
@@ -88,7 +88,7 @@ parseNeighbors pTimestamp getL = go []
       case mline of
         Nothing -> return Nothing
         Just line -> 
-          case runParser (pTimestamp *> pNeighbor) line of
+          case runParser (pTimestamp *> pLocalNeighbor) line of
             Nothing -> return $ Just $ reverse acc
             Just n -> go (n : acc)
 
@@ -166,8 +166,16 @@ pLocalNode = do
 pExpectChar :: Char -> Parser Bool
 pExpectChar exp_c = fmap (== exp_c) $ P.get
 
-pNeighbor :: Parser (IPv6, Local.LocalLink)
-pNeighbor = do
+pLocalNeighbors :: Parser Timestamp -> Parser [(IPv6, Local.LocalLink)]
+pLocalNeighbors pTimestamp = P.endBy neighbor_line end_line
+  where
+    neighbor_line = pTimestamp *> pLocalNeighbor <* skipUntilNewline
+    end_line = pTimestamp *> P.string "nbr: end of list" <* skipUntilNewline
+    skipUntilNewline = void $ P.munch (not . isNewline) *> P.munch isNewline
+    isNewline c = c == '\n' || c == '\r'
+
+pLocalNeighbor :: Parser (IPv6, Local.LocalLink)
+pLocalNeighbor = do
   void $ P.string "nbr: "
   neighbor_addr <- pCompactAddress <|> pAddress
   P.skipSpaces
