@@ -169,7 +169,7 @@ pExpectChar exp_c = fmap (== exp_c) $ P.get
 pLocalNeighbors :: Parser Timestamp -> Parser [(IPv6, Local.LocalLink)]
 pLocalNeighbors pTimestamp = P.endBy neighbor_line end_line
   where
-    neighbor_line = pTimestamp *> pLocalNeighbor <* skipUntilNewline
+    neighbor_line = pTimestamp *> pLogHead *> pLocalNeighbor <* skipUntilNewline
     end_line = pTimestamp *> P.string "nbr: end of list" <* skipUntilNewline
     skipUntilNewline = void $ P.munch (not . isNewline) *> P.munch isNewline
     isNewline c = c == '\n' || c == '\r'
@@ -207,3 +207,12 @@ pLocalNeighbor = do
              Local.rssi = Nothing -- TODO: How should we get this?
            }
          )
+
+pLogHead :: Parser ()
+pLogHead = do
+  void $ P.char '['
+  void $ P.munch (not . (== ']'))
+  void $ P.string "] "
+
+-- TODO: SR entry logs:
+-- rpl_dag_root_print_links, uip_sr_link_snprint
