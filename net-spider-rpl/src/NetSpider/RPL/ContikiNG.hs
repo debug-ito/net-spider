@@ -6,11 +6,11 @@
 -- 
 module NetSpider.RPL.ContikiNG
   ( parseFile,
-    pLocalNode,
-    pLocalNeighbor
+    FoundNodeLocal,
+    FoundNodeSR
   ) where
 
-import Control.Applicative ((<|>), (<$>), (<*>), (*>), (<*), many)
+import Control.Applicative ((<|>), (<$>), (<*>), (*>), (<*), many, optional)
 import Control.Monad (void)
 import Data.Bits (shift)
 import Data.Char (isDigit, isHexDigit)
@@ -18,6 +18,7 @@ import Data.List (sortOn, reverse)
 import Data.Monoid ((<>))
 import Data.Text (pack)
 import Data.Word (Word16)
+import GHC.Exts (groupWith)
 import Net.IPv6 (IPv6)
 import qualified Net.IPv6 as IPv6
 import NetSpider.Found (FoundNode(..), FoundLink(..), LinkState(LinkToTarget))
@@ -26,10 +27,15 @@ import System.IO (withFile, IOMode(ReadMode), hGetLine, hIsEOF)
 import qualified Text.ParserCombinators.ReadP as P
 import Text.Read (readEither)
 
-import NetSpider.RPL.FindingID (FindingID(FindingID), FindingType(FindingLocal))
+import NetSpider.RPL.FindingID (FindingID(FindingID), FindingType(..))
 import qualified NetSpider.RPL.Local as Local
+import qualified NetSpider.RPL.SR as SR
 
 type Parser = P.ReadP
+
+type FoundNodeLocal = FoundNode FindingID Local.LocalNode Local.LocalLink
+
+type FoundNodeSR = FoundNode FindingID SR.SRNode SR.SRLink
 
 runParser :: Parser a -> String -> Maybe a
 runParser p input = extract $ sortPairs $ P.readP_to_S p input
@@ -38,59 +44,110 @@ runParser p input = extract $ sortPairs $ P.readP_to_S p input
     extract [] = Nothing
     extract ((a,_) : _) = Just a
 
-parseFile :: Parser Timestamp -> FilePath -> IO [FoundNode FindingID Local.LocalNode Local.LocalLink]
+parseFile :: Parser Timestamp -> FilePath -> IO ([FoundNodeLocal], [FoundNodeSR])
 parseFile pTimestamp input_file = withFile input_file ReadMode $ onHandle
   where
-    onHandle h = go []
+    onHandle h = go ([], [])
       where
-        go acc = do
-          mfn <- parseFoundNode pTimestamp $ tryGetLine h
-          case mfn of
-            Nothing -> return $ reverse acc
-            Just fn -> go (fn : acc)
+        go (acc_local, acc_sr) = do
+          mentry <- parseOneEntry pTimestamp $ tryGetLine h
+          case mentry of
+            Nothing -> return (reverse acc_local, reverse acc_sr)
+            Just (PELocal fl) -> go (fl : acc_local, acc_sr)
+            Just (PESR srs) -> go (acc_local, srs ++ acc_sr)
+            Just PEMisc -> go (acc_local, acc_sr)
     tryGetLine h = do
       eof <- hIsEOF h
       if eof
         then return Nothing
         else Just <$> hGetLine h
 
-parseFoundNode :: Parser Timestamp -> IO (Maybe String) -> IO (Maybe (FoundNode FindingID Local.LocalNode Local.LocalLink))
-parseFoundNode pTimestamp getL = impl
+data ParseEntry = PELocal FoundNodeLocal
+                | PESR [FoundNodeSR]
+                | PEMisc
+                deriving (Show,Eq)
+
+parseOneEntry :: Parser Timestamp -> IO (Maybe String) -> IO (Maybe ParseEntry)
+parseOneEntry pTimestamp getL = impl
   where
     impl = do
       mline <- getL
       case mline of
         Nothing -> return Nothing
-        Just line -> 
-          case runParser ((,) <$> pTimestamp <*> pLocalNode) line of
-            Nothing -> impl
-            Just (ts, (addr, ln)) -> do
-              mns <- parseNeighbors pTimestamp getL
-              case mns of
-                Nothing -> return Nothing
-                Just ns -> 
-                  return $ Just $ FoundNode { subjectNode = FindingID FindingLocal addr,
-                                              foundAt = ts,
-                                              neighborLinks = map toFoundLink ns,
-                                              nodeAttributes = ln
-                                            }
-    toFoundLink (neighbor_addr, ll) =
-      FoundLink { targetNode = FindingID FindingLocal neighbor_addr,
-                  linkState = LinkToTarget,
-                  linkAttributes = ll
-                }
---- TODO: this functions should be deprecated by pNeighbors
-parseNeighbors :: Parser Timestamp -> IO (Maybe String) -> IO (Maybe [(IPv6, Local.LocalLink)])
-parseNeighbors pTimestamp getL = go []
+        Just line ->
+          case runParser ((,) <$> pTimestamp <*> (pLogHead *> pHeading)) line of
+            Nothing -> return $ Just PEMisc
+            Just (ts, HLocal addr node) -> proceedLocal ts addr node
+            Just (ts, HSR) -> proceedSR ts
+    withPrefix p = pTimestamp *> pLogHead *> p
+    proceedLocal ts addr node = do
+      mlinks <- readUntil getL (withPrefix pLocalNeighbor) (withPrefix pLocalNeighborEnd)
+      case mlinks of
+        Nothing -> return Nothing
+        Just links -> return $ Just $ PELocal $ makeFoundNodeLocal ts addr node links
+    proceedSR ts = do
+      mlinks <- readUntil getL (withPrefix pSRLink) (withPrefix pSRLinkEnd)
+      case mlinks of
+        Nothing -> return Nothing
+        Just links -> return $ Just $ PESR $ map (uncurry $ makeFoundNodeSR ts) $ groupSRLinks links
+    groupSRLinks :: [(IPv6, Maybe IPv6)] -> [(IPv6, [IPv6])]
+    groupSRLinks links = map toTuple $ groupWith byParentAddr $ (filterOutRoot =<< links)
+      where
+        filterOutRoot (_, Nothing) = []
+        filterOutRoot (c, Just p) = [(c, p)]
+        byParentAddr = snd
+        toTuple [] = error "groupSRLinks: this should not happen"
+        toTuple ((c1, p) : rest) = (p, c1 : map fst rest)
+
+readUntil :: IO (Maybe String) -> Parser a -> Parser end -> IO (Maybe [a])
+readUntil getL pBody pEnd = go []
   where
     go acc = do
       mline <- getL
       case mline of
         Nothing -> return Nothing
-        Just line -> 
-          case runParser (pTimestamp *> pLocalNeighbor) line of
-            Nothing -> return $ Just $ reverse acc
-            Just n -> go (n : acc)
+        Just line ->
+          case runParser ((Left <$> pEnd) <|> (Right <$> pBody)) line of
+            Nothing -> return Nothing
+            Just (Left _) -> return $ Just $ reverse acc
+            Just (Right body) -> go (body : acc)
+
+makeFoundNodeLocal :: Timestamp -> IPv6 -> Local.LocalNode -> [(IPv6, Local.LocalLink)] -> FoundNodeLocal
+makeFoundNodeLocal ts self_addr node_attr neighbors =
+  FoundNode { subjectNode = FindingID FindingLocal self_addr,
+              foundAt = ts,
+              neighborLinks = map toFoundLink neighbors,
+              nodeAttributes = node_attr
+            }
+  where
+    toFoundLink (neighbor_addr, ll) =
+      FoundLink { targetNode = FindingID FindingLocal neighbor_addr,
+                  linkState = LinkToTarget,
+                  linkAttributes = ll
+                }
+
+makeFoundNodeSR :: Timestamp -> IPv6 -> [IPv6] -> FoundNodeSR
+makeFoundNodeSR ts parent_addr children =
+  FoundNode { subjectNode = FindingID FindingSR parent_addr,
+              foundAt = ts,
+              neighborLinks = map toFoundLink children,
+              nodeAttributes = SR.SRNode
+            }
+  where
+    toFoundLink child_addr =
+      FoundLink { targetNode = FindingID FindingSR child_addr,
+                  linkState = LinkToTarget,
+                  linkAttributes = SR.SRLink
+                }
+
+
+data Heading = HLocal IPv6 Local.LocalNode
+             | HSR
+             deriving (Show,Eq,Ord)
+
+pHeading :: Parser Heading
+pHeading = (fmap (uncurry HLocal) $ pLocalNode)
+           <|> (pSRLogHeader *> pure HSR)
 
 isAddressChar :: Char -> Bool
 isAddressChar c = isHexDigit c || c == ':'
@@ -166,14 +223,6 @@ pLocalNode = do
 pExpectChar :: Char -> Parser Bool
 pExpectChar exp_c = fmap (== exp_c) $ P.get
 
-pLocalNeighbors :: Parser Timestamp -> Parser [(IPv6, Local.LocalLink)]
-pLocalNeighbors pTimestamp = P.endBy neighbor_line end_line
-  where
-    neighbor_line = pTimestamp *> pLogHead *> pLocalNeighbor <* skipUntilNewline
-    end_line = pTimestamp *> P.string "nbr: end of list" <* skipUntilNewline
-    skipUntilNewline = void $ P.munch (not . isNewline) *> P.munch isNewline
-    isNewline c = c == '\n' || c == '\r'
-
 pLocalNeighbor :: Parser (IPv6, Local.LocalLink)
 pLocalNeighbor = do
   void $ P.string "nbr: "
@@ -208,11 +257,27 @@ pLocalNeighbor = do
            }
          )
 
+pLocalNeighborEnd :: Parser ()
+pLocalNeighborEnd = void $ P.string "nbr: end of list"
+
 pLogHead :: Parser ()
 pLogHead = do
   void $ P.char '['
   void $ P.munch (not . (== ']'))
   void $ P.string "] "
 
--- TODO: SR entry logs:
--- rpl_dag_root_print_links, uip_sr_link_snprint
+pSRLogHeader :: Parser ()
+pSRLogHeader = do
+  void $ P.string "links: "
+  void $ P.munch1 isDigit
+  void $ P.string " routing links in total "
+
+pSRLink :: Parser (IPv6, Maybe IPv6)
+pSRLink = do
+  void $ P.string "links: "
+  child <- pCompactID
+  mparent <- optional (P.string "  to " *> pCompactID)
+  return (makeCompactAddress child, fmap makeCompactAddress $ mparent)
+
+pSRLinkEnd :: Parser ()
+pSRLinkEnd = void $ P.string "links: end of list"
