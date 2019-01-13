@@ -7,13 +7,16 @@
 module NetSpider.RPL.ContikiNG
   ( parseFile,
     FoundNodeLocal,
-    FoundNodeSR
+    FoundNodeSR,
+    pCoojaLogHead,
+    pCoojaLogHead'
   ) where
 
 import Control.Applicative ((<|>), (<$>), (<*>), (*>), (<*), many, optional)
 import Control.Monad (void)
 import Data.Bits (shift)
 import Data.Char (isDigit, isHexDigit)
+import Data.Int (Int64)
 import Data.List (sortOn, reverse)
 import Data.Monoid ((<>))
 import Data.Text (pack)
@@ -22,7 +25,7 @@ import GHC.Exts (groupWith)
 import Net.IPv6 (IPv6)
 import qualified Net.IPv6 as IPv6
 import NetSpider.Found (FoundNode(..), FoundLink(..), LinkState(LinkToTarget))
-import NetSpider.Timestamp (Timestamp)
+import NetSpider.Timestamp (Timestamp, fromEpochMillisecond)
 import System.IO (withFile, IOMode(ReadMode), hGetLine, hIsEOF)
 import qualified Text.ParserCombinators.ReadP as P
 import Text.Read (readEither)
@@ -281,3 +284,25 @@ pSRLink = do
 
 pSRLinkEnd :: Parser ()
 pSRLinkEnd = void $ P.string "links: end of list"
+
+-- | Parse the head of Cooja log line, and return the timestamp and
+-- node ID.
+pCoojaLogHead :: Parser (Timestamp, Int)
+pCoojaLogHead = do
+  ts_min <- pRead =<< P.munch1 isDigit
+  void $ P.string ":"
+  ts_sec <- pRead =<< P.munch1 isDigit
+  void $ P.string "."
+  ts_msec <- pRead =<< P.munch1 isDigit
+  P.skipSpaces
+  void $ P.string "ID:"
+  node_id <- pRead =<< P.munch1 isDigit
+  P.skipSpaces
+  return (makeTs ts_min ts_sec ts_msec, node_id)
+  where
+    makeTs :: Int64 -> Int64 -> Int64 -> Timestamp
+    makeTs ts_min ts_sec ts_msec = fromEpochMillisecond ((ts_min * 60 + ts_sec) * 1000 + ts_msec)
+
+-- | Same as 'pCoojaLogHead', but it returns the timestamp only.
+pCoojaLogHead' :: Parser Timestamp
+pCoojaLogHead' = fmap fst pCoojaLogHead
