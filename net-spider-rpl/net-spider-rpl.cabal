@@ -9,7 +9,8 @@ license-file:           LICENSE
 -- category:               
 cabal-version:          >= 1.10
 build-type:             Simple
-extra-source-files:     README.md, ChangeLog.md
+extra-source-files:     README.md, ChangeLog.md,
+                        test/data/cooja.log
 -- homepage:               
 -- bug-reports:            
 
@@ -51,9 +52,9 @@ test-suite spec
   ghc-options:          -Wall -fno-warn-unused-imports "-with-rtsopts=-M512m"
   main-is:              Spec.hs
   -- default-extensions:   
-  -- other-extensions:     
-  other-modules:        NetSpider.RPLSpec
-  build-depends:        base, net-spider-rpl,
+  other-extensions:     OverloadedStrings
+  other-modules:        NetSpider.RPL.ContikiNGSpec
+  build-depends:        base, net-spider-rpl, net-spider,
                         hspec
 
 source-repository head

@@ -1,0 +1,23 @@
+01:00.339       ID:2    [INFO: 6LoWPAN   ] input: fragment (tag 4, payload 96, offset 232) -- 101 5
+01:00.339       ID:2    [INFO: TSCH-LOG  ] {asn 00.0000176a link  0   7   2  2  0 ch 15} uc-1-0 rx LL-0001->LL-0002, len 122, seq  29, edr   0, dr   0
+01:00.339       ID:1    [INFO: RPL       ] packet sent to 0002.0002.0002.0002, status 0, tx 1, new link metric 143
+01:00.347       ID:2    [INFO: 6LoWPAN   ] input: fragment (tag 4, payload 24, offset 328) -- 29 5
+01:00.347       ID:2    [INFO: 6LoWPAN   ] input: received IPv6 packet with len 352
+01:00.347       ID:2    [INFO: TCP/IP    ] input: received 352 bytes
+01:00.347       ID:2    [INFO: IPv6      ] packet received from fd00::201:1:1:1 to fd00::202:2:2:2
+01:00.347       ID:2    [INFO: IPv6      ] icmpv6 input length 352 type: 129 
+01:00.347       ID:2    [INFO: ICMPv6    ] Received Echo Reply from fd00::201:1:1:1 to fd00::202:2:2:2
+01:00.347       ID:2    [INFO: TSCH-LOG  ] {asn 00.0000176b link  0   7   3  3  0 ch 15} uc-1-0 rx LL-0001->LL-0002, len  50, seq  30, edr   0, dr   0
+01:00.347       ID:1    [INFO: RPL       ] packet sent to 0002.0002.0002.0002, status 0, tx 1, new link metric 141
+01:00.382       ID:1    [INFO: RPL       ] nbr: own state, addr fd00::201:1:1:1, DAG state: reachable, MOP 1 OCP 1 rank 128 max-rank 65535, dioint 15, nbr count 1 (Periodic)
+01:00.382       ID:1    [INFO: RPL       ] nbr: fe80::202:2:2:2  299,   141 =>   440 -- 16  baf  (last tx 0 min ago)
+01:00.382       ID:1    [INFO: RPL       ] nbr: end of list
+01:00.382       ID:1    [INFO: RPL       ] links: 2 routing links in total (Periodic)
+01:00.382       ID:1    [INFO: RPL       ] links: fd00::201:1:1:1  (DODAG root) (lifetime: infinite)
+01:00.382       ID:1    [INFO: RPL       ] links: fd00::202:2:2:2  to fd00::201:1:1:1 (lifetime: 1740 seconds)
+01:00.382       ID:1    [INFO: RPL       ] links: end of list
+01:01.785       ID:1    [INFO: TSCH-LOG  ] {asn 00.000017fb link  0   7   0  0  0 ch 20} bc-0-0 rx LL-0002->LL-NULL, len  35, seq  80, edr   0
+01:02.835       ID:2    [INFO: TSCH-LOG  ] {asn 00.00001864 link  0   7   0  0  0 ch 15} bc-0-0 rx LL-0001->LL-NULL, len  35, seq  30, edr   0, dr   0
+01:05.425       ID:1    [INFO: TSCH-LOG  ] {asn 00.00001967 link  0   7   0  0  0 ch 20} bc-0-0 rx LL-0002->LL-NULL, len  35, seq  80, edr   0
+01:05.581       ID:2    [INFO: RPL       ] sending a multicast-DIO with rank 265 to ff02::1a
+01:05.581       ID:2    [INFO: ICMPv6    ] Sending ICMPv6 packet to ff02::1a, type 155, code 1, len 72
