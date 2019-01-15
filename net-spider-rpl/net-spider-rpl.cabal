@@ -25,7 +25,7 @@ library
                         NetSpider.RPL.Local,
                         NetSpider.RPL.SR,
                         NetSpider.RPL.ContikiNG
-  -- other-modules:        
+  other-modules:        NetSpider.RPL.IPv6
   build-depends:        base,
                         aeson,
                         greskell,
