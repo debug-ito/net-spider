@@ -25,9 +25,9 @@ spec = do
                         nodeAttributes = Local.LocalNode { Local.rank = 128 }
                       }
           exp_local_links =
-            [ FoundLink { targetNode = fromJust $ idFromText "local://fe80::202:2:2:2",
+            [ FoundLink { targetNode = fromJust $ idFromText "local://fd00::202:2:2:2",
                           linkState = LinkToTarget,
-                          linkAttributes = Local.LocalLink { Local.neighborType = Local.OtherNeighbor,
+                          linkAttributes = Local.LocalLink { Local.neighborType = Local.ParentCandidate,
                                                              Local.neighborRank = 299,
                                                              Local.metric = 141,
                                                              Local.rssi = Nothing
