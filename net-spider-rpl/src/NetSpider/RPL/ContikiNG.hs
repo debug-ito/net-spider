@@ -31,6 +31,7 @@ import qualified Text.ParserCombinators.ReadP as P
 import Text.Read (readEither)
 
 import NetSpider.RPL.FindingID (FindingID(FindingID), FindingType(..))
+import NetSpider.RPL.IPv6 (isLinkLocal, setPrefix, getPrefix)
 import qualified NetSpider.RPL.Local as Local
 import qualified NetSpider.RPL.SR as SR
 
@@ -87,7 +88,7 @@ parseOneEntry pTimestamp getL = impl
       mlinks <- readUntil getL (withPrefix pLocalNeighbor) (withPrefix pLocalNeighborEnd)
       case mlinks of
         Nothing -> return Nothing
-        Just links -> return $ Just $ PELocal $ makeFoundNodeLocal ts addr node links
+        Just links -> return $ Just $ PELocal $ makeFoundNodeLocal ts addr node $ map (setAddressPrefix addr) links
     proceedSR ts = do
       mlinks <- readUntil getL (withPrefix pSRLink) (withPrefix pSRLinkEnd)
       case mlinks of
@@ -101,6 +102,11 @@ parseOneEntry pTimestamp getL = impl
         byParentAddr = snd
         toTuple [] = error "groupSRLinks: this should not happen"
         toTuple ((c1, p) : rest) = (p, c1 : map fst rest)
+    setAddressPrefix self_addr (neighbor_addr, ll) = (modified_addr, ll)
+      where
+        modified_addr = if isLinkLocal neighbor_addr
+                        then setPrefix (getPrefix self_addr) neighbor_addr
+                        else neighbor_addr
 
 readUntil :: IO (Maybe String) -> Parser a -> Parser end -> IO (Maybe [a])
 readUntil getL pBody pEnd = go []
