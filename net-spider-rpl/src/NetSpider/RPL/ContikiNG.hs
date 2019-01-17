@@ -208,6 +208,9 @@ pCompactAddress = do
 -- neighbor address can be logged in a "compact" form.
 -- https://github.com/contiki-ng/contiki-ng/blob/develop/os/sys/log.c
 
+pMaybeCompactAddress :: Parser IPv6
+pMaybeCompactAddress = pCompactAddress <|> pAddress
+
 pRead :: Read a => String -> Parser a
 pRead = either fail return . readEither
 
@@ -235,7 +238,7 @@ pExpectChar exp_c = fmap (== exp_c) $ P.get
 pLocalNeighbor :: Parser (IPv6, Local.LocalLink)
 pLocalNeighbor = do
   void $ P.string "nbr: "
-  neighbor_addr <- pCompactAddress <|> pAddress
+  neighbor_addr <- pMaybeCompactAddress
   P.skipSpaces
   neighbor_rank <- pRead =<< P.munch1 isDigit
   void $ P.string ", "
@@ -284,9 +287,9 @@ pSRLogHeader = do
 pSRLink :: Parser (IPv6, Maybe IPv6)
 pSRLink = do
   void $ P.string "links: "
-  child <- pCompactID
-  mparent <- optional (P.string "  to " *> pCompactID)
-  return (makeCompactAddress child, fmap makeCompactAddress $ mparent)
+  child <- pMaybeCompactAddress
+  mparent <- optional (P.string "  to " *> pMaybeCompactAddress)
+  return (child, mparent)
 
 pSRLinkEnd :: Parser ()
 pSRLinkEnd = void $ P.string "links: end of list"
