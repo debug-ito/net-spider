@@ -12,7 +12,7 @@ module NetSpider.RPL.IPv6
     setPrefix
   ) where
 
-import Data.Bits ((.&.))
+import Data.Bits ((.&.), shift)
 import Data.Word (Word64)
 import Net.IPv6 (IPv6(..), toWord16s)
 
@@ -21,10 +21,10 @@ type Prefix = Word64
 type InterfaceID = Word64
 
 isLinkLocal :: IPv6 -> Bool
-isLinkLocal addr = (== 0xfe80) $ bitMask $ top_word
+isLinkLocal addr = (== 0xfe80) $ (.&. bit_mask) $ top_word
   where
     (top_word, _, _, _, _, _, _, _) = toWord16s addr
-    bitMask w = w .&. (2 ^ (10 :: Int) - 1)
+    bit_mask = (2 ^ (10 :: Int) - 1) `shift` 6
 
 getPrefix :: IPv6 -> Prefix
 getPrefix = ipv6A
