@@ -11,7 +11,8 @@ cabal-version:          >= 1.10
 build-type:             Simple
 extra-source-files:     README.md, ChangeLog.md,
                         test/data/cooja.log,
-                        test/data/syslog_root.log
+                        test/data/syslog_root.log,
+                        test/data/syslog_nonroot.log
 -- homepage:               
 -- bug-reports:            
 

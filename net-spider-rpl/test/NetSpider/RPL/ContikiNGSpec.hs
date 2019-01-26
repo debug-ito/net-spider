@@ -112,4 +112,81 @@ spec = do
       (got_locals, got_srs) <- parseFile pHead "test/data/syslog_root.log"
       got_locals `shouldBe` [exp_local]
       got_srs `shouldBe` exp_srs
+    specify "syslog nonroot" $ do
+      let exp_timestamp = fromEpochMillisecond 1547558149000
+          exp_local =
+            FoundNode
+            { subjectNode = fromJust $ idFromText "local://fd00::212:eeaa:0077:2f9c",
+              foundAt = exp_timestamp,
+              nodeAttributes = Local.LocalNode { Local.rank = 423 },
+              neighborLinks =
+                [ FoundLink
+                  { targetNode = fromJust $ idFromText "local://fd00::212:eeaa:33cc:632a",
+                    linkState = LinkToTarget,
+                    linkAttributes = Local.LocalLink { Local.neighborType = Local.ParentCandidate,
+                                                       Local.neighborRank = 256,
+                                                       Local.metric = 198,
+                                                       Local.rssi = Nothing
+                                                     }
+                  },
+                  FoundLink
+                  { targetNode = fromJust $ idFromText "local://fd00::212:eeaa:33ff:a874",
+                    linkState = LinkToTarget,
+                    linkAttributes = Local.LocalLink { Local.neighborType = Local.ParentCandidate,
+                                                       Local.neighborRank = 256,
+                                                       Local.metric = 177,
+                                                       Local.rssi = Nothing
+                                                     }
+                  },
+                  FoundLink
+                  { targetNode = fromJust $ idFromText "local://fd00::212:eeaa:33cc:63d0",
+                    linkState = LinkToTarget,
+                    linkAttributes = Local.LocalLink { Local.neighborType = Local.PreferredParent,
+                                                       Local.neighborRank = 272,
+                                                       Local.metric = 151,
+                                                       Local.rssi = Nothing
+                                                     }
+                  },
+                  FoundLink
+                  { targetNode = fromJust $ idFromText "local://fd00::212:eeaa:9977:13ba",
+                    linkState = LinkToTarget,
+                    linkAttributes = Local.LocalLink { Local.neighborType = Local.ParentCandidate,
+                                                       Local.neighborRank = 283,
+                                                       Local.metric = 152,
+                                                       Local.rssi = Nothing
+                                                     }
+                  },
+                  FoundLink
+                  { targetNode = fromJust $ idFromText "local://fd00::212:eeaa:33cc:6350",
+                    linkState = LinkToTarget,
+                    linkAttributes = Local.LocalLink { Local.neighborType = Local.ParentCandidate,
+                                                       Local.neighborRank = 400,
+                                                       Local.metric = 171,
+                                                       Local.rssi = Nothing
+                                                     }
+                  },
+                  FoundLink
+                  { targetNode = fromJust $ idFromText "local://fd00::212:eeaa:e88:db36",
+                    linkState = LinkToTarget,
+                    linkAttributes = Local.LocalLink { Local.neighborType = Local.ParentCandidate,
+                                                       Local.neighborRank = 432,
+                                                       Local.metric = 166,
+                                                       Local.rssi = Nothing
+                                                     }
+                  },
+                  FoundLink
+                  { targetNode = fromJust $ idFromText "local://fd00::212:eeaa:9977:b4",
+                    linkState = LinkToTarget,
+                    linkAttributes = Local.LocalLink { Local.neighborType = Local.OtherNeighbor,
+                                                       Local.neighborRank = 584,
+                                                       Local.metric = 65535,
+                                                       Local.rssi = Nothing
+                                                     }
+                  }
+                ]
+            }
+          pHead = pSyslogHead 2019 Nothing
+      (got_locals, got_srs) <- parseFile pHead "test/data/syslog_nonroot.log"
+      got_locals `shouldBe` [exp_local]
+      got_srs `shouldBe` []
 

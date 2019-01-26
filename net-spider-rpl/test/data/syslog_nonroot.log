@@ -1,0 +1,14 @@
+Jan 15 13:15:49 hostname label[15738]: [INFO: TSCH-LOG  ] {asn 00.00e136df link  0   7   0  0 ch 16} bc-1-0 tx LL-2f9c->LL-NULL, len  94, seq  95, st 0  1
+Jan 15 13:15:49 hostname label[15738]: TSCH associated: 1
+Jan 15 13:15:49 hostname label[15738]: [WARN: RPL       ] nbr: own state, addr fd00::212:eeaa:0077:2f9c, DAG state: reachable, MOP 1 OCP 1 rank 423 max-rank 1408, dioint 16, nbr count 10 (L-reporter)
+Jan 15 13:15:49 hostname label[15738]: [WARN: RPL       ] nbr: fe80::212:eeaa:33cc:632a   256,   198 =>   454 --  7   af
+Jan 15 13:15:49 hostname label[15738]: [WARN: RPL       ] nbr: fe80::212:eeaa:33ff:a874   256,   177 =>   433 --  3   a
+Jan 15 13:15:49 hostname label[15738]: [WARN: RPL       ] nbr: fe80::212:eeaa:33cc:63d0   272,   151 =>   423 -- 16  bafp
+Jan 15 13:15:49 hostname label[15738]: [WARN: RPL       ] nbr: fe80::212:eeaa:9977:13ba   283,   152 =>   435 --  4   af
+Jan 15 13:15:49 hostname label[15738]: [WARN: RPL       ] nbr: fe80::212:eeaa:33cc:6350   400,   171 =>   571 --  2   a
+Jan 15 13:15:49 hostname label[15738]: [WARN: RPL       ] nbr: fe80::212:eeaa:e88:db36   432,   166 =>   598 --  3   a
+Jan 15 13:15:49 hostname label[15738]: [WARN: RPL       ] nbr: fe80::212:eeaa:9977:b4   584, 65535 => 65535 --  0
+Jan 15 13:15:49 hostname label[15738]: [WARN: RPL       ] nbr: end of list
+Jan 15 13:15:49 hostname label[15738]: [INFO: TSCH-LOG  ] {asn 00.00e136f4 link  0   7   0  0 ch 10} bc-0-0 rx LL-1391->LL-NULL, len  35, seq  19, edr  -9
+Jan 15 13:15:50 hostname label[15738]: [INFO: TSCH-LOG  ] {asn 00.00e1370b link  2   7   2  0 ch 16} bc-1-0 rx LL-1391->LL-NULL, len  94, seq  20, edr  -5
+Jan 15 13:15:50 hostname label[15738]: [INFO: TSCH-LOG  ] {asn 00.00e1371e link  0   7   0  0 ch 14} bc-0-0 tx LL-2f9c->LL-NULL, len  35, seq  96, st 0  1
