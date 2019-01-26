@@ -241,7 +241,7 @@ pLocalNode = do
   return (addr, Local.LocalNode { Local.rank = rank })
 
 pExpectChar :: Char -> Parser Bool
-pExpectChar exp_c = fmap (== exp_c) $ P.get
+pExpectChar exp_c = fmap (== Just exp_c) $ optional P.get
 
 pLocalNeighbor :: Parser (IPv6, Local.LocalLink)
 pLocalNeighbor = do
@@ -258,7 +258,7 @@ pLocalNeighbor = do
   void $ P.string " -- "
   P.skipSpaces
   void $ P.munch isDigit -- freshness
-  void $ P.string " "
+  void $ pExpectChar ' '
   void $ pExpectChar 'r'
   void $ pExpectChar 'b'
   acceptable <- pExpectChar 'a'
