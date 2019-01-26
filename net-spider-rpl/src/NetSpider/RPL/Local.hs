@@ -1,12 +1,13 @@
 {-# LANGUAGE OverloadedStrings #-}
 -- |
 -- Module: NetSpider.RPL.Local
--- Description: 
+-- Description: NetSpider data model for RPL neighbor table
 -- Maintainer: Toshio Ito <debug.ito@gmail.com>
 --
 -- 
 module NetSpider.RPL.Local
-  ( LocalNode(..),
+  ( -- * Types
+    LocalNode(..),
     LocalLink(..),
     MergedLocalLink(..),
     Rank,
@@ -14,6 +15,7 @@ module NetSpider.RPL.Local
     neighborTypeToText,
     neighborTypeFromText,
     RSSI,
+    -- * Unifier
     localUnifierConf
   ) where
 

@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings, DeriveGeneric #-}
 -- |
 -- Module: NetSpider.RPL.FindingID
--- Description: 
+-- Description: NetSpider Node ID type for RPL network graph
 -- Maintainer: Toshio Ito <debug.ito@gmail.com>
 --
 -- 
@@ -53,7 +53,13 @@ typeFromText t =
     "sr" -> Just FindingSR
     _ -> Nothing
 
--- | ID of local finding.
+-- | The node ID.
+--
+-- Basically a node is identified by its IPv6 address in RPL
+-- network. 'FindingID' is distinguished by 'FindingType' as well,
+-- because in RPL there can be difference between topology formed by
+-- individual nodes and topology stored in the source routing table of
+-- the root node (for non-storing mode of operation)
 data FindingID =
   FindingID
   { findingType :: !FindingType,

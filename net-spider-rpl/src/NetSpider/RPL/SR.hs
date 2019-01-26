@@ -1,12 +1,14 @@
 -- |
 -- Module: NetSpider.RPL.SR
--- Description: 
+-- Description: NetSpider data model for source routing (SR) table
 -- Maintainer: Toshio Ito <debug.ito@gmail.com>
 --
 -- 
 module NetSpider.RPL.SR
-  ( SRNode(..),
+  ( -- * Types
+    SRNode(..),
     SRLink(..),
+    -- * Unifier
     srUnifierConf
   ) where
 
