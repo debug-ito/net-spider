@@ -5,27 +5,32 @@
 --
 -- 
 module NetSpider.RPL.ContikiNG
-  ( parseFile,
+  ( -- * Parser functions
+    parseFile,
     FoundNodeLocal,
     FoundNodeSR,
+    -- * Parser components
+    Parser,
     pCoojaLogHead,
-    pCoojaLogHead'
+    pCoojaLogHead',
+    pSyslogHead
   ) where
 
 import Control.Applicative ((<|>), (<$>), (<*>), (*>), (<*), many, optional)
 import Control.Monad (void)
 import Data.Bits (shift)
-import Data.Char (isDigit, isHexDigit)
+import Data.Char (isDigit, isHexDigit, isSpace)
 import Data.Int (Int64)
 import Data.List (sortOn, reverse)
 import Data.Monoid ((<>))
 import Data.Text (pack)
+import qualified Data.Time as Time
 import Data.Word (Word16)
 import GHC.Exts (groupWith)
 import Net.IPv6 (IPv6)
 import qualified Net.IPv6 as IPv6
 import NetSpider.Found (FoundNode(..), FoundLink(..), LinkState(LinkToTarget))
-import NetSpider.Timestamp (Timestamp, fromEpochMillisecond)
+import NetSpider.Timestamp (Timestamp, fromEpochMillisecond, fromLocalTime, fromZonedTime)
 import System.IO (withFile, IOMode(ReadMode), hGetLine, hIsEOF)
 import qualified Text.ParserCombinators.ReadP as P
 import Text.Read (readEither)
@@ -214,6 +219,9 @@ pMaybeCompactAddress = pCompactAddress <|> pAddress
 pRead :: Read a => String -> Parser a
 pRead = either fail return . readEither
 
+pNum :: Read a => Parser a
+pNum = pRead =<< P.munch1 isDigit
+
 pLocalNode :: Parser (IPv6, Local.LocalNode)
 pLocalNode = do
   void $ P.string "nbr: own state, addr "
@@ -225,7 +233,7 @@ pLocalNode = do
   void $ P.string " OCP "
   void $ P.munch isDigit
   void $ P.string " rank "
-  rank <- pRead =<< P.munch1 isDigit
+  rank <- pNum
   void $ P.string " max-rank "
   void $ P.munch isDigit
   void $ P.string ", dioint "
@@ -240,10 +248,10 @@ pLocalNeighbor = do
   void $ P.string "nbr: "
   neighbor_addr <- pMaybeCompactAddress
   P.skipSpaces
-  neighbor_rank <- pRead =<< P.munch1 isDigit
+  neighbor_rank <- pNum
   void $ P.string ", "
   P.skipSpaces
-  metric <- pRead =<< P.munch1 isDigit
+  metric <- pNum
   void $ P.string " => "
   P.skipSpaces
   void $ P.munch isDigit -- rank_via_neighbor
@@ -298,14 +306,14 @@ pSRLinkEnd = void $ P.string "links: end of list"
 -- node ID.
 pCoojaLogHead :: Parser (Timestamp, Int)
 pCoojaLogHead = do
-  ts_min <- pRead =<< P.munch1 isDigit
+  ts_min <- pNum
   void $ P.string ":"
-  ts_sec <- pRead =<< P.munch1 isDigit
+  ts_sec <- pNum
   void $ P.string "."
-  ts_msec <- pRead =<< P.munch1 isDigit
+  ts_msec <- pNum
   P.skipSpaces
   void $ P.string "ID:"
-  node_id <- pRead =<< P.munch1 isDigit
+  node_id <- pNum
   P.skipSpaces
   return (makeTs ts_min ts_sec ts_msec, node_id)
   where
@@ -315,3 +323,52 @@ pCoojaLogHead = do
 -- | Same as 'pCoojaLogHead', but it returns the timestamp only.
 pCoojaLogHead' :: Parser Timestamp
 pCoojaLogHead' = fmap fst pCoojaLogHead
+
+-- | Parser for head of syslog line with its default format.
+-- @\"Mmm dd hh:mm:ss HOSTNAME TAG: \"@.
+--
+-- Because the format does not contain year, you have to pass it to
+-- this function.
+pSyslogHead :: Integer -- ^ year
+            -> Maybe Time.TimeZone -- ^ optional time zone.
+            -> Parser Timestamp
+pSyslogHead year mtz = do
+  ts <- pSyslogTimestamp year mtz
+  P.skipSpaces
+  void $ P.munch (not . isSpace) -- hostname
+  P.skipSpaces
+  void $ P.munch (not . isSpace) -- tag
+  P.skipSpaces
+  return ts
+
+pSyslogTimestamp :: Integer -> Maybe Time.TimeZone -> Parser Timestamp
+pSyslogTimestamp year mtz = do
+  month <- pMonth
+  P.skipSpaces
+  day <- pNum
+  P.skipSpaces
+  hour <- pNum <* P.string ":"
+  minute <- pNum <* P.string ":"
+  sec <- pNum
+  let lt = Time.LocalTime (Time.fromGregorian year month day) (Time.TimeOfDay hour minute sec)
+  case mtz of
+    Nothing -> return $ fromLocalTime lt
+    Just tz -> return $ fromZonedTime $ Time.ZonedTime lt tz
+  where
+    pMonth = do
+      mstr <- P.munch1 (not . isSpace)
+      case mstr of
+        "Jan" -> return 1
+        "Feb" -> return 2
+        "Mar" -> return 3
+        "Apr" -> return 4
+        "May" -> return 5
+        "Jun" -> return 6
+        "Jul" -> return 7
+        "Aug" -> return 8
+        "Sep" -> return 9
+        "Oct" -> return 10
+        "Nov" -> return 11
+        "Dec" -> return 12
+        _ -> fail ("Invalid for a month: " <> mstr)
+
