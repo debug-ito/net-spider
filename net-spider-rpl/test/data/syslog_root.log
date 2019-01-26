@@ -1,0 +1,13 @@
+Jan  8 17:25:37 hostname syslog_label[1715]: [INFO: RPL       ] nbr: own state, addr fd00::212:1199:eebb:62c4, DAG state: reachable, MOP 1 OCP 1 rank 128 max-rank 65535, dioint 14, nbr count 5 (Periodic)
+Jan  8 17:25:37 hostname syslog_label[1715]: [INFO: RPL       ] nbr: fe80::212:1199:bbcc:4fdf  262,   128 =>   390 --  0   a   (last tx 4945 min ago)
+Jan  8 17:25:37 hostname syslog_label[1715]: [INFO: RPL       ] nbr: fe80::212:1199:bbcc:d52d  263,   128 =>   391 --  0   a   (last tx 1870 min ago)
+Jan  8 17:25:37 hostname syslog_label[1715]: [INFO: RPL       ] nbr: fe80::212:1199:bbcc:5e88  256,   128 =>   384 --  0  ba   (last tx 4435 min ago)
+Jan  8 17:25:37 hostname syslog_label[1715]: [INFO: RPL       ] nbr: fe80::212:1199:eebb:62fe  256,   129 =>   385 --  0   a   (last tx 2020 min ago)
+Jan  8 17:25:37 hostname syslog_label[1715]: [INFO: RPL       ] nbr: end of list
+Jan  8 17:25:37 hostname syslog_label[1715]: [INFO: RPL       ] links: 5 routing links in total (Periodic)
+Jan  8 17:25:37 hostname syslog_label[1715]: [INFO: RPL       ] links: fd00::212:1199:eebb:62c4  (DODAG root) (lifetime: infinite)
+Jan  8 17:25:37 hostname syslog_label[1715]: [INFO: RPL       ] links: fd00::212:1199:bbcc:d52d  to fd00::212:1199:eebb:62c4 (lifetime: 1080 seconds)
+Jan  8 17:25:37 hostname syslog_label[1715]: [INFO: RPL       ] links: fd00::212:1199:bbcc:4fdf  to fd00::212:1199:eebb:62c4 (lifetime: 1260 seconds)
+Jan  8 17:25:37 hostname syslog_label[1715]: [INFO: RPL       ] links: fd00::212:1199:eebb:62fe  to fd00::212:1199:eebb:62c4 (lifetime: 1440 seconds)
+Jan  8 17:25:37 hostname syslog_label[1715]: [INFO: RPL       ] links: fd00::212:1199:bbcc:5e88  to fd00::212:1199:eebb:62c4 (lifetime: 1140 seconds)
+Jan  8 17:25:37 hostname syslog_label[1715]: [INFO: RPL       ] links: end of list

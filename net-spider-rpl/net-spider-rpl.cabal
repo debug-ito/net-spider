@@ -10,7 +10,8 @@ license-file:           LICENSE
 cabal-version:          >= 1.10
 build-type:             Simple
 extra-source-files:     README.md, ChangeLog.md,
-                        test/data/cooja.log
+                        test/data/cooja.log,
+                        test/data/syslog_root.log
 -- homepage:               
 -- bug-reports:            
 
@@ -33,7 +34,8 @@ library
                         net-spider-pangraph,
                         text,
                         ip,
-                        hashable
+                        hashable,
+                        time
 
 -- executable net-spider-rpl
 --   default-language:     Haskell2010
@@ -54,7 +56,7 @@ test-suite spec
   -- default-extensions:   
   other-extensions:     OverloadedStrings
   other-modules:        NetSpider.RPL.ContikiNGSpec
-  build-depends:        base, net-spider-rpl, net-spider,
+  build-depends:        base, net-spider-rpl, net-spider, text,
                         hspec
 
 source-repository head
