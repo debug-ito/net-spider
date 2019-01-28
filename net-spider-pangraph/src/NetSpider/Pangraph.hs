@@ -10,12 +10,17 @@ module NetSpider.Pangraph
          makePangraphIO,
          makeVertex,
          makeEdge,
+         -- * Types
+         Atom,
+         ToAtom(..),
          ToAttributes(..),
          -- * Utility
          timestampAttributes,
          writePangraph,
          -- * Re-exports
-         Attribute
+         Attribute,
+         Key,
+         Value
        ) where
 
 import Data.ByteString (ByteString)
@@ -30,12 +35,12 @@ import NetSpider.Snapshot
     sourceNode, destinationNode, linkAttributes, linkTimestamp, isDirected
   )
 import NetSpider.Timestamp (Timestamp(..), showEpochTime)
-import Pangraph (Attribute)
+import Pangraph (Attribute, Key, Value)
 import qualified Pangraph as P
 import qualified Pangraph.GraphML.Writer as GraphML
 import System.IO.Error (userError, ioError)
 
-import NetSpider.Pangraph.Atom (ToAtom(..))
+import NetSpider.Pangraph.Atom (Atom, ToAtom(..))
 
 -- | Make Pangraph 'Attribute's from 'Timestamp'.
 --
