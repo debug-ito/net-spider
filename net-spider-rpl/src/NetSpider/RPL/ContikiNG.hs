@@ -3,12 +3,14 @@
 -- Description: Parser for Contiki-NG logs about RPL
 -- Maintainer: Toshio Ito <debug.ito@gmail.com>
 --
--- 
+-- This module exports utility functions to read and parse log files
+-- from Contiki-NG applications.
+--
+-- [Contiki-NG](http://contiki-ng.org/) is a tiny operation system for
+-- wireless network devices. It supports RPL.
 module NetSpider.RPL.ContikiNG
   ( -- * Parser functions
     parseFile,
-    FoundNodeLocal,
-    FoundNodeSR,
     -- * Parser components
     Parser,
     pCoojaLogHead,
@@ -38,13 +40,11 @@ import Text.Read (readEither)
 import NetSpider.RPL.FindingID (FindingID(FindingID), FindingType(..))
 import NetSpider.RPL.IPv6 (isLinkLocal, setPrefix, getPrefix)
 import qualified NetSpider.RPL.Local as Local
+import NetSpider.RPL.Local (FoundNodeLocal)
 import qualified NetSpider.RPL.SR as SR
+import NetSpider.RPL.SR (FoundNodeSR)
 
 type Parser = P.ReadP
-
-type FoundNodeLocal = FoundNode FindingID Local.LocalNode Local.LocalLink
-
-type FoundNodeSR = FoundNode FindingID SR.SRNode SR.SRLink
 
 runParser :: Parser a -> String -> Maybe a
 runParser p input = extract $ sortPairs $ P.readP_to_S p input

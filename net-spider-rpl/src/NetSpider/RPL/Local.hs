@@ -7,6 +7,7 @@
 -- 
 module NetSpider.RPL.Local
   ( -- * Types
+    FoundNodeLocal,
     LocalNode(..),
     LocalLink(..),
     MergedLocalLink(..),
@@ -29,6 +30,7 @@ import Data.Greskell
 import Data.Greskell.Extra (writePropertyKeyValues)
 import Data.Monoid ((<>))
 import Data.Text (Text, unpack)
+import NetSpider.Found (FoundNode)
 import NetSpider.Graph (NodeAttributes(..), LinkAttributes(..))
 import qualified NetSpider.Pangraph as Pan
 import NetSpider.Pangraph.Atom (toAtom, Atom)
@@ -36,6 +38,9 @@ import NetSpider.Unify (UnifyStdConfig, lsLinkAttributes, latestLinkSample)
 import qualified NetSpider.Unify as Unify
 
 import NetSpider.RPL.FindingID (FindingID)
+
+-- | The 'FoundNode' observed in the local neighbor table of a node.
+type FoundNodeLocal = FoundNode FindingID LocalNode LocalLink
 
 -- | RPL rank
 type Rank = Word

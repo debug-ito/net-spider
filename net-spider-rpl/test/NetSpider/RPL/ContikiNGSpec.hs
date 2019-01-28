@@ -7,7 +7,7 @@ import NetSpider.Found (FoundNode(..), FoundLink(..), LinkState(..))
 import NetSpider.Timestamp (Timestamp, fromEpochMillisecond)
 import Test.Hspec
 
-import NetSpider.RPL.ContikiNG (parseFile, pCoojaLogHead', FoundNodeSR, pSyslogHead)
+import NetSpider.RPL.ContikiNG (parseFile, pCoojaLogHead', pSyslogHead)
 import NetSpider.RPL.FindingID (idFromText)
 import qualified NetSpider.RPL.Local as Local
 import qualified NetSpider.RPL.SR as SR
@@ -15,7 +15,7 @@ import qualified NetSpider.RPL.SR as SR
 main :: IO ()
 main = hspec spec
 
-srEntry :: Timestamp -> Text -> [Text] -> FoundNodeSR
+srEntry :: Timestamp -> Text -> [Text] -> SR.FoundNodeSR
 srEntry ts src dests =
   FoundNode
   { subjectNode = fromJust $ idFromText src,

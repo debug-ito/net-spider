@@ -6,6 +6,7 @@
 -- 
 module NetSpider.RPL.SR
   ( -- * Types
+    FoundNodeSR,
     SRNode(..),
     SRLink(..),
     -- * Unifier
@@ -15,11 +16,15 @@ module NetSpider.RPL.SR
 import Data.Greskell
   ( gIdentity
   )
+import NetSpider.Found (FoundNode)
 import NetSpider.Graph (NodeAttributes(..), LinkAttributes(..))
 import NetSpider.Unify (UnifyStdConfig, lsLinkAttributes, latestLinkSample)
 import qualified NetSpider.Unify as Unify
 
 import NetSpider.RPL.FindingID (FindingID)
+
+-- | The 'FoundNode' observed in the source routing (SR) table.
+type FoundNodeSR = FoundNode FindingID SRNode SRLink
 
 -- | Node attributes observed in the Source-routing (SR)
 -- table. Basically only for RPL non-storing mode.
