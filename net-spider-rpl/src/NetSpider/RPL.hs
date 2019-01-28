@@ -7,7 +7,7 @@
 -- This module defines NetSpider data model and utility for RPL
 -- networks.
 --
--- RPL ([IPv6 Routing Protocol for Low-Power and Lossy Networks, RFC 6550](https://tools.ietf.org/html/rfc6550))
+-- RPL ( [IPv6 Routing Protocol for Low-Power and Lossy Networks, RFC 6550](https://tools.ietf.org/html/rfc6550) )
 -- is a routing protocol for small wireless devices. Each node
 -- independently exchanges routing information with its neighbors over
 -- low-power wireless channels. Using those information, the nodes
