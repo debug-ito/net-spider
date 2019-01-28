@@ -1,6 +1,6 @@
 # net-spider-rpl
 
-NetSpider data model and utility for RPL ([IPv6 Routing Protocol for Low-Power and Lossy Networks, RFC 6550](https://tools.ietf.org/html/rfc6550)) networks.
+NetSpider data model and utility for RPL ( [IPv6 Routing Protocol for Low-Power and Lossy Networks, RFC 6550](https://tools.ietf.org/html/rfc6550) ) networks.
 
 Features:
 
