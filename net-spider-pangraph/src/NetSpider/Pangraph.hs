@@ -3,7 +3,11 @@
 -- Module: NetSpider.Pangraph
 -- Description: Conversion between NetSpider and Pangraph
 -- Maintainer: Toshio Ito <debug.ito@gmail.com>
--- 
+--
+-- Conversion of NetSpider data model into Pangraph data model. This
+-- module allows you to export a snapshot graph ('SnapshotNode's and
+-- 'SnapshotLink's) to 'P.Pangraph'. Then you can export it to a
+-- GraphML file so that external tools can handle it.
 module NetSpider.Pangraph
        ( -- * Converters
          makePangraph,
