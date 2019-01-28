@@ -18,6 +18,7 @@ import Data.Greskell
   )
 import NetSpider.Found (FoundNode)
 import NetSpider.Graph (NodeAttributes(..), LinkAttributes(..))
+import qualified NetSpider.Pangraph as Pan
 import NetSpider.Unify (UnifyStdConfig, lsLinkAttributes, latestLinkSample)
 import qualified NetSpider.Unify as Unify
 
@@ -35,6 +36,9 @@ instance NodeAttributes SRNode where
   writeNodeAttributes _ = return gIdentity
   parseNodeAttributes _ = return SRNode
 
+instance Pan.ToAttributes SRNode where
+  toAttributes _ = []
+
 -- | Link attributes observed in the source-routing (SR) table.
 data SRLink = SRLink
             deriving (Show,Eq,Ord)
@@ -42,6 +46,9 @@ data SRLink = SRLink
 instance LinkAttributes SRLink where
   writeLinkAttributes _ = return gIdentity
   parseLinkAttributes _ = return SRLink
+
+instance Pan.ToAttributes SRLink where
+  toAttributes _ = []
 
 -- | 'UnifyStdConfig' for RPL source-routing (SR) findings.
 srUnifierConf :: UnifyStdConfig FindingID SRNode SRLink SRLink ()

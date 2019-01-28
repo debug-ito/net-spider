@@ -60,6 +60,10 @@ instance NodeAttributes LocalNode where
               ]
   parseNodeAttributes ps = LocalNode <$> parseOneValue "rank" ps
 
+instance Pan.ToAttributes LocalNode where
+  toAttributes ln = [ ("rank", toAtom $ rank ln)
+                    ]
+
 -- | Classification of RPL neighbors.
 data NeighborType = PreferredParent
                     -- ^ The neighbor is the preferred parent.
