@@ -70,7 +70,7 @@ data FindingID =
   deriving (Show,Eq,Ord,Generic)
 
 idToText :: FindingID -> Text
-idToText fid = ft_str <> "://" <> addr_str
+idToText fid = ft_str <> "://[" <> addr_str <> "]"
   where
     ft_str = typeToText $ findingType fid
     addr_str = IPv6.encode $ nodeAddress fid
@@ -78,8 +78,8 @@ idToText fid = ft_str <> "://" <> addr_str
 idFromText :: Text -> Maybe FindingID
 idFromText t = FindingID <$> m_ft <*> m_addr
   where
-    (ft_str, rest) = T.breakOn "://" t
-    addr_str = T.drop 3 rest
+    (ft_str, rest) = T.breakOn "://[" t
+    (addr_str, _) = T.breakOn "]" $ T.drop 4 rest
     m_ft = typeFromText ft_str
     m_addr = IPv6.decode addr_str
 
