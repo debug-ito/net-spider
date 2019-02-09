@@ -5,10 +5,20 @@
 * Export `Snapshot.Internal` module. This module is only for internal
   use.
 
+### Found module
+
+* Add `Functor` and `Bifunctor` instances to `FoundNode` and
+  `FoundLink.`
+
 ### Graph module
 
 * Add `NodeAttributes` instance to `PropertyMapList`.
 * Add `LinkAttributes` instance to `PropertyMapSingle`.
+
+### Snapshot module
+
+* Add `Functor` and `Bifunctor` instances to `SnapshotNode` and
+  `SnapshotLink.`
 
 ## 0.2.0.0  -- 2018-12-10
 

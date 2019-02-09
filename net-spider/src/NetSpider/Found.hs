@@ -13,6 +13,7 @@ module NetSpider.Found
          linkStateFromText
        ) where
 
+import Data.Bifunctor (Bifunctor(..))
 import Data.Greskell (FromGraphSON(..))
 import Data.Text (Text, unpack)
 
@@ -66,6 +67,14 @@ data FoundLink n la =
   }
   deriving (Show,Eq,Ord)
 
+instance Functor (FoundLink n) where
+  fmap f l = l { linkAttributes = f $ linkAttributes l }
+
+instance Bifunctor FoundLink where
+  bimap fn fla l = l { targetNode = fn $ targetNode l,
+                       linkAttributes = fla $ linkAttributes l
+                     }
+
 -- | 'FoundNode' is a node (the subject node) observed at a specific
 -- time. It has a set of neighbor links found at the moment.
 --
@@ -80,3 +89,11 @@ data FoundNode n na la =
     nodeAttributes :: !na
   }
   deriving (Show,Eq)
+
+instance Functor (FoundNode n na) where
+  fmap f n = n { neighborLinks = (fmap . fmap) f $ neighborLinks n }
+
+instance Bifunctor (FoundNode n) where
+  bimap fna fla n = n { neighborLinks = (fmap . fmap) fla $ neighborLinks n,
+                        nodeAttributes = fna $ nodeAttributes n
+                      }

@@ -16,6 +16,7 @@ module NetSpider.Snapshot.Internal
          SnapshotNode(..)
        ) where
 
+import Data.Bifunctor (Bifunctor(..))
 import NetSpider.Pair (Pair(..))
 import NetSpider.Timestamp (Timestamp)
 
@@ -44,6 +45,15 @@ data SnapshotLink n la =
 instance (Ord n, Eq la) => Ord (SnapshotLink n la) where
   compare l r = compare (linkNodeTuple l) (linkNodeTuple r)
 
+instance Functor (SnapshotLink n) where
+  fmap f l = l { _linkAttributes = f $ _linkAttributes l }
+
+instance Bifunctor SnapshotLink where
+  bimap fn fla l = l { _linkAttributes = fla $ _linkAttributes l,
+                       _sourceNode = fn $ _sourceNode l,
+                       _destinationNode = fn $ _destinationNode l
+                     }
+
 -- | Node-tuple (source node, destination node) of the link.
 linkNodeTuple :: SnapshotLink n la -> (n, n)
 linkNodeTuple link = (_sourceNode link, _destinationNode link)
@@ -65,3 +75,11 @@ data SnapshotNode n na =
 -- | Comparison by node ID.
 instance (Ord n, Eq na) => Ord (SnapshotNode n na) where
   compare l r = compare (_nodeId l) (_nodeId r)
+
+instance Functor (SnapshotNode n) where
+  fmap f n = n { _nodeAttributes = fmap f $ _nodeAttributes n }
+
+instance Bifunctor SnapshotNode where
+  bimap fn fna n = n { _nodeAttributes = fmap fna $ _nodeAttributes n,
+                       _nodeId = fn $ _nodeId n
+                     }
