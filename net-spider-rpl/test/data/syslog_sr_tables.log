@@ -1,0 +1,20 @@
+Jan 30 10:16:16 hostname tag[3005]: [INFO: RPL       ] nbr: own state, addr fd00::222:5566:cc99:62c4, DAG state: reachable, MOP 1 OCP 1 rank 128 max-rank 65535, dioint 15, nbr count 0 (Periodic)
+Jan 30 10:16:16 hostname tag[3005]: [INFO: RPL       ] nbr: end of list
+Jan 30 10:16:16 hostname tag[3005]: [INFO: RPL       ] No routing links
+Feb  5 13:25:58 hostname tag[20840]: [INFO: RPL       ] packet sent to 0222.5566.ddee.4fdf, status 0, tx 1, new link metric 128
+Feb  5 13:26:02 hostname tag[20840]: [INFO: RPL       ] nbr: own state, addr fd00::222:5566:cc99:62c4, DAG state: reachable, MOP 1 OCP 1 rank 128 max-rank 65535, dioint 18, nbr count 5 (Periodic)
+Feb  5 13:26:02 hostname tag[20840]: [INFO: RPL       ] nbr: fe80::222:5566:ddee:4fdf  256,   128 =>   384 -- 16  baf  (last tx 0 min ago)
+Feb  5 13:26:02 hostname tag[20840]: [INFO: RPL       ] nbr: fe80::222:5566:ddee:d52d  396,   128 =>   524 --  1   a   (last tx 7 min ago)
+Feb  5 13:26:02 hostname tag[20840]: [INFO: RPL       ] nbr: fe80::222:5566:cc99:62fe  266,   137 =>   403 -- 13   af  (last tx 0 min ago)
+Feb  5 13:26:02 hostname tag[20840]: [INFO: RPL       ] nbr: fe80::222:5566:ddee:401e  384,   128 =>   512 --  0   a   (no tx)
+Feb  5 13:26:02 hostname tag[20840]: [INFO: RPL       ] nbr: fe80::222:5566:ddee:5e88  406,   128 =>   534 --  0   a   (no tx)
+Feb  5 13:26:02 hostname tag[20840]: [INFO: RPL       ] nbr: end of list
+Feb  5 13:26:02 hostname tag[20840]: [INFO: RPL       ] links: 6 routing links in total (Periodic)
+Feb  5 13:26:02 hostname tag[20840]: [INFO: RPL       ] links: fd00::222:5566:cc99:62c4  (DODAG root) (lifetime: infinite)
+Feb  5 13:26:02 hostname tag[20840]: [INFO: RPL       ] links: fd00::222:5566:ddee:4fdf  to fd00::222:5566:cc99:62c4 (lifetime: 1140 seconds)
+Feb  5 13:26:02 hostname tag[20840]: [INFO: RPL       ] links: fd00::222:5566:ddee:d52d  to fd00::222:5566:ddee:4fdf (lifetime: 1380 seconds)
+Feb  5 13:26:02 hostname tag[20840]: [INFO: RPL       ] links: fd00::222:5566:cc99:62fe  to fd00::222:5566:cc99:62c4 (lifetime: 1380 seconds)
+Feb  5 13:26:02 hostname tag[20840]: [INFO: RPL       ] links: fd00::222:5566:ddee:401e  to fd00::222:5566:ddee:4fdf (lifetime: 1740 seconds)
+Feb  5 13:26:02 hostname tag[20840]: [INFO: RPL       ] links: fd00::222:5566:ddee:5e88  to fd00::222:5566:ddee:4fdf (lifetime: 1740 seconds)
+Feb  5 13:26:02 hostname tag[20840]: [INFO: RPL       ] links: end of list
+Feb  5 13:26:03 hostname tag[20840]: [INFO: RPL       ] sending a multicast-DIO with rank 128 to ff02::1a
