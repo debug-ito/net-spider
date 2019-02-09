@@ -189,4 +189,82 @@ spec = do
       (got_locals, got_srs) <- parseFile pHead "test/data/syslog_nonroot.log"
       got_locals `shouldBe` [exp_local]
       got_srs `shouldBe` []
+    specify "syslog sr tables" $ do
+      let exp_ts_jan = fromEpochMillisecond 1548843376000
+          exp_ts_feb = fromEpochMillisecond 1549373162000
+          exp_local1 =
+            FoundNode
+            { subjectNode = fromJust $ idFromText "local://fd00::222:5566:cc99:62c4",
+              foundAt = exp_ts_jan,
+              nodeAttributes = Local.LocalNode { Local.rank = 128 },
+              neighborLinks = []
+            }
+          exp_local2 =
+            FoundNode
+            { subjectNode = fromJust $ idFromText "local://fd00::222:5566:cc99:62c4",
+              foundAt = exp_ts_feb,
+              nodeAttributes = Local.LocalNode { Local.rank = 128 },
+              neighborLinks = exp_local_links2
+            }
+          exp_local_links2 =
+            [ FoundLink
+              { targetNode = fromJust $ idFromText "local://fd00::222:5566:ddee:4fdf",
+                linkState = LinkToTarget,
+                linkAttributes = Local.LocalLink { Local.neighborType = Local.ParentCandidate,
+                                                   Local.neighborRank = 256,
+                                                   Local.metric = 128,
+                                                   Local.rssi = Nothing
+                                                 }
+              },
+              FoundLink
+              { targetNode = fromJust $ idFromText "local://fd00::222:5566:ddee:d52d",
+                linkState = LinkToTarget,
+                linkAttributes = Local.LocalLink { Local.neighborType = Local.ParentCandidate,
+                                                   Local.neighborRank = 396,
+                                                   Local.metric = 128,
+                                                   Local.rssi = Nothing
+                                                 }
+              },
+              FoundLink
+              { targetNode = fromJust $ idFromText "local://fd00::222:5566:cc99:62fe",
+                linkState = LinkToTarget,
+                linkAttributes = Local.LocalLink { Local.neighborType = Local.ParentCandidate,
+                                                   Local.neighborRank = 266,
+                                                   Local.metric = 137,
+                                                   Local.rssi = Nothing
+                                                 }
+              },
+              FoundLink
+              { targetNode = fromJust $ idFromText "local://fd00::222:5566:ddee:401e",
+                linkState = LinkToTarget,
+                linkAttributes = Local.LocalLink { Local.neighborType = Local.ParentCandidate,
+                                                   Local.neighborRank = 384,
+                                                   Local.metric = 128,
+                                                   Local.rssi = Nothing
+                                                 }
+              },
+              FoundLink
+              { targetNode = fromJust $ idFromText "local://fd00::222:5566:ddee:5e88",
+                linkState = LinkToTarget,
+                linkAttributes = Local.LocalLink { Local.neighborType = Local.ParentCandidate,
+                                                   Local.neighborRank = 406,
+                                                   Local.metric = 128,
+                                                   Local.rssi = Nothing
+                                                 }
+              }
+            ]
+          exp_srs = [ srEntry exp_ts_feb "sr://fd00::222:5566:cc99:62c4"
+                      [ "sr://fd00::222:5566:ddee:4fdf",
+                        "sr://fd00::222:5566:cc99:62fe"
+                      ],
+                      srEntry exp_ts_feb "sr://fd00::222:5566:ddee:4fdf"
+                      [ "sr://fd00::222:5566:ddee:d52d",
+                        "sr://fd00::222:5566:ddee:401e",
+                        "sr://fd00::222:5566:ddee:5e88"
+                      ]
+                    ]
+          pHead = pSyslogHead 2019 Nothing
+      (got_locals, got_srs) <- parseFile pHead "test/data/syslog_sr_tables.log"
+      got_locals `shouldBe` [exp_local1, exp_local2]
+      got_srs `shouldMatchList` exp_srs
 
