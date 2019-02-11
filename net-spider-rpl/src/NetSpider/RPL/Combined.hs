@@ -6,11 +6,14 @@
 --
 -- 
 module NetSpider.RPL.Combined
-  ( CombinedNode(..),
-    CombinedLink(..),
+  ( -- * Functions
     combineNodes,
     combineLinks,
-    combineGraphs
+    combineGraphs,
+    -- * Types
+    CombinedNode(..),
+    CombinedLink(..),
+    combinedLinkType
   ) where
 
 import Data.Bifunctor (bimap, second)
@@ -24,7 +27,7 @@ import NetSpider.Snapshot
     nodeId, nodeAttributes
   )
 
-import NetSpider.RPL.FindingID (FindingID, IPv6ID, ipv6Only)
+import NetSpider.RPL.FindingID (FindingID(..), FindingType(..), IPv6ID, ipv6Only)
 import NetSpider.RPL.Local (LocalNode, MergedLocalLink)
 import NetSpider.RPL.SR (SRNode, SRLink)
 
@@ -60,6 +63,10 @@ instance Pan.ToAttributes CombinedLink where
     ("link_type", "local") : Pan.toAttributes ll
   toAttributes (CombinedSRLink sl) =
     ("link_type", "sr") : Pan.toAttributes sl
+
+combinedLinkType :: CombinedLink -> FindingType
+combinedLinkType (CombinedLocalLink _) = FindingLocal
+combinedLinkType (CombinedSRLink _) = FindingSR
 
 combineNodes :: [SnapshotNode FindingID LocalNode]
              -> [SnapshotNode FindingID SRNode]
