@@ -27,6 +27,7 @@ library
                         NetSpider.RPL.FindingID,
                         NetSpider.RPL.Local,
                         NetSpider.RPL.SR,
+                        NetSpider.RPL.Combined,
                         NetSpider.RPL.ContikiNG
   other-modules:        NetSpider.RPL.IPv6
   build-depends:        base >=4.11.1.0 && <4.13,
