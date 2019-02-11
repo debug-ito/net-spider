@@ -6,12 +6,19 @@
 --
 -- 
 module NetSpider.RPL.FindingID
-  ( FindingID(..),
+  ( -- * FindingID
+    FindingID(..),
     idToText,
     idFromText,
+    -- * FindingType
     FindingType(..),
     typeToText,
-    typeFromText
+    typeFromText,
+    -- * IPv6ID
+    IPv6ID(..),
+    ipv6ToText,
+    ipv6FromText,
+    ipv6Only
   ) where
 
 import Control.Applicative ((<$>), (<*>))
@@ -73,7 +80,7 @@ idToText :: FindingID -> Text
 idToText fid = ft_str <> "://[" <> addr_str <> "]"
   where
     ft_str = typeToText $ findingType fid
-    addr_str = IPv6.encode $ nodeAddress fid
+    addr_str = ipv6ToText $ IPv6ID $ nodeAddress fid
 
 idFromText :: Text -> Maybe FindingID
 idFromText t = FindingID <$> m_ft <*> m_addr
@@ -81,7 +88,7 @@ idFromText t = FindingID <$> m_ft <*> m_addr
     (ft_str, rest) = T.breakOn "://[" t
     (addr_str, _) = T.breakOn "]" $ T.drop 4 rest
     m_ft = typeFromText ft_str
-    m_addr = IPv6.decode addr_str
+    m_addr = fmap unIPv6ID $ ipv6FromText addr_str
 
 instance ToJSON FindingID where
   toJSON = Aeson.String . idToText
@@ -99,11 +106,43 @@ instance FromGraphSON FindingID where
   parseGraphSON gv = parseFromText =<< parseGraphSON gv
 
 instance Hashable FindingID where
-  hashWithSalt s fid = s `hashWithSalt` ft `hashWithSalt` addrA `hashWithSalt` addrB
+  hashWithSalt s fid = s `hashWithSalt` ft `hashWithSalt` addr_id
     where
       ft = findingType fid
-      addrA = ipv6A $ nodeAddress fid
-      addrB = ipv6B $ nodeAddress fid
+      addr_id = IPv6ID $ nodeAddress fid
 
 instance ToAtom FindingID where
   toAtom = toAtom . idToText
+
+-- | 'IPv6' address with additional type-class instances.
+newtype IPv6ID = IPv6ID { unIPv6ID :: IPv6 }
+               deriving (Show,Eq,Ord,Generic)
+
+instance Hashable IPv6ID where
+  hashWithSalt s (IPv6ID a) =
+    s `hashWithSalt` (ipv6A a) `hashWithSalt` (ipv6B a)
+
+ipv6ToText :: IPv6ID -> Text
+ipv6ToText (IPv6ID a) = IPv6.encode a
+
+ipv6FromText :: Text -> Maybe IPv6ID
+ipv6FromText = fmap IPv6ID . IPv6.decode
+
+parseIPv6IDFromText :: MonadFail m => Text -> m IPv6ID
+parseIPv6IDFromText t =
+  case ipv6FromText t of
+    Nothing -> fail ("Invalid IPv6 address: " <> T.unpack t)
+    Just a -> return a
+
+instance FromJSON IPv6ID where
+  parseJSON v = parseIPv6IDFromText =<< parseJSON v
+
+instance FromGraphSON IPv6ID where
+  parseGraphSON gv = parseIPv6IDFromText =<< parseGraphSON gv
+
+instance ToAtom IPv6ID where
+  toAtom = toAtom . ipv6ToText
+
+-- | Extract 'IPv6ID' from 'FindingID'.
+ipv6Only :: FindingID -> IPv6ID
+ipv6Only = IPv6ID . nodeAddress
