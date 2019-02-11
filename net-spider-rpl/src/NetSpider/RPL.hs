@@ -32,7 +32,13 @@
 -- Because network topologies maintained in 'FoundNodeLocal' and
 -- 'FoundNodeSR' can be different, you have to use different node IDs
 -- for them. The module "NetSpider.RPL.FindingID" exports 'FindingID'
--- that distingushes those two types of topologies.
+-- that distingushes those two types of topologies. The local and SR
+-- topologies are obtained from the NetSpider database as different
+-- Snapshot graphs.
+--
+-- The two types of Snapshot graphs can be combined together by
+-- upgrading their internal data. "NetSpider.RPL.Combined" module
+-- provides functions to combine those graphs.
 --
 -- The module "NetSpider.RPL.ContikiNG" (not re-exported by this
 -- module) is a utility module to make 'FoundNodeLocal's and
@@ -43,10 +49,11 @@
 module NetSpider.RPL
        ( module NetSpider.RPL.FindingID,
          module NetSpider.RPL.Local,
-         module NetSpider.RPL.SR
+         module NetSpider.RPL.SR,
+         module NetSpider.RPL.Combined
        ) where
 
 import NetSpider.RPL.FindingID
 import NetSpider.RPL.Local
 import NetSpider.RPL.SR
-
+import NetSpider.RPL.Combined
