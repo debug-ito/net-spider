@@ -122,6 +122,11 @@ instance (PropertyMap m, Property p, ToAtom v) => ToAttributes (m p v) where
     where
       toPair p = (propertyKey p, propertyValue p)
 
+-- | 'Nothing' is mapped to empty attributes.
+instance ToAttributes a => ToAttributes (Maybe a) where
+  toAttributes Nothing = []
+  toAttributes (Just a) = toAttributes a
+
 -- | Like 'makePangraph', but result of 'Nothing' is converted to an
 -- IO exception.
 makePangraphIO :: (ToAtom n, ToAttributes na, ToAttributes la)
