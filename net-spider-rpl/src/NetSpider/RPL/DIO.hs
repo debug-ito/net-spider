@@ -1,23 +1,23 @@
 {-# LANGUAGE OverloadedStrings #-}
 -- |
--- Module: NetSpider.RPL.Local
--- Description: NetSpider data model for RPL neighbor table
+-- Module: NetSpider.RPL.DIO
+-- Description: Node and link information based on DIO (DODAG Information Object)
 -- Maintainer: Toshio Ito <debug.ito@gmail.com>
 --
 -- 
-module NetSpider.RPL.Local
+module NetSpider.RPL.DIO
   ( -- * Types
-    FoundNodeLocal,
-    LocalNode(..),
-    LocalLink(..),
-    MergedLocalLink(..),
+    FoundNodeDIO,
+    DIONode(..),
+    DIOLink(..),
+    MergedDIOLink(..),
     Rank,
     NeighborType(..),
     neighborTypeToText,
     neighborTypeFromText,
     RSSI,
     -- * Unifier
-    localUnifierConf
+    dioUnifierConf
   ) where
 
 import Control.Applicative ((<$>), (<*>))
@@ -39,28 +39,28 @@ import qualified NetSpider.Unify as Unify
 
 import NetSpider.RPL.FindingID (FindingID)
 
--- | The 'FoundNode' observed in the local neighbor table of a node.
-type FoundNodeLocal = FoundNode FindingID LocalNode LocalLink
+-- | 'FoundNode' for a network described by DIOs.
+type FoundNodeDIO = FoundNode FindingID DIONode DIOLink
 
 -- | RPL rank
 type Rank = Word
 
--- | Node attributes observed locally at an individual node.
-data LocalNode =
-  LocalNode
+-- | Node attributes about DIO.
+data DIONode =
+  DIONode
   { rank :: !Rank
     -- ^ RPL rank
   }
   deriving (Show,Eq,Ord)
 
-instance NodeAttributes LocalNode where
+instance NodeAttributes DIONode where
   writeNodeAttributes ln = writePropertyKeyValues pairs
     where
       pairs = [ ("rank", toJSON $ rank ln)
               ]
-  parseNodeAttributes ps = LocalNode <$> parseOneValue "rank" ps
+  parseNodeAttributes ps = DIONode <$> parseOneValue "rank" ps
 
-instance Pan.ToAttributes LocalNode where
+instance Pan.ToAttributes DIONode where
   toAttributes ln = [ ("rank", toAtom $ rank ln)
                     ]
 
@@ -100,9 +100,9 @@ instance LinkAttributes NeighborType where
 -- | Type of RSSI (Radio Signal Strength Indicator) in dBm.
 type RSSI = Int
 
--- | Link attributes observed locally at an individual node.
-data LocalLink =
-  LocalLink
+-- | Link attributes about DIO.
+data DIOLink =
+  DIOLink
   { neighborType :: !NeighborType,
     -- ^ Type of the neighbor at the other end of this link.
     neighborRank :: !Rank,
@@ -114,7 +114,7 @@ data LocalLink =
   }
   deriving (Show,Eq,Ord)
 
-instance LinkAttributes LocalLink where
+instance LinkAttributes DIOLink where
   writeLinkAttributes ll = do
     nt_steps <- writeLinkAttributes $ neighborType ll
     other <- writePropertyKeyValues pairs
@@ -125,13 +125,13 @@ instance LinkAttributes LocalLink where
                 ("rssi", toJSON $ rssi ll)
               ]
   parseLinkAttributes ps =
-    LocalLink
+    DIOLink
     <$> parseLinkAttributes ps
     <*> parseOneValue "neighbor_rank" ps
     <*> parseOneValue "metric" ps
     <*> parseOneValue "rssi" ps
 
-toAttributesPrefix :: Atom -> LocalLink -> [Pan.Attribute]
+toAttributesPrefix :: Atom -> DIOLink -> [Pan.Attribute]
 toAttributesPrefix prefix ll = 
   [ (prefix <> "neighbor_type", toAtom $ neighborTypeToText $ neighborType ll),
     (prefix <> "neighbor_rank", toAtom $ neighborRank ll),
@@ -143,21 +143,21 @@ toAttributesPrefix prefix ll =
       Just rssi_val -> [(prefix <> "rssi", toAtom rssi_val)]
   )
 
-instance Pan.ToAttributes LocalLink where
+instance Pan.ToAttributes DIOLink where
   toAttributes = toAttributesPrefix ""
 
--- | Link attributes merging two 'LocalLink's from the two end nodes
+-- | Link attributes merging two 'DIOLink's from the two end nodes
 -- of the link.
-data MergedLocalLink =
-  MergedLocalLink
-  { fromSource :: !LocalLink,
-    fromDest :: !(Maybe LocalLink)
+data MergedDIOLink =
+  MergedDIOLink
+  { fromSource :: !DIOLink,
+    fromDest :: !(Maybe DIOLink)
   }
   deriving (Show,Eq,Ord)
 
--- | 'UnifyStdConfig' for RPL local findings.
-localUnifierConf :: UnifyStdConfig FindingID LocalNode LocalLink MergedLocalLink ()
-localUnifierConf = Unify.UnifyStdConfig
+-- | 'UnifyStdConfig' for RPL DIO data
+dioUnifierConf :: UnifyStdConfig FindingID DIONode DIOLink MergedDIOLink ()
+dioUnifierConf = Unify.UnifyStdConfig
                  { Unify.makeLinkSubId = const (),
                    Unify.mergeSamples = merger,
                    Unify.negatesLinkSample = \_ _ -> False
@@ -172,17 +172,17 @@ localUnifierConf = Unify.UnifyStdConfig
     doMerge main_link msub_link =
       case msub_link of
         Nothing -> main_link
-                   { lsLinkAttributes = MergedLocalLink main_ll Nothing }
+                   { lsLinkAttributes = MergedDIOLink main_ll Nothing }
         Just sub_link ->
           if neighborType main_ll <= neighborType sub_ll
-          then main_link { lsLinkAttributes = MergedLocalLink main_ll $ Just sub_ll }
-          else sub_link { lsLinkAttributes = MergedLocalLink sub_ll $ Just main_ll }
+          then main_link { lsLinkAttributes = MergedDIOLink main_ll $ Just sub_ll }
+          else sub_link { lsLinkAttributes = MergedDIOLink sub_ll $ Just main_ll }
           where
             sub_ll = lsLinkAttributes sub_link
       where
         main_ll = lsLinkAttributes main_link
 
-instance Pan.ToAttributes MergedLocalLink where
+instance Pan.ToAttributes MergedDIOLink where
   toAttributes ml =
     toAttributesPrefix "source_" (fromSource ml)
     ++
