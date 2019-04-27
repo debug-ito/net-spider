@@ -42,7 +42,7 @@ spec = do
                       }
           exp_dio_links =
             [ FoundLink { targetNode = fromJust $ idFromText "dio://[fd00::202:2:2:2]",
-                          linkState = LinkToTarget,
+                          linkState = LinkUnused,
                           linkAttributes = DIO.DIOLink { DIO.neighborType = DIO.ParentCandidate,
                                                          DIO.neighborRank = 299,
                                                          DIO.metric = Just 141
@@ -64,7 +64,7 @@ spec = do
               neighborLinks =
                 [ FoundLink
                   { targetNode = fromJust $ idFromText "dio://[fd00::212:1199:bbcc:4fdf]",
-                    linkState = LinkToTarget,
+                    linkState = LinkUnused,
                     linkAttributes = DIO.DIOLink { DIO.neighborType = DIO.ParentCandidate,
                                                    DIO.neighborRank = 262,
                                                    DIO.metric = Just 128
@@ -72,7 +72,7 @@ spec = do
                   },
                   FoundLink
                   { targetNode = fromJust $ idFromText "dio://[fd00::212:1199:bbcc:d52d]",
-                    linkState = LinkToTarget,
+                    linkState = LinkUnused,
                     linkAttributes = DIO.DIOLink { DIO.neighborType = DIO.ParentCandidate,
                                                    DIO.neighborRank = 263,
                                                    DIO.metric = Just 128
@@ -80,7 +80,7 @@ spec = do
                   },
                   FoundLink
                   { targetNode = fromJust $ idFromText "dio://[fd00::212:1199:bbcc:5e88]",
-                    linkState = LinkToTarget,
+                    linkState = LinkUnused,
                     linkAttributes = DIO.DIOLink { DIO.neighborType = DIO.ParentCandidate,
                                                    DIO.neighborRank = 256,
                                                    DIO.metric = Just 128
@@ -88,7 +88,7 @@ spec = do
                   },
                   FoundLink
                   { targetNode = fromJust $ idFromText "dio://[fd00::212:1199:eebb:62fe]",
-                    linkState = LinkToTarget,
+                    linkState = LinkUnused,
                     linkAttributes = DIO.DIOLink { DIO.neighborType = DIO.ParentCandidate,
                                                    DIO.neighborRank = 256,
                                                    DIO.metric = Just 129
@@ -117,7 +117,7 @@ spec = do
               neighborLinks =
                 [ FoundLink
                   { targetNode = fromJust $ idFromText "dio://[fd00::212:eeaa:33cc:632a]",
-                    linkState = LinkToTarget,
+                    linkState = LinkUnused,
                     linkAttributes = DIO.DIOLink { DIO.neighborType = DIO.ParentCandidate,
                                                    DIO.neighborRank = 256,
                                                    DIO.metric = Just 198
@@ -125,7 +125,7 @@ spec = do
                   },
                   FoundLink
                   { targetNode = fromJust $ idFromText "dio://[fd00::212:eeaa:33ff:a874]",
-                    linkState = LinkToTarget,
+                    linkState = LinkUnused,
                     linkAttributes = DIO.DIOLink { DIO.neighborType = DIO.ParentCandidate,
                                                    DIO.neighborRank = 256,
                                                    DIO.metric = Just 177
@@ -141,7 +141,7 @@ spec = do
                   },
                   FoundLink
                   { targetNode = fromJust $ idFromText "dio://[fd00::212:eeaa:9977:13ba]",
-                    linkState = LinkToTarget,
+                    linkState = LinkUnused,
                     linkAttributes = DIO.DIOLink { DIO.neighborType = DIO.ParentCandidate,
                                                    DIO.neighborRank = 283,
                                                    DIO.metric = Just 152
@@ -149,7 +149,7 @@ spec = do
                   },
                   FoundLink
                   { targetNode = fromJust $ idFromText "dio://[fd00::212:eeaa:33cc:6350]",
-                    linkState = LinkToTarget,
+                    linkState = LinkUnused,
                     linkAttributes = DIO.DIOLink { DIO.neighborType = DIO.ParentCandidate,
                                                    DIO.neighborRank = 400,
                                                    DIO.metric = Just 171
@@ -157,7 +157,7 @@ spec = do
                   },
                   FoundLink
                   { targetNode = fromJust $ idFromText "dio://[fd00::212:eeaa:e88:db36]",
-                    linkState = LinkToTarget,
+                    linkState = LinkUnused,
                     linkAttributes = DIO.DIOLink { DIO.neighborType = DIO.ParentCandidate,
                                                    DIO.neighborRank = 432,
                                                    DIO.metric = Just 166
@@ -165,7 +165,7 @@ spec = do
                   },
                   FoundLink
                   { targetNode = fromJust $ idFromText "dio://[fd00::212:eeaa:9977:b4]",
-                    linkState = LinkToTarget,
+                    linkState = LinkUnused,
                     linkAttributes = DIO.DIOLink { DIO.neighborType = DIO.OtherNeighbor,
                                                    DIO.neighborRank = 584,
                                                    DIO.metric = Just 65535
@@ -197,7 +197,7 @@ spec = do
           exp_dio_links2 =
             [ FoundLink
               { targetNode = fromJust $ idFromText "dio://[fd00::222:5566:ddee:4fdf]",
-                linkState = LinkToTarget,
+                linkState = LinkUnused,
                 linkAttributes = DIO.DIOLink { DIO.neighborType = DIO.ParentCandidate,
                                                DIO.neighborRank = 256,
                                                DIO.metric = Just 128
@@ -205,7 +205,7 @@ spec = do
               },
               FoundLink
               { targetNode = fromJust $ idFromText "dio://[fd00::222:5566:ddee:d52d]",
-                linkState = LinkToTarget,
+                linkState = LinkUnused,
                 linkAttributes = DIO.DIOLink { DIO.neighborType = DIO.ParentCandidate,
                                                DIO.neighborRank = 396,
                                                DIO.metric = Just 128
@@ -213,7 +213,7 @@ spec = do
               },
               FoundLink
               { targetNode = fromJust $ idFromText "dio://[fd00::222:5566:cc99:62fe]",
-                linkState = LinkToTarget,
+                linkState = LinkUnused,
                 linkAttributes = DIO.DIOLink { DIO.neighborType = DIO.ParentCandidate,
                                                DIO.neighborRank = 266,
                                                DIO.metric = Just 137
@@ -221,7 +221,7 @@ spec = do
               },
               FoundLink
               { targetNode = fromJust $ idFromText "dio://[fd00::222:5566:ddee:401e]",
-                linkState = LinkToTarget,
+                linkState = LinkUnused,
                 linkAttributes = DIO.DIOLink { DIO.neighborType = DIO.ParentCandidate,
                                                DIO.neighborRank = 384,
                                                DIO.metric = Just 128
@@ -229,7 +229,7 @@ spec = do
               },
               FoundLink
               { targetNode = fromJust $ idFromText "dio://[fd00::222:5566:ddee:5e88]",
-                linkState = LinkToTarget,
+                linkState = LinkUnused,
                 linkAttributes = DIO.DIOLink { DIO.neighborType = DIO.ParentCandidate,
                                                DIO.neighborRank = 406,
                                                DIO.metric = Just 128

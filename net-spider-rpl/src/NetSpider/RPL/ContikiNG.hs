@@ -40,7 +40,7 @@ import Text.Read (readEither)
 import NetSpider.RPL.FindingID (FindingID(FindingID), FindingType(..))
 import NetSpider.RPL.IPv6 (isLinkLocal, setPrefix, getPrefix)
 import qualified NetSpider.RPL.DIO as DIO
-import NetSpider.RPL.DIO (FoundNodeDIO)
+import NetSpider.RPL.DIO (FoundNodeDIO, dioLinkState)
 import qualified NetSpider.RPL.DAO as DAO
 import NetSpider.RPL.DAO (FoundNodeDAO)
 
@@ -145,7 +145,7 @@ makeFoundNodeDIO ts self_addr node_attr neighbors =
   where
     toFoundLink (neighbor_addr, ll) =
       FoundLink { targetNode = FindingID FindingDIO neighbor_addr,
-                  linkState = LinkToTarget,
+                  linkState = dioLinkState ll,
                   linkAttributes = ll
                 }
 

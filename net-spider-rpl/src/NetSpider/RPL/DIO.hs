@@ -10,6 +10,7 @@ module NetSpider.RPL.DIO
     FoundNodeDIO,
     DIONode(..),
     DIOLink(..),
+    dioLinkState,
     MergedDIOLink(..),
     Rank,
     NeighborType(..),
@@ -30,7 +31,7 @@ import Data.Greskell.Extra (writePropertyKeyValues)
 import Data.Monoid ((<>))
 import Data.Text (Text, unpack)
 import Data.Word (Word32)
-import NetSpider.Found (FoundNode)
+import NetSpider.Found (FoundNode, LinkState(..))
 import NetSpider.Graph (NodeAttributes(..), LinkAttributes(..))
 import qualified NetSpider.Pangraph as Pan
 import NetSpider.Pangraph.Atom (toAtom, Atom)
@@ -134,6 +135,13 @@ instance LinkAttributes DIOLink where
     <$> parseLinkAttributes ps
     <*> parseOneValue "neighbor_rank" ps
     <*> parseOneValue "metric" ps
+
+-- | 'LinkState' that should be set for given 'DIOLink'.
+dioLinkState :: DIOLink -> LinkState
+dioLinkState l =
+  case neighborType l of
+    PreferredParent -> LinkToTarget
+    _ -> LinkUnused
 
 toAttributesPrefix :: Atom -> DIOLink -> [Pan.Attribute]
 toAttributesPrefix prefix ll = 
