@@ -97,9 +97,6 @@ instance LinkAttributes NeighborType where
     where
       fromT t = maybe (fail ("Unknown neighbor type: " <> unpack t)) return $ neighborTypeFromText t
 
--- | Type of RSSI (Radio Signal Strength Indicator) in dBm.
-type RSSI = Int
-
 -- | Link attributes about DIO.
 data DIOLink =
   DIOLink
@@ -107,10 +104,9 @@ data DIOLink =
     -- ^ Type of the neighbor at the other end of this link.
     neighborRank :: !Rank,
     -- ^ Observed rank of the neighbor.
-    metric :: !Rank,
-    -- ^ Link metric of this link.
-    rssi :: !(Maybe RSSI)
-    -- ^ RSSI observed via this link.
+    metric :: !(Maybe Rank)
+    -- ^ Link metric of this link, calculated as step of Rank. Because
+    -- Rank computation is up to the OF, this field is optional.
   }
   deriving (Show,Eq,Ord)
 
@@ -121,26 +117,23 @@ instance LinkAttributes DIOLink where
     return (adaptWalk nt_steps <> other)
     where
       pairs = [ ("neighbor_rank", toJSON $ neighborRank ll),
-                ("metric", toJSON $ metric ll),
-                ("rssi", toJSON $ rssi ll)
+                ("metric", toJSON $ metric ll)
               ]
   parseLinkAttributes ps =
     DIOLink
     <$> parseLinkAttributes ps
     <*> parseOneValue "neighbor_rank" ps
     <*> parseOneValue "metric" ps
-    <*> parseOneValue "rssi" ps
 
 toAttributesPrefix :: Atom -> DIOLink -> [Pan.Attribute]
 toAttributesPrefix prefix ll = 
   [ (prefix <> "neighbor_type", toAtom $ neighborTypeToText $ neighborType ll),
-    (prefix <> "neighbor_rank", toAtom $ neighborRank ll),
-    (prefix <> "metric", toAtom $ metric ll)
+    (prefix <> "neighbor_rank", toAtom $ neighborRank ll)
   ]
   ++
-  ( case rssi ll of
+  ( case metric ll of
       Nothing -> []
-      Just rssi_val -> [(prefix <> "rssi", toAtom rssi_val)]
+      Just metric_val -> [(prefix <> "metric", toAtom metric_val)]
   )
 
 instance Pan.ToAttributes DIOLink where
