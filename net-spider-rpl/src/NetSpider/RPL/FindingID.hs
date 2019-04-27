@@ -36,13 +36,10 @@ import qualified Net.IPv6 as IPv6
 import NetSpider.Pangraph.Atom (ToAtom(..))
 
 -- | Type of local finding.
-data FindingType = FindingLocal
-                   -- ^ Local finding is observed locally at an
-                   -- individual node.
-                 | FindingSR
-                   -- ^ Local finding is observed in the
-                   -- source-routing (SR) table. Basically only for
-                   -- RPL non-storing mode.
+data FindingType = FindingDIO
+                   -- ^ Local finding about DIO (Upward) routes.
+                 | FindingDAO
+                   -- ^ Local finding about DAO (Downward) routes.
                  deriving (Show,Eq,Ord,Enum,Bounded,Generic)
 
 instance Hashable FindingType
@@ -50,14 +47,14 @@ instance Hashable FindingType
 typeToText :: FindingType -> Text
 typeToText ft =
   case ft of
-    FindingLocal -> "local"
-    FindingSR -> "sr"
+    FindingDIO -> "dio"
+    FindingDAO -> "dao"
 
 typeFromText :: Text -> Maybe FindingType
 typeFromText t =
   case t of
-    "local" -> Just FindingLocal
-    "sr" -> Just FindingSR
+    "dio" -> Just FindingDIO
+    "dao" -> Just FindingDAO
     _ -> Nothing
 
 -- | The node ID.

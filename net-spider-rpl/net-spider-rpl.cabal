@@ -25,8 +25,8 @@ library
   other-extensions:     OverloadedStrings, DeriveGeneric
   exposed-modules:      NetSpider.RPL,
                         NetSpider.RPL.FindingID,
-                        NetSpider.RPL.Local,
-                        NetSpider.RPL.SR,
+                        NetSpider.RPL.DIO,
+                        NetSpider.RPL.DAO,
                         NetSpider.RPL.Combined,
                         NetSpider.RPL.ContikiNG
   other-modules:        NetSpider.RPL.IPv6

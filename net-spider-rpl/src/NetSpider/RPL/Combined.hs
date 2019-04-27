@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 -- |
 -- Module: NetSpider.RPL.Combined
--- Description: Snapshot graph combining Local and SR
+-- Description: Snapshot graph combining DIO and DAO graphs
 -- Maintainer: Toshio Ito <debug.ito@gmail.com>
 --
 -- 
@@ -28,22 +28,22 @@ import NetSpider.Snapshot
   )
 
 import NetSpider.RPL.FindingID (FindingID(..), FindingType(..), IPv6ID, ipv6Only)
-import NetSpider.RPL.Local (LocalNode, MergedLocalLink)
-import NetSpider.RPL.SR (SRNode, SRLink)
+import NetSpider.RPL.DIO (DIONode, MergedDIOLink)
+import NetSpider.RPL.DAO (DAONode, DAOLink)
 
 data CombinedNode =
   CombinedNode
-  { attrsLocal :: !(Maybe LocalNode),
-    attrsSR :: !(Maybe SRNode)
+  { attrsDIO :: !(Maybe DIONode),
+    attrsDAO :: !(Maybe DAONode)
   }
   deriving (Show,Eq,Ord)
 
 -- | Based on instance of 'First'.
 instance Semigroup CombinedNode where
-  a <> b = CombinedNode local sr
+  a <> b = CombinedNode dio dao
     where
-      local = getFirst $ (First $ attrsLocal a) <> (First $ attrsLocal b)
-      sr = getFirst $ (First $ attrsSR a) <> (First $ attrsSR b)
+      dio = getFirst $ (First $ attrsDIO a) <> (First $ attrsDIO b)
+      dao = getFirst $ (First $ attrsDAO a) <> (First $ attrsDAO b)
 
 -- | Based on instance of 'First'.
 instance Monoid CombinedNode where
@@ -51,30 +51,30 @@ instance Monoid CombinedNode where
   mempty = CombinedNode Nothing Nothing
 
 instance Pan.ToAttributes CombinedNode where
-  toAttributes cn = (Pan.toAttributes $ attrsLocal cn)
-                    ++ (Pan.toAttributes $ attrsSR cn)
+  toAttributes cn = (Pan.toAttributes $ attrsDIO cn)
+                    ++ (Pan.toAttributes $ attrsDAO cn)
 
-data CombinedLink = CombinedLocalLink !MergedLocalLink
-                  | CombinedSRLink !SRLink
+data CombinedLink = CombinedDIOLink !MergedDIOLink
+                  | CombinedDAOLink !DAOLink
                   deriving (Show,Eq,Ord)
 
 instance Pan.ToAttributes CombinedLink where
-  toAttributes (CombinedLocalLink ll) =
-    ("link_type", "local") : Pan.toAttributes ll
-  toAttributes (CombinedSRLink sl) =
-    ("link_type", "sr") : Pan.toAttributes sl
+  toAttributes (CombinedDIOLink ll) =
+    ("link_type", "dio") : Pan.toAttributes ll
+  toAttributes (CombinedDAOLink sl) =
+    ("link_type", "dao") : Pan.toAttributes sl
 
 combinedLinkType :: CombinedLink -> FindingType
-combinedLinkType (CombinedLocalLink _) = FindingLocal
-combinedLinkType (CombinedSRLink _) = FindingSR
+combinedLinkType (CombinedDIOLink _) = FindingDIO
+combinedLinkType (CombinedDAOLink _) = FindingDAO
 
-combineNodes :: [SnapshotNode FindingID LocalNode]
-             -> [SnapshotNode FindingID SRNode]
+combineNodes :: [SnapshotNode FindingID DIONode]
+             -> [SnapshotNode FindingID DAONode]
              -> [SnapshotNode IPv6ID CombinedNode]
-combineNodes local_ns sr_ns = concatNodes $ map fromLocal local_ns ++ map fromSR sr_ns
+combineNodes dio_ns dao_ns = concatNodes $ map fromDIO dio_ns ++ map fromDAO dao_ns
   where
-    fromLocal = bimap ipv6Only (\ln -> CombinedNode (Just ln) Nothing)
-    fromSR = bimap ipv6Only (\sn -> CombinedNode Nothing (Just sn))
+    fromDIO = bimap ipv6Only (\ln -> CombinedNode (Just ln) Nothing)
+    fromDAO = bimap ipv6Only (\sn -> CombinedNode Nothing (Just sn))
     concatNodes nodes = map merge $ groupWith nodeId nodes
       where
         merge [] = error "Empty group should not happen."
@@ -91,16 +91,16 @@ combineNodes local_ns sr_ns = concatNodes $ map fromLocal local_ns ++ map fromSR
             mmerged_attr = mconcat $ map nodeAttributes group_nodes
             hasNodeAttr n = isJust $ nodeAttributes n
 
-combineLinks :: [SnapshotLink FindingID MergedLocalLink]
-             -> [SnapshotLink FindingID SRLink]
+combineLinks :: [SnapshotLink FindingID MergedDIOLink]
+             -> [SnapshotLink FindingID DAOLink]
              -> [SnapshotLink IPv6ID CombinedLink]
-combineLinks local_ls sr_ls = map fromLocal local_ls ++ map fromSR sr_ls
+combineLinks dio_ls dao_ls = map fromDIO dio_ls ++ map fromDAO dao_ls
   where
-    fromLocal = bimap ipv6Only (\ll -> CombinedLocalLink ll)
-    fromSR = bimap ipv6Only (\sl -> CombinedSRLink sl)
+    fromDIO = bimap ipv6Only (\ll -> CombinedDIOLink ll)
+    fromDAO = bimap ipv6Only (\sl -> CombinedDAOLink sl)
 
-combineGraphs :: ([SnapshotNode FindingID LocalNode], [SnapshotLink FindingID MergedLocalLink])
-              -> ([SnapshotNode FindingID SRNode], [SnapshotLink FindingID SRLink])
+combineGraphs :: ([SnapshotNode FindingID DIONode], [SnapshotLink FindingID MergedDIOLink])
+              -> ([SnapshotNode FindingID DAONode], [SnapshotLink FindingID DAOLink])
               -> ([SnapshotNode IPv6ID CombinedNode], [SnapshotLink IPv6ID CombinedLink])
-combineGraphs (local_ns, local_ls) (sr_ns, sr_ls) =
-  (combineNodes local_ns sr_ns, combineLinks local_ls sr_ls)
+combineGraphs (dio_ns, dio_ls) (dao_ns, dao_ls) =
+  (combineNodes dio_ns dao_ns, combineLinks dio_ls dao_ls)

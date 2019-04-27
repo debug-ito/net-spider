@@ -15,7 +15,6 @@ module NetSpider.RPL.DIO
     NeighborType(..),
     neighborTypeToText,
     neighborTypeFromText,
-    RSSI,
     -- * Unifier
     dioUnifierConf
   ) where

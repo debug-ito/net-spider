@@ -15,6 +15,8 @@
 -- (Destination-Oriented Directed Asynclic Graph) in a distributed
 -- manner.
 --
+-- TODO: update the document.
+--
 -- The module "NetSpider.RPL.Local" defines NetSpider data model
 -- specific for RPL. The 'FoundNodeLocal' type in that module
 -- represents a neighbor table stored in a single node. The neighbor
@@ -48,12 +50,12 @@
 -- for wireless devices that supports RPL.
 module NetSpider.RPL
        ( module NetSpider.RPL.FindingID,
-         module NetSpider.RPL.Local,
-         module NetSpider.RPL.SR,
+         module NetSpider.RPL.DIO,
+         module NetSpider.RPL.DAO,
          module NetSpider.RPL.Combined
        ) where
 
 import NetSpider.RPL.FindingID
-import NetSpider.RPL.Local
-import NetSpider.RPL.SR
+import NetSpider.RPL.DIO
+import NetSpider.RPL.DAO
 import NetSpider.RPL.Combined
