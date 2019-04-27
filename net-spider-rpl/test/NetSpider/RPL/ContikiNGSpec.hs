@@ -38,7 +38,7 @@ spec = do
             FoundNode { subjectNode = fromJust $ idFromText "dio://[fd00::201:1:1:1]",
                         foundAt = fromEpochMillisecond 60382,
                         neighborLinks = exp_dio_links,
-                        nodeAttributes = DIO.DIONode { DIO.rank = 128 }
+                        nodeAttributes = DIO.DIONode { DIO.rank = 128, DIO.dioInterval = 15 }
                       }
           exp_dio_links =
             [ FoundLink { targetNode = fromJust $ idFromText "dio://[fd00::202:2:2:2]",
@@ -60,7 +60,7 @@ spec = do
             FoundNode
             { subjectNode = fromJust $ idFromText "dio://[fd00::212:1199:eebb:62c4]",
               foundAt = exp_timestamp,
-              nodeAttributes = DIO.DIONode { DIO.rank = 128 },
+              nodeAttributes = DIO.DIONode { DIO.rank = 128, DIO.dioInterval = 14 },
               neighborLinks =
                 [ FoundLink
                   { targetNode = fromJust $ idFromText "dio://[fd00::212:1199:bbcc:4fdf]",
@@ -113,7 +113,7 @@ spec = do
             FoundNode
             { subjectNode = fromJust $ idFromText "dio://[fd00::212:eeaa:0077:2f9c]",
               foundAt = exp_timestamp,
-              nodeAttributes = DIO.DIONode { DIO.rank = 423 },
+              nodeAttributes = DIO.DIONode { DIO.rank = 423, DIO.dioInterval = 16 },
               neighborLinks =
                 [ FoundLink
                   { targetNode = fromJust $ idFromText "dio://[fd00::212:eeaa:33cc:632a]",
@@ -184,14 +184,14 @@ spec = do
             FoundNode
             { subjectNode = fromJust $ idFromText "dio://[fd00::222:5566:cc99:62c4]",
               foundAt = exp_ts_jan,
-              nodeAttributes = DIO.DIONode { DIO.rank = 128 },
+              nodeAttributes = DIO.DIONode { DIO.rank = 128, DIO.dioInterval = 15 },
               neighborLinks = []
             }
           exp_dio2 =
             FoundNode
             { subjectNode = fromJust $ idFromText "dio://[fd00::222:5566:cc99:62c4]",
               foundAt = exp_ts_feb,
-              nodeAttributes = DIO.DIONode { DIO.rank = 128 },
+              nodeAttributes = DIO.DIONode { DIO.rank = 128, DIO.dioInterval = 18 },
               neighborLinks = exp_dio_links2
             }
           exp_dio_links2 =

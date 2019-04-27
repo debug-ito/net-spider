@@ -246,8 +246,11 @@ pDIONode = do
   void $ P.string " max-rank "
   void $ P.munch isDigit
   void $ P.string ", dioint "
-  void $ P.munch isDigit -- TODO: store DIO interval
-  return (addr, DIO.DIONode { DIO.rank = rank })
+  dio_int <- pNum
+  let node = DIO.DIONode { DIO.rank = rank,
+                           DIO.dioInterval = dio_int
+                         }
+  return (addr, node)
 
 pExpectChar :: Char -> Parser Bool
 pExpectChar exp_c = fmap (== Just exp_c) $ optional P.get
