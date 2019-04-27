@@ -45,15 +45,16 @@ type FoundNodeDIO = FoundNode FindingID DIONode DIOLink
 -- | RPL rank
 type Rank = Word
 
--- | Time controlled by a Trickle timer in milliseconds.
-type TrickleTime = Word32
+-- | The interval of Trickle timer as decribed as number of doublings
+-- of the minimum interval, i.e. log2(I / Imin).
+type TrickleInterval = Word
 
 -- | Node attributes about DIO.
 data DIONode =
   DIONode
   { rank :: !Rank,
     -- ^ RPL rank
-    dioInterval :: !TrickleTime
+    dioInterval :: !TrickleInterval
     -- ^ Current interval of Trickle timer for DIO transmission.
   }
   deriving (Show,Eq,Ord)
