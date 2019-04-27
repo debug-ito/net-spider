@@ -29,6 +29,7 @@ import Data.Greskell
 import Data.Greskell.Extra (writePropertyKeyValues)
 import Data.Monoid ((<>))
 import Data.Text (Text, unpack)
+import Data.Word (Word32)
 import NetSpider.Found (FoundNode)
 import NetSpider.Graph (NodeAttributes(..), LinkAttributes(..))
 import qualified NetSpider.Pangraph as Pan
@@ -44,23 +45,32 @@ type FoundNodeDIO = FoundNode FindingID DIONode DIOLink
 -- | RPL rank
 type Rank = Word
 
+-- | Time controlled by a Trickle timer in milliseconds.
+type TrickleTime = Word32
+
 -- | Node attributes about DIO.
 data DIONode =
   DIONode
-  { rank :: !Rank
+  { rank :: !Rank,
     -- ^ RPL rank
+    dioInterval :: !TrickleTime
+    -- ^ Current interval of Trickle timer for DIO transmission.
   }
   deriving (Show,Eq,Ord)
 
 instance NodeAttributes DIONode where
   writeNodeAttributes ln = writePropertyKeyValues pairs
     where
-      pairs = [ ("rank", toJSON $ rank ln)
+      pairs = [ ("rank", toJSON $ rank ln),
+                ("dio_interval", toJSON $ dioInterval ln)
               ]
-  parseNodeAttributes ps = DIONode <$> parseOneValue "rank" ps
+  parseNodeAttributes ps = DIONode
+                           <$> parseOneValue "rank" ps
+                           <*> parseOneValue "dio_interval" ps
 
 instance Pan.ToAttributes DIONode where
-  toAttributes ln = [ ("rank", toAtom $ rank ln)
+  toAttributes ln = [ ("rank", toAtom $ rank ln),
+                      ("dio_interval", toAtom $ dioInterval ln)
                     ]
 
 -- | Classification of RPL neighbors.
