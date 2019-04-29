@@ -154,13 +154,13 @@ makeFoundNodeDAO ts parent_addr children =
   FoundNode { subjectNode = FindingID FindingDAO parent_addr,
               foundAt = ts,
               neighborLinks = map toFoundLink children,
-              nodeAttributes = DAO.DAONode
+              nodeAttributes = DAO.DAONode Nothing -- TODO
             }
   where
     toFoundLink child_addr =
       FoundLink { targetNode = FindingID FindingDAO child_addr,
                   linkState = LinkToTarget,
-                  linkAttributes = DAO.DAOLink
+                  linkAttributes = DAO.DAOLink 0 -- TODO
                 }
 
 

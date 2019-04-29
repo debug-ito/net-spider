@@ -15,20 +15,21 @@ import qualified NetSpider.RPL.DAO as DAO
 main :: IO ()
 main = hspec spec
 
-daoEntry :: Timestamp -> Text -> [Text] -> DAO.FoundNodeDAO
-daoEntry ts src dests =
+daoEntry :: Timestamp -> Text -> Maybe Word -> [(Text, Word)] -> DAO.FoundNodeDAO
+daoEntry ts src mroute_num dests =
   FoundNode
   { subjectNode = fromJust $ idFromText src,
     foundAt = ts,
-    nodeAttributes = DAO.DAONode,
+    nodeAttributes = DAO.DAONode mroute_num,
     neighborLinks = map toLink dests
   }
   where
-    toLink d = FoundLink
-               { targetNode = fromJust $ idFromText d,
-                 linkState = LinkToTarget,
-                 linkAttributes = DAO.DAOLink
-               }
+    toLink (dest, lifetime) =
+      FoundLink
+      { targetNode = fromJust $ idFromText dest,
+        linkState = LinkToTarget,
+        linkAttributes = DAO.DAOLink lifetime
+      }
 
 spec :: Spec
 spec = do
@@ -49,8 +50,10 @@ spec = do
                                                        }
                         }
             ]
-          exp_daos = [ daoEntry (fromEpochMillisecond 60382) "dao://[fd00::201:1:1:1]" ["dao://[fd00::202:2:2:2]"]
-                    ]
+          exp_daos = [ daoEntry (fromEpochMillisecond 60382)
+                       "dao://[fd00::201:1:1:1]" (Just 2)
+                       [("dao://[fd00::202:2:2:2]", 1740)]
+                     ]
       (got_dios, got_daos) <- parseFile pCoojaLogHead' "test/data/cooja.log"
       got_dios `shouldBe` [exp_dio]
       got_daos `shouldBe` exp_daos
@@ -96,11 +99,12 @@ spec = do
                   }
                 ]
             }
-          exp_daos = [ daoEntry exp_timestamp "dao://[fd00::212:1199:eebb:62c4]"
-                       [ "dao://[fd00::212:1199:bbcc:d52d]",
-                         "dao://[fd00::212:1199:bbcc:4fdf]",
-                         "dao://[fd00::212:1199:eebb:62fe]",
-                         "dao://[fd00::212:1199:bbcc:5e88]"
+          exp_daos = [ daoEntry exp_timestamp
+                       "dao://[fd00::212:1199:eebb:62c4]" (Just 5)
+                       [ ("dao://[fd00::212:1199:bbcc:d52d]", 1080),
+                         ("dao://[fd00::212:1199:bbcc:4fdf]", 1260),
+                         ("dao://[fd00::212:1199:eebb:62fe]", 1440),
+                         ("dao://[fd00::212:1199:bbcc:5e88]", 1140)
                        ]
                      ]
           pHead = pSyslogHead 2019 Nothing
@@ -236,14 +240,16 @@ spec = do
                                              }
               }
             ]
-          exp_daos = [ daoEntry exp_ts_feb "dao://[fd00::222:5566:cc99:62c4]"
-                       [ "dao://[fd00::222:5566:ddee:4fdf]",
-                         "dao://[fd00::222:5566:cc99:62fe]"
+          exp_daos = [ daoEntry exp_ts_feb
+                       "dao://[fd00::222:5566:cc99:62c4]" (Just 6)
+                       [ ("dao://[fd00::222:5566:ddee:4fdf]", 1140),
+                         ("dao://[fd00::222:5566:cc99:62fe]", 1380)
                        ],
-                       daoEntry exp_ts_feb "dao://[fd00::222:5566:ddee:4fdf]"
-                       [ "dao://[fd00::222:5566:ddee:d52d]",
-                         "dao://[fd00::222:5566:ddee:401e]",
-                         "dao://[fd00::222:5566:ddee:5e88]"
+                       daoEntry exp_ts_feb
+                       "dao://[fd00::222:5566:ddee:4fdf]" Nothing
+                       [ ("dao://[fd00::222:5566:ddee:d52d]", 1380),
+                         ("dao://[fd00::222:5566:ddee:401e]", 1740),
+                         ("dao://[fd00::222:5566:ddee:5e88]", 1740)
                        ]
                     ]
           pHead = pSyslogHead 2019 Nothing
