@@ -19,11 +19,13 @@ module NetSpider.RPL.ContikiNG
   ) where
 
 import Control.Applicative ((<|>), (<$>), (<*>), (*>), (<*), many, optional)
+import Control.Exception (Exception, throwIO)
 import Control.Monad (void)
 import Data.Bits (shift)
 import Data.Char (isDigit, isHexDigit, isSpace)
 import Data.Int (Int64)
 import Data.List (sortOn, reverse)
+import Data.Maybe (listToMaybe)
 import Data.Monoid ((<>))
 import Data.Text (pack)
 import qualified Data.Time as Time
@@ -45,6 +47,11 @@ import qualified NetSpider.RPL.DAO as DAO
 import NetSpider.RPL.DAO (FoundNodeDAO)
 
 type Parser = P.ReadP
+
+data ParseError = ParseError String
+                deriving (Show,Eq,Ord)
+
+instance Exception ParseError
 
 runParser :: Parser a -> String -> Maybe a
 runParser p input = extract $ sortPairs $ P.readP_to_S p input
@@ -85,6 +92,7 @@ data ParseEntry = PEDIO FoundNodeDIO
                 | PEMisc
                 deriving (Show,Eq)
 
+-- | Return 'Nothing' when it finishes reading.
 parseOneEntry :: Parser Timestamp -> IO (Maybe String) -> IO (Maybe ParseEntry)
 parseOneEntry pTimestamp getL = impl
   where
@@ -96,26 +104,39 @@ parseOneEntry pTimestamp getL = impl
           case runParser ((,) <$> pTimestamp <*> (pLogHead *> pHeading)) line of
             Nothing -> return $ Just PEMisc
             Just (ts, HDIO addr node) -> proceedDIO ts addr node
-            Just (ts, HDAO) -> proceedDAO ts
+            Just (ts, HDAO route_num) -> proceedDAO ts route_num
     withPrefix p = pTimestamp *> pLogHead *> p
     proceedDIO ts addr node = do
       mlinks <- readUntil getL (withPrefix pDIONeighbor) (withPrefix pDIONeighborEnd)
       case mlinks of
         Nothing -> return Nothing
         Just links -> return $ Just $ PEDIO $ makeFoundNodeDIO ts addr node $ map (setAddressPrefix addr) links
-    proceedDAO ts = do
+    proceedDAO ts route_num = do
       mlinks <- readUntil getL (withPrefix pDAOLink) (withPrefix pDAOLinkEnd)
       case mlinks of
         Nothing -> return Nothing
-        Just links -> return $ Just $ PEDAO $ map (uncurry $ makeFoundNodeDAO ts) $ groupDAOLinks links
-    groupDAOLinks :: [(IPv6, Maybe IPv6)] -> [(IPv6, [IPv6])]
+        Just links -> do
+          root_address <- maybe (throwIO $ ParseError "No root address found in SR log") return
+                          $ getRootAddress links
+          return $ Just $ PEDAO $ map (makeDAONodeFromTuple root_address route_num ts) $ groupDAOLinks links
+    getRootAddress :: [(IPv6, Maybe (IPv6, Word))] -> Maybe IPv6
+    getRootAddress links = fmap fst $ listToMaybe $ filter isRootEntry links
+      where
+        isRootEntry (_, Nothing) = True
+        isRootEntry (_, _) = False
+    groupDAOLinks :: [(IPv6, Maybe (IPv6, Word))] -> [(IPv6, [(IPv6, Word)])]
     groupDAOLinks links = map toTuple $ groupWith byParentAddr $ (filterOutRoot =<< links)
       where
         filterOutRoot (_, Nothing) = []
-        filterOutRoot (c, Just p) = [(c, p)]
-        byParentAddr = snd
+        filterOutRoot (c, Just (p, lt)) = [(c, p, lt)]
+        byParentAddr (_, p, _) = p
         toTuple [] = error "groupDAOLinks: this should not happen"
-        toTuple ((c1, p) : rest) = (p, c1 : map fst rest)
+        toTuple entries@((_, p, _) : _) = (p, map extractChildAndLifetime entries)
+        extractChildAndLifetime (c, _, lt) = (c, lt)
+    makeDAONodeFromTuple root_addr route_num ts (parent_addr, children) =
+      makeFoundNodeDAO
+      ts (if parent_addr == root_addr then Just route_num else Nothing)
+      parent_addr children
     setAddressPrefix self_addr (neighbor_addr, ll) = (modified_addr, ll)
       where
         modified_addr = if isLinkLocal neighbor_addr
@@ -149,28 +170,28 @@ makeFoundNodeDIO ts self_addr node_attr neighbors =
                   linkAttributes = ll
                 }
 
-makeFoundNodeDAO :: Timestamp -> IPv6 -> [IPv6] -> FoundNodeDAO
-makeFoundNodeDAO ts parent_addr children =
+makeFoundNodeDAO :: Timestamp -> Maybe Word -> IPv6 -> [(IPv6, Word)] -> FoundNodeDAO
+makeFoundNodeDAO ts mroute_num parent_addr children =
   FoundNode { subjectNode = FindingID FindingDAO parent_addr,
               foundAt = ts,
               neighborLinks = map toFoundLink children,
-              nodeAttributes = DAO.DAONode Nothing -- TODO
+              nodeAttributes = DAO.DAONode mroute_num
             }
   where
-    toFoundLink child_addr =
+    toFoundLink (child_addr, lifetime) =
       FoundLink { targetNode = FindingID FindingDAO child_addr,
                   linkState = LinkToTarget,
-                  linkAttributes = DAO.DAOLink 0 -- TODO
+                  linkAttributes = DAO.DAOLink lifetime
                 }
 
 
 data Heading = HDIO IPv6 DIO.DIONode
-             | HDAO
+             | HDAO Word
              deriving (Show,Eq,Ord)
 
 pHeading :: Parser Heading
 pHeading = (fmap (uncurry HDIO) $ pDIONode)
-           <|> (pDAOLogHeader *> pure HDAO)
+           <|> (HDAO <$> pDAOLogHeader)
 
 isAddressChar :: Char -> Bool
 isAddressChar c = isHexDigit c || c == ':'
@@ -297,18 +318,24 @@ pLogHead = do
   void $ P.munch (not . (== ']'))
   void $ P.string "] "
 
-pDAOLogHeader :: Parser ()
+pDAOLogHeader :: Parser Word
 pDAOLogHeader = do
   void $ P.string "links: "
-  void $ P.munch1 isDigit
+  route_num <- pNum
   void $ P.string " routing links in total "
+  return route_num
 
-pDAOLink :: Parser (IPv6, Maybe IPv6)
+pDAOLink :: Parser (IPv6, Maybe (IPv6, Word))
 pDAOLink = do
   void $ P.string "links: "
   child <- pMaybeCompactAddress
-  mparent <- optional (P.string "  to " *> pMaybeCompactAddress)
+  mparent <- optional pParentAndLifetime
   return (child, mparent)
+  where
+    pParentAndLifetime = (,)
+                         <$> (P.string "  to " *> pMaybeCompactAddress)
+                         <*> (P.string " (lifetime: " *> pNum <* P.string " seconds)")
+                         
 
 pDAOLinkEnd :: Parser ()
 pDAOLinkEnd = void $ P.string "links: end of list"
