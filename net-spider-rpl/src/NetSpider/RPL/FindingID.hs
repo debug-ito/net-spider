@@ -62,8 +62,7 @@ typeFromText t =
 -- Basically a node is identified by its IPv6 address in RPL
 -- network. 'FindingID' is distinguished by 'FindingType' as well,
 -- because in RPL there can be difference between topology formed by
--- individual nodes and topology stored in the source routing table of
--- the root node (for non-storing mode of operation)
+-- DIOs and DAOs.
 data FindingID =
   FindingID
   { findingType :: !FindingType,
