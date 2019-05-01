@@ -96,6 +96,9 @@ matrix:
   #  compiler: ": #stack 8.0.2"
   #  addons: {apt: {packages: [libgmp-dev]}}
 
+
+  ## Cannot use lts-11 it doesn't have algebraic-graph-0.2.*, needed by pangraph-0.2.1
+
   #- env: BUILD=stack ARGS="--resolver lts-11"
   #  compiler: ": #stack 8.2.2"
   #  addons: {apt: {packages: [libgmp-dev]}}
@@ -139,9 +142,9 @@ matrix:
   #  compiler: ": #stack 8.0.2 osx"
   #  os: osx
 
-  - env: BUILD=stack ARGS="--resolver lts-11"
-    compiler: ": #stack 8.2.2 osx"
-    os: osx
+  #- env: BUILD=stack ARGS="--resolver lts-11"
+  #  compiler: ": #stack 8.2.2 osx"
+  #  os: osx
 
   - env: BUILD=stack ARGS="--resolver lts-12"
     compiler: ": #stack 8.4.3 osx"
