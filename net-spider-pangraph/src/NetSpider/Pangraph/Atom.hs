@@ -6,8 +6,10 @@
 --
 -- 
 module NetSpider.Pangraph.Atom
-  ( Atom,
+  ( -- * Types
+    Atom,
     ToAtom(..),
+    -- * Utility
     showAtom
   ) where
 
