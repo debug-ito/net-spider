@@ -64,6 +64,12 @@ instance Pan.ToAttributes DAONode where
       Just p -> [("dao_route_num", toAtom $ p)]
 
 -- | Link attributes about DAO.
+--
+-- In Storing mode of RPL, a 'DAOLink' represents a link between the
+-- sender and the receiver of a DAO. In non-storing mode, it's a link
+-- between the sender of the DAO and the node specified in the
+-- \"parent address\" field of the Transit Information option
+-- contained in the DAO.
 data DAOLink =
   DAOLink
   { pathLifetimeSec :: Word

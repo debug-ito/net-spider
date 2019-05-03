@@ -12,7 +12,7 @@
 -- independently exchanges routing information with its neighbors over
 -- low-power wireless channels. Using those information, the nodes
 -- form one or more network topologies called DODAG
--- (Destination-Oriented Directed Asynclic Graph) in a distributed
+-- (Destination-Oriented Directed Acyclic Graph) in a distributed
 -- manner.
 --
 -- The module "NetSpider.RPL.DIO" defines NetSpider data model about

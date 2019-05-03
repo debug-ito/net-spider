@@ -109,6 +109,9 @@ instance LinkAttributes NeighborType where
       fromT t = maybe (fail ("Unknown neighbor type: " <> unpack t)) return $ neighborTypeFromText t
 
 -- | Link attributes about DIO.
+--
+-- Basically this represents information of a neighbor learned from
+-- the DIOs it has sent.
 data DIOLink =
   DIOLink
   { neighborType :: NeighborType,
@@ -117,7 +120,8 @@ data DIOLink =
     -- ^ Observed rank of the neighbor.
     metric :: Maybe Rank
     -- ^ Link metric of this link, calculated as step of Rank. Because
-    -- Rank computation is up to the OF, this field is optional.
+    -- Rank computation is up to the Objective Function, this field is
+    -- optional.
   }
   deriving (Show,Eq,Ord)
 

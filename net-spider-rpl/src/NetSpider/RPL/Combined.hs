@@ -4,7 +4,9 @@
 -- Description: Snapshot graph combining DIO and DAO graphs
 -- Maintainer: Toshio Ito <debug.ito@gmail.com>
 --
--- 
+-- This module defines functions and data models that combine DIO
+-- (defined in "NetSpider.RPL.DIO") and DAO (defined in
+-- "NetSpider.RPL.DAO") graphs.
 module NetSpider.RPL.Combined
   ( -- * Functions
     combineNodes,
@@ -31,6 +33,7 @@ import NetSpider.RPL.FindingID (FindingID(..), FindingType(..), IPv6ID, ipv6Only
 import NetSpider.RPL.DIO (DIONode, MergedDIOLink)
 import NetSpider.RPL.DAO (DAONode, DAOLink)
 
+-- | Node attributes combining 'DIONode' and 'DAONode'.
 data CombinedNode =
   CombinedNode
   { attrsDIO :: Maybe DIONode,
@@ -54,6 +57,7 @@ instance Pan.ToAttributes CombinedNode where
   toAttributes cn = (Pan.toAttributes $ attrsDIO cn)
                     ++ (Pan.toAttributes $ attrsDAO cn)
 
+-- | Link attribute combining 'MergedDIOLink' and 'DAOLink'.
 data CombinedLink = CombinedDIOLink MergedDIOLink
                   | CombinedDAOLink DAOLink
                   deriving (Show,Eq,Ord)
