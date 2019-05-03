@@ -55,7 +55,7 @@ data DIONode =
   DIONode
   { rank :: Rank,
     -- ^ RPL rank
-    dioInterval :: !TrickleInterval
+    dioInterval :: TrickleInterval
     -- ^ Current interval of Trickle timer for DIO transmission.
   }
   deriving (Show,Eq,Ord)
