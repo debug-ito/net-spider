@@ -1,9 +1,15 @@
 # Revision history for net-spider
 
-## 0.2.1.0  -- XXX
+## 0.3.0.0  -- 2019-05-03
 
 * Export `Snapshot.Internal` module. This module is only for internal
   use.
+
+* **[BREAKING CHANGE]** Use StrictData extension by default. This changes the strictness of the following data types.
+
+    * `Query` (from Query module)
+    * `Config` (from Spider.Config module)
+    * `UnifyStdConfig` (from Unify module)
 
 ### Found module
 
@@ -14,6 +20,10 @@
 
 * Add `NodeAttributes` instance to `PropertyMapList`.
 * Add `LinkAttributes` instance to `PropertyMapSingle`.
+
+### Query module
+
+* **[BREAKING CHANGE]** `Query` data type is now strict.
 
 ### Snapshot module
 
