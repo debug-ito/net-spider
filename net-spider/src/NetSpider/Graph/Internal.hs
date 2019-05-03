@@ -60,9 +60,9 @@ instance Vertex VNode
 -- | The \"found_node\" vertex.
 data VFoundNode na =
   VFoundNode
-  { vfnId :: !EID,
-    vfnTimestamp :: !Timestamp,
-    vfnAttributes :: !na
+  { vfnId :: EID,
+    vfnTimestamp :: Timestamp,
+    vfnAttributes :: na
   }
   deriving (Show)
 
@@ -108,10 +108,10 @@ instance NodeAttributes na => FromGraphSON (VFoundNode na) where
 -- | \"finds\" edge.
 data EFinds la =
   EFinds
-  { efId :: !EID,
-    efTargetId :: !EID,
-    efLinkState :: !LinkState,
-    efLinkAttributes :: !la
+  { efId :: EID,
+    efTargetId :: EID,
+    efLinkState :: LinkState,
+    efLinkAttributes :: la
   }
   deriving (Show)
 
@@ -149,7 +149,7 @@ instance NodeAttributes () where
 -- | Straightforward implementation. Note that 'writeNodeAttributes'
 -- does not write meta-properties of the 'AVertexProperty'.
 --
--- @since 0.2.1.0
+-- @since 0.3.0.0
 instance (FromGraphSON v, ToJSON v) => NodeAttributes (PropertyMapList AVertexProperty v) where
   writeNodeAttributes = writeAllProperties
   parseNodeAttributes = traverse parseGraphSON
@@ -169,7 +169,7 @@ instance LinkAttributes () where
 
 -- | Straightforward implementation
 --
--- @since 0.2.1.0
+-- @since 0.3.0.0
 instance (FromGraphSON v, ToJSON v) => LinkAttributes (PropertyMapSingle AProperty v) where
   writeLinkAttributes = writeAllProperties
   parseLinkAttributes = traverse parseGraphSON

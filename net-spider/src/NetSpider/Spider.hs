@@ -281,11 +281,11 @@ visitNodeForSnapshot spider query ref_state visit_nid = do
 -- | The state kept while making the snapshot graph.
 data SnapshotState n na fla =
   SnapshotState
-  { ssUnvisitedNodes :: !(Queue n),
-    ssVisitedNodes :: !(HashMap n (Maybe (VFoundNode na))),
+  { ssUnvisitedNodes :: Queue n,
+    ssVisitedNodes :: HashMap n (Maybe (VFoundNode na)),
     -- ^ If the visited node has no observation yet, its node
     -- attributes 'Nothing'.
-    ssVisitedLinks :: !(HashMap (LinkSampleID n) [LinkSample n fla])
+    ssVisitedLinks :: HashMap (LinkSampleID n) [LinkSample n fla]
   }
   deriving (Show)
 

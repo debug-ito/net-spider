@@ -41,10 +41,10 @@ import Text.Read (readEither)
 -- | Timestamp when graph elements are observed.
 data Timestamp =
   Timestamp
-  { epochTime :: !Int64,
+  { epochTime :: Int64,
     -- ^ Milliseconds since the epoch. The epoch is usually the
     -- beginning of year 1970.
-    timeZone :: !(Maybe TimeZone)
+    timeZone :: Maybe TimeZone
   }
   deriving (Show,Eq)
 

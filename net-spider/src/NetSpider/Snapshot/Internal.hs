@@ -8,7 +8,7 @@
 -- Implementation of Snapshot graph types. This module is for internal
 -- and testing purposes only.
 --
--- @since 0.2.1.0
+-- @since 0.3.0.0
 module NetSpider.Snapshot.Internal
        ( SnapshotLink(..),
          linkNodeTuple,
@@ -30,11 +30,11 @@ import NetSpider.Timestamp (Timestamp)
 -- - type @la@: link attributes.
 data SnapshotLink n la =
   SnapshotLink
-  { _sourceNode :: !n,
-    _destinationNode :: !n,
-    _isDirected :: !Bool,
-    _linkTimestamp :: !Timestamp,
-    _linkAttributes :: !la
+  { _sourceNode :: n,
+    _destinationNode :: n,
+    _isDirected :: Bool,
+    _linkTimestamp :: Timestamp,
+    _linkAttributes :: la
     
     -- Maybe it's a good idea to include 'observationLogs', which can
     -- contain warnings or other logs about making this SnapshotLink.
@@ -45,9 +45,11 @@ data SnapshotLink n la =
 instance (Ord n, Eq la) => Ord (SnapshotLink n la) where
   compare l r = compare (linkNodeTuple l) (linkNodeTuple r)
 
+-- | @since 0.3.0.0
 instance Functor (SnapshotLink n) where
   fmap f l = l { _linkAttributes = f $ _linkAttributes l }
 
+-- | @since 0.3.0.0
 instance Bifunctor SnapshotLink where
   bimap fn fla l = l { _linkAttributes = fla $ _linkAttributes l,
                        _sourceNode = fn $ _sourceNode l,
@@ -65,10 +67,10 @@ linkNodePair = Pair . linkNodeTuple
 -- | A node in the snapshot graph.
 data SnapshotNode n na =
   SnapshotNode
-  { _nodeId :: !n,
-    _isOnBoundary :: !Bool,
-    _nodeTimestamp :: !(Maybe Timestamp),
-    _nodeAttributes :: !(Maybe na)
+  { _nodeId :: n,
+    _isOnBoundary :: Bool,
+    _nodeTimestamp :: Maybe Timestamp,
+    _nodeAttributes :: Maybe na
   }
   deriving (Show,Eq)
 
@@ -76,9 +78,11 @@ data SnapshotNode n na =
 instance (Ord n, Eq na) => Ord (SnapshotNode n na) where
   compare l r = compare (_nodeId l) (_nodeId r)
 
+-- | @since 0.3.0.0
 instance Functor (SnapshotNode n) where
   fmap f n = n { _nodeAttributes = fmap f $ _nodeAttributes n }
 
+-- | @since 0.3.0.0
 instance Bifunctor SnapshotNode where
   bimap fn fna n = n { _nodeAttributes = fmap fna $ _nodeAttributes n,
                        _nodeId = fn $ _nodeId n

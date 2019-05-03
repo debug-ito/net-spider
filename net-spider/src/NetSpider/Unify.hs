@@ -44,11 +44,11 @@ import NetSpider.Timestamp (Timestamp)
 -- 'NetSpider.Snapshot.SnapshotLink's.
 data LinkSample n la =
   LinkSample
-  { lsSubjectNode :: !n,
-    lsTargetNode :: !n,
-    lsLinkState :: !LinkState,
-    lsTimestamp :: !Timestamp,
-    lsLinkAttributes :: !la
+  { lsSubjectNode :: n,
+    lsTargetNode :: n,
+    lsLinkState :: LinkState,
+    lsTimestamp :: Timestamp,
+    lsLinkAttributes :: la
   }
   deriving (Show,Eq,Ord)
 

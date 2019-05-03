@@ -61,15 +61,17 @@ instance FromGraphSON LinkState where
 -- - type @la@: link attributes.
 data FoundLink n la =
   FoundLink
-  { targetNode :: !n,
-    linkState :: !LinkState,
-    linkAttributes :: !la
+  { targetNode :: n,
+    linkState :: LinkState,
+    linkAttributes :: la
   }
   deriving (Show,Eq,Ord)
 
+-- | @since 0.3.0.0
 instance Functor (FoundLink n) where
   fmap f l = l { linkAttributes = f $ linkAttributes l }
 
+-- | @since 0.3.0.0
 instance Bifunctor FoundLink where
   bimap fn fla l = l { targetNode = fn $ targetNode l,
                        linkAttributes = fla $ linkAttributes l
@@ -83,16 +85,18 @@ instance Bifunctor FoundLink where
 -- - type @la@: link attributes.
 data FoundNode n na la =
   FoundNode
-  { subjectNode :: !n,
-    foundAt :: !Timestamp,
-    neighborLinks :: ![FoundLink n la],
-    nodeAttributes :: !na
+  { subjectNode :: n,
+    foundAt :: Timestamp,
+    neighborLinks :: [FoundLink n la],
+    nodeAttributes :: na
   }
   deriving (Show,Eq)
 
+-- | @since 0.3.0.0
 instance Functor (FoundNode n na) where
   fmap f n = n { neighborLinks = (fmap . fmap) f $ neighborLinks n }
 
+-- | @since 0.3.0.0
 instance Bifunctor (FoundNode n) where
   bimap fna fla n = n { neighborLinks = (fmap . fmap) fla $ neighborLinks n,
                         nodeAttributes = fna $ nodeAttributes n
