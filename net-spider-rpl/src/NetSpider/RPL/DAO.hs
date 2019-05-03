@@ -39,7 +39,7 @@ type FoundNodeDAO = FoundNode FindingID DAONode DAOLink
 -- | Node attributes about DAO.
 data DAONode =
   DAONode
-  { daoRouteNum :: !(Maybe Word)
+  { daoRouteNum :: Maybe Word
     -- ^ Number of DAO routes (downward routes) in the routing table
     -- of the node. Exact meaning of the "number of routes" depends on
     -- implementation.
@@ -66,7 +66,7 @@ instance Pan.ToAttributes DAONode where
 -- | Link attributes about DAO.
 data DAOLink =
   DAOLink
-  { pathLifetimeSec :: !Word
+  { pathLifetimeSec :: Word
     -- ^ Remaining lifetime of this link in seconds.
     --
     -- Lifetime is advertised in Transit Information Option in DAO,

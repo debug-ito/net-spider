@@ -53,7 +53,7 @@ type TrickleInterval = Word
 -- | Node attributes about DIO.
 data DIONode =
   DIONode
-  { rank :: !Rank,
+  { rank :: Rank,
     -- ^ RPL rank
     dioInterval :: !TrickleInterval
     -- ^ Current interval of Trickle timer for DIO transmission.
@@ -111,11 +111,11 @@ instance LinkAttributes NeighborType where
 -- | Link attributes about DIO.
 data DIOLink =
   DIOLink
-  { neighborType :: !NeighborType,
+  { neighborType :: NeighborType,
     -- ^ Type of the neighbor at the other end of this link.
-    neighborRank :: !Rank,
+    neighborRank :: Rank,
     -- ^ Observed rank of the neighbor.
-    metric :: !(Maybe Rank)
+    metric :: Maybe Rank
     -- ^ Link metric of this link, calculated as step of Rank. Because
     -- Rank computation is up to the OF, this field is optional.
   }
@@ -161,8 +161,8 @@ instance Pan.ToAttributes DIOLink where
 -- of the link.
 data MergedDIOLink =
   MergedDIOLink
-  { fromSource :: !DIOLink,
-    fromDest :: !(Maybe DIOLink)
+  { fromSource :: DIOLink,
+    fromDest :: Maybe DIOLink
   }
   deriving (Show,Eq,Ord)
 

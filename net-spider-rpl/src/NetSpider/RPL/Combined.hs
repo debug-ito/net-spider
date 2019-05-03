@@ -33,8 +33,8 @@ import NetSpider.RPL.DAO (DAONode, DAOLink)
 
 data CombinedNode =
   CombinedNode
-  { attrsDIO :: !(Maybe DIONode),
-    attrsDAO :: !(Maybe DAONode)
+  { attrsDIO :: Maybe DIONode,
+    attrsDAO :: Maybe DAONode
   }
   deriving (Show,Eq,Ord)
 
@@ -54,8 +54,8 @@ instance Pan.ToAttributes CombinedNode where
   toAttributes cn = (Pan.toAttributes $ attrsDIO cn)
                     ++ (Pan.toAttributes $ attrsDAO cn)
 
-data CombinedLink = CombinedDIOLink !MergedDIOLink
-                  | CombinedDAOLink !DAOLink
+data CombinedLink = CombinedDIOLink MergedDIOLink
+                  | CombinedDAOLink DAOLink
                   deriving (Show,Eq,Ord)
 
 instance Pan.ToAttributes CombinedLink where

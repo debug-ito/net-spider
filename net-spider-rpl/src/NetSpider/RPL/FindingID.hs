@@ -65,9 +65,9 @@ typeFromText t =
 -- DIOs and DAOs.
 data FindingID =
   FindingID
-  { findingType :: !FindingType,
+  { findingType :: FindingType,
     -- ^ Finding type
-    nodeAddress :: !IPv6
+    nodeAddress :: IPv6
     -- ^ IPv6 address of the subject node.
   }
   deriving (Show,Eq,Ord,Generic)

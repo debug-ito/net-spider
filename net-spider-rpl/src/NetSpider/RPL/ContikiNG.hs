@@ -204,8 +204,8 @@ pAddress = fromS =<< P.munch1 isAddressChar
         Nothing -> fail ("Invalid IPv6 address: " <> str)
         Just addr -> return addr
 
-data CompactID = CNodeID !Int
-               | CNodeAddress !Word16
+data CompactID = CNodeID Int
+               | CNodeAddress Word16
                deriving (Show,Eq,Ord)
 
 makeCompactAddress :: CompactID -> IPv6
