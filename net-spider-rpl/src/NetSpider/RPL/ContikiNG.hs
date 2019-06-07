@@ -42,7 +42,7 @@ import Text.Read (readEither)
 import NetSpider.RPL.FindingID (FindingID(FindingID), FindingType(..))
 import NetSpider.RPL.IPv6 (isLinkLocal, setPrefix, getPrefix)
 import qualified NetSpider.RPL.DIO as DIO
-import NetSpider.RPL.DIO (FoundNodeDIO, dioLinkState)
+import NetSpider.RPL.DIO (FoundNodeDIO, dioLinkState, Rank)
 import qualified NetSpider.RPL.DAO as DAO
 import NetSpider.RPL.DAO (FoundNodeDAO)
 
@@ -59,6 +59,15 @@ runParser p input = extract $ sortPairs $ P.readP_to_S p input
     sortPairs = sortOn $ \(_, rest) -> length rest
     extract [] = Nothing
     extract ((a,_) : _) = Just a
+
+runParser' :: Parser a
+           -> String -- ^ error message
+           -> String -- ^ input
+           -> Parser a
+runParser' p err input =
+  case runParser p input of
+    Nothing -> fail err
+    Just a -> return a
 
 -- | Read and parse a log file from a Contiki-NG application to make
 -- 'FoundNodeDIO' and 'FoundNodeDAO'.
@@ -276,13 +285,29 @@ pDIONode = do
 pExpectChar :: Char -> Parser Bool
 pExpectChar exp_c = fmap (== Just exp_c) $ optional P.get
 
+pNeighborAndRank :: Parser (IPv6, Rank)
+pNeighborAndRank = spaced <|> non_spaced
+  where
+    spaced = do
+      addr <- pMaybeCompactAddress
+      P.skipSpaces
+      rank <- pNum
+      void $ P.string ", "
+      return (addr, rank)
+    non_spaced = do
+      -- Rank is so large that there is no space between the address and rank.
+      -- This case happens when the rank is 5 digits.
+      addr_and_rank <- P.munch isAddressChar
+      void $ P.string ", "
+      let (addr_str, rank_str) = splitAt (length addr_and_rank - 5) addr_and_rank
+      addr <- runParser' pMaybeCompactAddress ("Failed to parse address:" <> addr_str) addr_str
+      rank <- runParser' pNum ("Failed to parser rank:" <> rank_str) rank_str
+      return (addr, rank)
+
 pDIONeighbor :: Parser (IPv6, DIO.DIOLink)
 pDIONeighbor = do
   void $ P.string "nbr: "
-  neighbor_addr <- pMaybeCompactAddress
-  P.skipSpaces
-  neighbor_rank <- pNum
-  void $ P.string ", "
+  (neighbor_addr, neighbor_rank) <- pNeighborAndRank
   P.skipSpaces
   metric <- pNum
   void $ P.string " => "

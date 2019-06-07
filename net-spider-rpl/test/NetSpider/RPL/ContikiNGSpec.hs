@@ -266,25 +266,25 @@ spec = do
             }
           exp_links =
             [ FoundLink
-              { targetNode = fromJust $ idFromText "dio://[fd80::aaa:bbbb:bcc:100a]",
+              { targetNode = fromJust $ idFromText "dio://[fd00::aaa:bbbb:bcc:100a]",
                 linkState = LinkUnused,
-                linkAttributes = DIO.DIOLink { DIO.neighborType = DIO.ParentCandidate,
+                linkAttributes = DIO.DIOLink { DIO.neighborType = DIO.OtherNeighbor,
                                                DIO.neighborRank = 492,
                                                DIO.metric = Just 601
                                              }
               },
               FoundLink
-              { targetNode = fromJust $ idFromText "dio://[fd80::aaa:bbbb:9221:d51a]",
+              { targetNode = fromJust $ idFromText "dio://[fd00::aaa:bbbb:9221:d51a]",
                 linkState = LinkUnused,
-                linkAttributes = DIO.DIOLink { DIO.neighborType = DIO.ParentCandidate,
+                linkAttributes = DIO.DIOLink { DIO.neighborType = DIO.OtherNeighbor,
                                                DIO.neighborRank = 422,
                                                DIO.metric = Just 601
                                              }
               },
               FoundLink
-              { targetNode = fromJust $ idFromText "dio://[fd80::aaa:bbbb:bcc:d5e8]",
+              { targetNode = fromJust $ idFromText "dio://[fd00::aaa:bbbb:bcc:d5e8]",
                 linkState = LinkUnused,
-                linkAttributes = DIO.DIOLink { DIO.neighborType = DIO.ParentCandidate,
+                linkAttributes = DIO.DIOLink { DIO.neighborType = DIO.OtherNeighbor,
                                                DIO.neighborRank = 65535,
                                                DIO.metric = Just 133
                                              }
