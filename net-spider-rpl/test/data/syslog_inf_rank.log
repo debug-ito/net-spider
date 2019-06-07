@@ -1,0 +1,6 @@
+Feb 25 14:24:26 host-name tag[14621]: [WARN: RPL       ] no parent, scheduling periodic DIS, will leave if no parent is found
+Feb 25 14:24:26 host-name tag[14621]: [INFO: RPL       ] nbr: own state, addr fd00::aaa:bbbb:bcc:1008, DAG state: initialized, MOP 1 OCP 1 rank 65535 max-rank 2041, dioint 12, nbr count 3 (Parent switch)
+Feb 25 14:24:26 host-name tag[14621]: [INFO: RPL       ] nbr: fe80::aaa:bbbb:bcc:100a  492,   601 =>  1093 --  8    f  (last tx 0 min ago, better since 0 min)
+Feb 25 14:24:26 host-name tag[14621]: [INFO: RPL       ] nbr: fe80::aaa:bbbb:9221:d51a  422,   601 =>  1023 --  8    f  (last tx 0 min ago, better since 0 min)
+Feb 25 14:24:26 host-name tag[14621]: [INFO: RPL       ] nbr: fe80::aaa:bbbb:bcc:d5e865535,   133 => 65535 --  5    f  (last tx 0 min ago)
+Feb 25 14:24:26 host-name tag[14621]: [INFO: RPL       ] nbr: end of list

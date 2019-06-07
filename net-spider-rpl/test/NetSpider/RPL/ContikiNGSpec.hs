@@ -256,4 +256,41 @@ spec = do
       (got_dios, got_daos) <- parseFile pHead "test/data/syslog_sr_tables.log"
       got_dios `shouldBe` [exp_dio1, exp_dio2]
       got_daos `shouldMatchList` exp_daos
-
+    specify "syslog_inf_rank" $ do
+      let exp_dio =
+            FoundNode
+            { subjectNode = fromJust $ idFromText "dio://[fd00::aaa:bbbb:bcc:1008]",
+              foundAt = fromEpochMillisecond 1551104666000,
+              nodeAttributes = DIO.DIONode { DIO.rank = 65535, DIO.dioInterval = 12 },
+              neighborLinks = exp_links
+            }
+          exp_links =
+            [ FoundLink
+              { targetNode = fromJust $ idFromText "dio://[fd80::aaa:bbbb:bcc:100a]",
+                linkState = LinkUnused,
+                linkAttributes = DIO.DIOLink { DIO.neighborType = DIO.ParentCandidate,
+                                               DIO.neighborRank = 492,
+                                               DIO.metric = Just 601
+                                             }
+              },
+              FoundLink
+              { targetNode = fromJust $ idFromText "dio://[fd80::aaa:bbbb:9221:d51a]",
+                linkState = LinkUnused,
+                linkAttributes = DIO.DIOLink { DIO.neighborType = DIO.ParentCandidate,
+                                               DIO.neighborRank = 422,
+                                               DIO.metric = Just 601
+                                             }
+              },
+              FoundLink
+              { targetNode = fromJust $ idFromText "dio://[fd80::aaa:bbbb:bcc:d5e8]",
+                linkState = LinkUnused,
+                linkAttributes = DIO.DIOLink { DIO.neighborType = DIO.ParentCandidate,
+                                               DIO.neighborRank = 65535,
+                                               DIO.metric = Just 133
+                                             }
+              }
+            ]
+          pHead = pSyslogHead 2019 Nothing
+      (got_dios, got_daos) <- parseFile pHead "test/data/syslog_inf_rank.log"
+      got_dios `shouldBe` [exp_dio]
+      got_daos `shouldMatchList` []

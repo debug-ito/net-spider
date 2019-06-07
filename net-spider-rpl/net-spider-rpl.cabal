@@ -13,7 +13,8 @@ extra-source-files:     README.md, ChangeLog.md,
                         test/data/cooja.log,
                         test/data/syslog_root.log,
                         test/data/syslog_nonroot.log,
-                        test/data/syslog_sr_tables.log
+                        test/data/syslog_sr_tables.log,
+                        test/data/syslog_inf_rank.log
 homepage:               https://github.com/debug-ito/net-spider
 bug-reports:            https://github.com/debug-ito/net-spider/issues
 
