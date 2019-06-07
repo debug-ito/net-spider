@@ -152,7 +152,7 @@ readUntil getL pBody pEnd = go []
         Nothing -> return Nothing
         Just line ->
           case runParser ((Left <$> pEnd) <|> (Right <$> pBody)) line of
-            Nothing -> return Nothing
+            Nothing -> throwIO $ ParseError ("Parse error at line: " <> line)
             Just (Left _) -> return $ Just $ reverse acc
             Just (Right body) -> go (body : acc)
 
