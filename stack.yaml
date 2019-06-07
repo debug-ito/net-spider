@@ -38,6 +38,7 @@ packages:
 - test-readme
 - net-spider-pangraph
 - net-spider-rpl
+- net-spider-rpl-example
 
 # Dependency packages to be pulled from upstream that are not in the resolver
 # using the same syntax as the packages field.
