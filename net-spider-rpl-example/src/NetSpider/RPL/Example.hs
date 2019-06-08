@@ -9,6 +9,7 @@ module NetSpider.RPL.Example
 
 import qualified Data.ByteString as B
 import Control.Exception (bracket)
+import Control.Monad (forM_, when)
 import Data.Monoid ((<>))
 import NetSpider.Input
   ( defConfig,
@@ -28,6 +29,7 @@ import NetSpider.RPL.DIO
 import NetSpider.RPL.ContikiNG (parseFile, pSyslogHead)
 import qualified Pangraph.GraphML.Writer as GraphML
 import System.Environment (getArgs)
+import System.IO (hPutStrLn, stderr)
 
 putDIONodes :: [FoundNodeDIO] -> IO ([SnapshotNode FindingID DIONode], [SnapshotLink FindingID MergedDIOLink])
 putDIONodes dio_nodes = do
@@ -38,7 +40,9 @@ putDIONodes dio_nodes = do
               }
   bracket (connectWith conf) close $ \sp -> do
     clearAll sp
-    mapM_ (addFoundNode sp) dio_nodes
+    forM_ (zip dio_nodes ([0 ..] :: [Integer])) $ \(dio_node, index) -> do
+      when ((index `mod` 100) == 0) $ hPutStrLn stderr ("Add DIO node [" <> show index <> "]")
+      addFoundNode sp dio_node
     getSnapshot sp query
 
 
@@ -48,7 +52,7 @@ main = do
   let phead = pSyslogHead 2019 Nothing
   (dio_nodes, dao_nodes) <- parseFile phead file
   putStrLn ("------ " <> (show $ length dio_nodes) <> " DIO Nodes")
-  print dio_nodes
+  -- print dio_nodes
   putStrLn ("------ " <> (show $ length dao_nodes) <> " DAO Nodes")
   (snodes, slinks) <- putDIONodes dio_nodes
   putStrLn "--------- SnapshotNodes"
