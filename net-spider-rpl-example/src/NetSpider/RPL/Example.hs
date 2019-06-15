@@ -1,3 +1,4 @@
+{-# LANGUAGE RankNTypes #-}
 -- |
 -- Module: NetSpider.RPL.Example
 -- Description: Example executable of NetSpider.RPL
@@ -26,8 +27,10 @@ import NetSpider.RPL.FindingID (FindingID)
 import NetSpider.RPL.DIO
   ( dioUnifierConf, FoundNodeDIO, DIONode, MergedDIOLink
   )
+import NetSpider.RPL.DAO (FoundNodeDAO)
 import NetSpider.RPL.ContikiNG (parseFile, pSyslogHead)
-import qualified Pangraph.GraphML.Writer as GraphML
+-- import qualified Pangraph.GraphML.Writer as GraphML
+import qualified Pangraph.Gml.Writer as GML
 import System.Environment (getArgs)
 import System.IO (hPutStrLn, stderr)
 
@@ -45,21 +48,35 @@ putDIONodes dio_nodes = do
       addFoundNode sp dio_node
     getSnapshot sp query
 
-
-main :: IO ()
-main = do
-  (file : _) <- getArgs
-  let phead = pSyslogHead 2019 Nothing
+loadFile :: (forall na la . [FoundNode FindingID na la] -> [FoundNode FindingID na la])
+         -> FilePath
+         -> IO ([FoundNodeDIO], [FoundNodeDAO])
+loadFile selectNode file = do
+  putStrLn ("------ Loading " <> file)
   (dio_nodes, dao_nodes) <- parseFile phead file
   putStrLn ("------ " <> (show $ length dio_nodes) <> " DIO Nodes")
   -- print dio_nodes
   putStrLn ("------ " <> (show $ length dao_nodes) <> " DAO Nodes")
+  return (selectNode dio_nodes, selectNode dao_nodes)
+  where
+    phead = pSyslogHead 2019 Nothing
+
+concatPairs :: [([a], [b])] -> ([a], [b])
+concatPairs [] = ([],[])
+concatPairs ((as, bs) : rest) = (as ++ rest_as, bs ++ rest_bs)
+  where
+    (rest_as, rest_bs) = concatPairs rest
+
+main :: IO ()
+main = do
+  filenames <- getArgs
+  (dio_nodes, _) <- fmap concatPairs $ mapM (loadFile id) filenames
   (snodes, slinks) <- putDIONodes dio_nodes
   putStrLn "--------- SnapshotNodes"
   print snodes
   putStrLn "--------- SnapshotLinks"
   print slinks
   graph <- makePangraphIO snodes slinks
-  B.writeFile "result.graphml" $ GraphML.write graph
+  B.writeFile "result.gml" $ GML.write graph
   
 
