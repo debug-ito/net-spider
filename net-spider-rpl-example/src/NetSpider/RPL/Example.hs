@@ -11,11 +11,12 @@ module NetSpider.RPL.Example
 import qualified Data.ByteString as B
 import Control.Exception (bracket)
 import Control.Monad (forM_, when)
+import Data.List (sortOn)
 import Data.Monoid ((<>))
 import NetSpider.Input
   ( defConfig,
     connectWith, close, addFoundNode, clearAll,
-    FoundNode(subjectNode)
+    FoundNode(subjectNode, foundAt)
   )
 import NetSpider.Output
   ( getSnapshot,
@@ -70,7 +71,7 @@ concatPairs ((as, bs) : rest) = (as ++ rest_as, bs ++ rest_bs)
 main :: IO ()
 main = do
   filenames <- getArgs
-  (dio_nodes, _) <- fmap concatPairs $ mapM (loadFile id) filenames
+  (dio_nodes, _) <- fmap concatPairs $ mapM (loadFile getHead) filenames
   (snodes, slinks) <- putDIONodes dio_nodes
   putStrLn "--------- SnapshotNodes"
   print snodes
@@ -78,5 +79,7 @@ main = do
   print slinks
   graph <- makePangraphIO snodes slinks
   B.writeFile "result.gml" $ GML.write graph
-  
-
+    where
+      getHead nodes = case reverse $ sortOn foundAt nodes of
+        [] -> []
+        (x : _) -> [x]
