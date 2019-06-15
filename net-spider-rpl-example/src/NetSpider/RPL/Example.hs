@@ -49,18 +49,22 @@ putDIONodes dio_nodes = do
       addFoundNode sp dio_node
     getSnapshot sp query
 
-loadFile :: (forall na la . [FoundNode FindingID na la] -> [FoundNode FindingID na la])
-         -> FilePath
+loadFile :: FilePath
          -> IO ([FoundNodeDIO], [FoundNodeDAO])
-loadFile selectNode file = do
+loadFile file = do
   putStrLn ("------ Loading " <> file)
   (dio_nodes, dao_nodes) <- parseFile phead file
   putStrLn ("------ " <> (show $ length dio_nodes) <> " DIO Nodes")
   -- print dio_nodes
   putStrLn ("------ " <> (show $ length dao_nodes) <> " DAO Nodes")
-  return (selectNode dio_nodes, selectNode dao_nodes)
+  return (dio_nodes, dao_nodes)
   where
     phead = pSyslogHead 2019 Nothing
+
+filterPairs :: (forall na la . [FoundNode FindingID na la] -> [FoundNode FindingID na la])
+            -> ([FoundNode FindingID na1 la1], [FoundNode FindingID na2 la2])
+            -> ([FoundNode FindingID na1 la1], [FoundNode FindingID na2 la2])
+filterPairs f (ns1, ns2) = (f ns1, f ns2)
 
 concatPairs :: [([a], [b])] -> ([a], [b])
 concatPairs [] = ([],[])
@@ -71,7 +75,7 @@ concatPairs ((as, bs) : rest) = (as ++ rest_as, bs ++ rest_bs)
 main :: IO ()
 main = do
   filenames <- getArgs
-  (dio_nodes, _) <- fmap concatPairs $ mapM (loadFile getHead) filenames
+  (dio_nodes, _) <- fmap (concatPairs . map (filterPairs getHead)) $ mapM loadFile filenames
   (snodes, slinks) <- putDIONodes dio_nodes
   putStrLn "--------- SnapshotNodes"
   print snodes
