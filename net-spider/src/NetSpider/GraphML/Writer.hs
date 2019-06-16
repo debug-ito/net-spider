@@ -31,6 +31,9 @@ class ToNodeID a where
 nodeIDByShow :: Show a => a -> NodeID
 nodeIDByShow = pack . show
 
+instance ToNodeID Text where
+  toNodeID = id
+  
 -- TODO: use ToAtom to define ToNodeID.
 
 -- | Key of attribute.
@@ -48,6 +51,9 @@ data AttributeValue = AttrBoolean Bool
 -- | Type that can be converted to list of attributes.
 class ToAttributes a where
   toAttributes :: a -> [(AttributeKey, AttributeValue)]
+
+instance ToAttributes () where
+  toAttributes _ = []
 
 -- TODO: use net-spider-pangraph's ToAttributes to define this
 -- ToAttributes.
