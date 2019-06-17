@@ -26,7 +26,7 @@ spec = do
                       _nodeAttributes = Just ()
                     },
                     SnapshotNode
-                    { _nodeId = "190",
+                    { _nodeId = "☃",
                       _isOnBoundary = True,
                       _nodeTimestamp = Nothing,
                       _nodeAttributes = Nothing
@@ -41,7 +41,7 @@ spec = do
           links :: [SnapshotLink Text ()]
           links = [ SnapshotLink
                     { _sourceNode = "\"the root\"",
-                      _destinationNode = "190",
+                      _destinationNode = "☃",
                       _isDirected = True,
                       _linkTimestamp = fromEpochMillisecond 100,
                       _linkAttributes = ()
@@ -63,12 +63,12 @@ spec = do
                        "  <node id=\"&quot;the root&quot;\">",
                        "    <data key=\"d0\">100</data>",
                        "  </node>",
-                       "  <node id=\"190\">",
+                       "  <node id=\"&#2603;\">",
                        "  </node>",
                        "  <node id=\"&lt;child&gt;\">",
                        "    <data key=\"d0\">120</data>",
                        "  </node>",
-                       "  <edge source=\"&quot;the root&quot;\" target=\"190\" directed=\"true\">",
+                       "  <edge source=\"&quot;the root&quot;\" target=\"&#2603;\" directed=\"true\">",
                        "    <data key=\"d0\">100</data>",
                        "  </edge>",
                        "  <edge source=\"&lt;child&gt;\" target=\"&quot;the root&quot;\" directed=\"false\">",
