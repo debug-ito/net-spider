@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 -- |
 -- Module: NetSpider.GraphML.Writer
 -- Description: Serialize a Snapshot graph into GraphML format.
@@ -17,6 +18,7 @@ module NetSpider.GraphML.Writer
     ToAttributes(..)
   ) where
 
+import Data.Monoid ((<>))
 import Data.Text (Text, pack)
 import qualified Data.Text.Lazy as TL
 
@@ -60,4 +62,23 @@ instance ToAttributes () where
 
 writeGraphML :: (ToNodeID n, ToAttributes na, ToAttributes la)
              => [SnapshotNode n na] -> [SnapshotLink n la] -> TL.Text
-writeGraphML = undefined
+writeGraphML =
+  xml_header
+  <> graphml_header
+  <> keys
+  <> graph_header
+  <> nodes
+  <> edges
+  <> graph_footer
+  <> graphml_footer
+  where
+    xml_header = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+    graphml_header = "<graphml xmlns=\"http://graphml.graphdrawing.org/xmlns\"\n"
+                     <> " xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"\n"
+                     <> " xsi:schemaLocation=\"http://graphml.graphdrawing.org/xmlns http://graphml.graphdrawing.org/xmlns/1.0/graphml.xsd\">\n"
+    graphml_footer = "</graphml>\n"
+    keys = undefined
+    graph_header = "  <graph edgedefault=\"undirected\">\n"
+    graph_footer = "  </graph>\n"
+    nodes = undefined
+    edges = undefined
