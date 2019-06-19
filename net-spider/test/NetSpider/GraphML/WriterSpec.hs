@@ -55,7 +55,8 @@ spec = do
                     }
                   ]
           expected = TL.intercalate "\n"
-                     [ "<graphml xmlns=\"http://graphml.graphdrawing.org/xmlns\"",
+                     [ "<?xml version=\"1.0\" encoding=\"UTF-8\"?>",
+                       "<graphml xmlns=\"http://graphml.graphdrawing.org/xmlns\"",
                        "xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"",
                        "xsi:schemaLocation=\"http://graphml.graphdrawing.org/xmlns http://graphml.graphdrawing.org/xmlns/1.0/graphml.xsd\">",
                        "<key id=\"d0\" for=\"all\" attr.name=\"@timestamp\" attr.type=\"long\"/>",
@@ -63,12 +64,12 @@ spec = do
                        "  <node id=\"&quot;the root&quot;\">",
                        "    <data key=\"d0\">100</data>",
                        "  </node>",
-                       "  <node id=\"&#2603;\">",
+                       "  <node id=\"☃\">",
                        "  </node>",
                        "  <node id=\"&lt;child&gt;\">",
                        "    <data key=\"d0\">120</data>",
                        "  </node>",
-                       "  <edge source=\"&quot;the root&quot;\" target=\"&#2603;\" directed=\"true\">",
+                       "  <edge source=\"&quot;the root&quot;\" target=\"☃\" directed=\"true\">",
                        "    <data key=\"d0\">100</data>",
                        "  </edge>",
                        "  <edge source=\"&lt;child&gt;\" target=\"&quot;the root&quot;\" directed=\"false\">",
