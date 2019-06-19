@@ -22,7 +22,10 @@ import Data.Monoid ((<>))
 import Data.Text (Text, pack)
 import qualified Data.Text.Lazy as TL
 
-import NetSpider.Snapshot (SnapshotNode, SnapshotLink)
+import NetSpider.Snapshot
+  ( SnapshotNode, nodeId,
+    SnapshotLink, sourceNode, destinationNode
+  )
 
 -- | Node ID in GraphML.
 type NodeID = Text
@@ -62,7 +65,7 @@ instance ToAttributes () where
 
 writeGraphML :: (ToNodeID n, ToAttributes na, ToAttributes la)
              => [SnapshotNode n na] -> [SnapshotLink n la] -> TL.Text
-writeGraphML _ _ =
+writeGraphML input_nodes input_links =
   xml_header
   <> graphml_header
   <> keys
@@ -77,8 +80,16 @@ writeGraphML _ _ =
                      <> " xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"\n"
                      <> " xsi:schemaLocation=\"http://graphml.graphdrawing.org/xmlns http://graphml.graphdrawing.org/xmlns/1.0/graphml.xsd\">\n"
     graphml_footer = "</graphml>\n"
-    keys = undefined
+    keys = "" -- TODO
     graph_header = "  <graph edgedefault=\"undirected\">\n"
     graph_footer = "  </graph>\n"
-    nodes = undefined
-    edges = undefined
+    nodes = mconcat $ map writeNode input_nodes
+    edges = mconcat $ map writeLink input_links
+    writeNode n = "  <node id=\"" <> (encodeNodeID $ nodeId n) <> "\">\n"
+                  <> "  </node>\n"
+    writeLink l = "<edge source=\"" <> (encodeNodeID $ sourceNode l)
+                  <> "\" target=\"" <> (encodeNodeID $ destinationNode l) <> "\">\n"
+                  <> "</edge>\n"
+
+encodeNodeID :: ToNodeID n => n -> TL.Text
+encodeNodeID = TL.fromStrict . toNodeID -- TODO
