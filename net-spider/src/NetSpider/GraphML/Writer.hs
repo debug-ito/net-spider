@@ -62,7 +62,7 @@ instance ToAttributes () where
 
 writeGraphML :: (ToNodeID n, ToAttributes na, ToAttributes la)
              => [SnapshotNode n na] -> [SnapshotLink n la] -> TL.Text
-writeGraphML =
+writeGraphML _ _ =
   xml_header
   <> graphml_header
   <> keys
