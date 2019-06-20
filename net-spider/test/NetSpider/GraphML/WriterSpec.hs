@@ -3,6 +3,7 @@ module NetSpider.GraphML.WriterSpec (main,spec) where
 
 import Data.Text (Text)
 import qualified Data.Text.Lazy as TL
+import qualified Data.Text.Lazy.IO as TL
 import NetSpider.Snapshot.Internal
   ( SnapshotNode(..), SnapshotLink(..)
   )
@@ -81,4 +82,6 @@ spec = do
                        "  </edge>",
                        "</graph>"
                      ]
-      writeGraphML nodes links `shouldBe` expected
+          got = writeGraphML nodes links
+      TL.putStrLn got
+      got `shouldBe` expected
