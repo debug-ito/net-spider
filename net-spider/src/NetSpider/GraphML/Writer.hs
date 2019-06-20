@@ -41,8 +41,8 @@ import Data.Word (Word8, Word16, Word32, Word64)
 import GHC.Generics (Generic)
 
 import NetSpider.Snapshot
-  ( SnapshotNode, nodeId, nodeTimestamp, isOnBoundary,
-    SnapshotLink, sourceNode, destinationNode, linkTimestamp, isDirected
+  ( SnapshotNode, nodeId, nodeTimestamp, isOnBoundary, nodeAttributes,
+    SnapshotLink, sourceNode, destinationNode, linkTimestamp, isDirected, linkAttributes
   )
 import NetSpider.Timestamp (Timestamp(epochTime, timeZone))
 
@@ -305,7 +305,7 @@ nodeMetaValues n = map convert $ base <> attrs
                   Nothing -> []
                   Just t -> timestampAttrs t
     base = timestamp <> [("@is_on_boundary", AttrBoolean $ isOnBoundary n)]
-    attrs = [] -- TODO
+    attrs = toAttributes $ nodeAttributes n
     convert (k, v) = makeMetaValue DomainNode k v
 
 linkMetaKeys :: ToAttributes la => SnapshotLink n la -> [KeyMeta]
@@ -315,7 +315,7 @@ linkMetaValues :: ToAttributes la => SnapshotLink n la -> [(KeyMeta, AttributeVa
 linkMetaValues l = map convert $ base <> attrs
   where
     base = timestampAttrs $ linkTimestamp l
-    attrs = [] -- TODO
+    attrs = toAttributes $ linkAttributes l
     convert (k, v) = makeMetaValue DomainEdge k v
 
 showAttribute :: KeyStore -> KeyMeta -> AttributeValue -> TLB.Builder
