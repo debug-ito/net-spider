@@ -75,6 +75,7 @@ instance ToAttributes () where
 showAttributeValue :: AttributeValue -> TLB.Builder
 showAttributeValue _ = "" -- TODO
 
+-- | Type specifier of 'AttributeValue'
 data AttributeType = ATBoolean
                    | ATInt
                    | ATLong
@@ -105,6 +106,7 @@ showAttributeType t =
     ATDouble -> "double"
     ATString -> "string"
 
+-- | Domain (`for` field of the key) of attribute.
 data AttributeDomain = DomainGraph
                      | DomainNode
                      | DomainEdge
