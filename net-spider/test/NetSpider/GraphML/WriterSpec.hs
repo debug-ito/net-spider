@@ -2,10 +2,11 @@
 module NetSpider.GraphML.WriterSpec (main,spec) where
 
 import Data.Aeson (ToJSON(..), genericToEncoding, defaultOptions)
+import Data.List (sortOn)
 import Data.Maybe (fromJust)
 import Data.Text (Text)
 import qualified Data.Text.Lazy as TL
-import qualified Data.Text.Lazy.IO as TLIO
+-- import qualified Data.Text.Lazy.IO as TLIO
 import GHC.Generics (Generic)
 import NetSpider.Snapshot.Internal
   ( SnapshotNode(..), SnapshotLink(..)
@@ -48,7 +49,7 @@ instance ToJSON Att2 where
   toEncoding = genericToEncoding defaultOptions
 
 instance ToAttributes Att2 where
-  toAttributes a = fromJust $ attributesFromAeson $ toJSON a
+  toAttributes a = sortOn fst $ fromJust $ attributesFromAeson $ toJSON a
 
 spec :: Spec
 spec = do
@@ -182,8 +183,8 @@ spec = do
                        "<key id=\"d3\" for=\"node\" attr.name=\"foo\" attr.type=\"string\"/>",
                        "<key id=\"d4\" for=\"node\" attr.name=\"buzz\" attr.type=\"boolean\"/>",
                        "<key id=\"d5\" for=\"edge\" attr.name=\"@timestamp\" attr.type=\"long\"/>",
-                       "<key id=\"d6\" for=\"edge\" attr.name=\"at2_quux\" attr.type=\"double\"/>",
-                       "<key id=\"d7\" for=\"edge\" attr.name=\"at2_huge\" attr.type=\"string\"/>",
+                       "<key id=\"d6\" for=\"edge\" attr.name=\"at2_huga\" attr.type=\"string\"/>",
+                       "<key id=\"d7\" for=\"edge\" attr.name=\"at2_quux\" attr.type=\"double\"/>",
                        "<graph edgedefault=\"undirected\">",
                        "  <node id=\"100\">",
                        "    <data key=\"d0\">155</data>",
@@ -200,12 +201,12 @@ spec = do
                        "  </node>",
                        "  <edge source=\"100\" target=\"200\" directed=\"true\">",
                        "    <data key=\"d5\">155</data>",
-                       "    <data key=\"d6\">109.25</data>",
-                       "    <data key=\"d7\">HUGA</data>",
+                       "    <data key=\"d6\">HUGA</data>",
+                       "    <data key=\"d7\">109.25</data>",
                        "  </edge>",
                        "</graph>",
                        "</graphml>"
                      ]
           got = writeGraphML nodes links
-      TLIO.putStrLn got
+      -- TLIO.putStrLn got
       got `shouldBe` expected
