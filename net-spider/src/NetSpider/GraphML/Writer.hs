@@ -1,4 +1,4 @@
-{-# LANGUAGE OverloadedStrings, DeriveGeneric #-}
+{-# LANGUAGE OverloadedStrings, DeriveGeneric, TypeSynonymInstances, FlexibleInstances #-}
 -- |
 -- Module: NetSpider.GraphML.Writer
 -- Description: Serialize a Snapshot graph into GraphML format.
@@ -22,6 +22,7 @@ import Data.Foldable (foldl')
 import Data.Hashable (Hashable(..))
 import Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HM
+import Data.Int (Int8, Int16, Int32, Int64)
 import Data.Maybe (catMaybes)
 import Data.Monoid ((<>), Monoid(..), mconcat)
 import Data.Semigroup (Semigroup(..))
@@ -29,6 +30,7 @@ import Data.Text (Text, pack, unpack)
 import qualified Data.Text.Lazy as TL
 import qualified Data.Text.Lazy.Builder as TLB
 import Data.Time (TimeZone(..))
+import Data.Word (Word8, Word16, Word32, Word64)
 import GHC.Generics (Generic)
 
 import NetSpider.Snapshot
@@ -48,6 +50,53 @@ nodeIDByShow = pack . show
 
 instance ToNodeID Text where
   toNodeID = id
+
+instance ToNodeID TL.Text where
+  toNodeID = TL.toStrict
+
+instance ToNodeID String where
+  toNodeID = pack
+
+instance ToNodeID Int where
+  toNodeID = nodeIDByShow
+
+instance ToNodeID Int8 where
+  toNodeID = nodeIDByShow
+
+instance ToNodeID Int16 where
+  toNodeID = nodeIDByShow
+
+instance ToNodeID Int32 where
+  toNodeID = nodeIDByShow
+
+instance ToNodeID Int64 where
+  toNodeID = nodeIDByShow
+
+instance ToNodeID Word where
+  toNodeID = nodeIDByShow
+
+instance ToNodeID Word8 where
+  toNodeID = nodeIDByShow
+
+instance ToNodeID Word16 where
+  toNodeID = nodeIDByShow
+
+instance ToNodeID Word32 where
+  toNodeID = nodeIDByShow
+
+instance ToNodeID Integer where
+  toNodeID = nodeIDByShow
+
+instance ToNodeID Float where
+  toNodeID = nodeIDByShow
+
+instance ToNodeID Double where
+  toNodeID = nodeIDByShow
+
+instance ToNodeID Bool where
+  toNodeID True = "true"
+  toNodeID False = "false"
+
   
 -- TODO: use ToAtom to define ToNodeID.
 

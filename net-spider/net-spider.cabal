@@ -22,7 +22,8 @@ library
                         GeneralizedNewtypeDeriving,
                         TypeFamilies,
                         FlexibleInstances,
-                        DeriveGeneric
+                        DeriveGeneric,
+                        TypeSynonymInstances
   exposed-modules:      NetSpider,
                         NetSpider.Input,
                         NetSpider.Output,
