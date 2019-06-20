@@ -166,7 +166,7 @@ showAttributeID index = "d" <> (TLB.fromString $ show index)
 
 showKeyMetaWithIndex :: Int -> KeyMeta -> TLB.Builder
 showKeyMetaWithIndex index km = "<key id=\"" <> id_str <> "\" for=\"" <> domain_str
-                                <> "\" attr.name=\"" <> name_str <> " attr.type=\"" <> type_str <> "\"\">"
+                                <> "\" attr.name=\"" <> name_str <> "\" attr.type=\"" <> type_str <> "\"/>\n"
   where
     id_str = showAttributeID index
     domain_str = showDomain $ kmDomain km
@@ -214,7 +214,7 @@ showAttribute :: KeyStore -> KeyMeta -> AttributeValue -> TLB.Builder
 showAttribute ks km val =
   case keyIndex ks km of
     Nothing -> ""
-    Just index -> "<data key=\"" <> key_id_str <> "\">" <> val_str <> "</data>"
+    Just index -> "<data key=\"" <> key_id_str <> "\">" <> val_str <> "</data>\n"
       where
         key_id_str = showAttributeID index
         val_str = showAttributeValue val
@@ -240,17 +240,18 @@ writeGraphML input_nodes input_links =
     keys = showAllKeys "" key_store
     key_metas = concat $ map nodeKeyMetas input_nodes <> map linkKeyMetas input_links
     key_store = foldl' (\acc m -> addKey m acc) emptyKeyStore key_metas
-    graph_header = "  <graph edgedefault=\"undirected\">\n"
-    graph_footer = "  </graph>\n"
+    graph_header = "<graph edgedefault=\"undirected\">\n"
+    graph_footer = "</graph>\n"
     nodes = mconcat $ map writeNode input_nodes
     edges = mconcat $ map writeLink input_links
+    showAttribute' (k,v) = ("    " <> ) $ showAttribute key_store k v
     writeNode n = "  <node id=\"" <> (encodeNodeID $ nodeId n) <> "\">\n"
-                  <> (mconcat $ map (uncurry $ showAttribute key_store) $ nodeGraphMLAttrs n)
+                  <> (mconcat $ map showAttribute' $ nodeGraphMLAttrs n)
                   <> "  </node>\n"
-    writeLink l = "<edge source=\"" <> (encodeNodeID $ sourceNode l)
+    writeLink l = "  <edge source=\"" <> (encodeNodeID $ sourceNode l)
                   <> "\" target=\"" <> (encodeNodeID $ destinationNode l) <> "\">\n"
-                  <> (mconcat $ map (uncurry $ showAttribute key_store) $ linkGraphMLAttrs l)
-                  <> "</edge>\n"
+                  <> (mconcat $ map showAttribute' $ linkGraphMLAttrs l)
+                  <> "  </edge>\n"
 
 encodeNodeID :: ToNodeID n => n -> TLB.Builder
 encodeNodeID = encodeXML . toNodeID
