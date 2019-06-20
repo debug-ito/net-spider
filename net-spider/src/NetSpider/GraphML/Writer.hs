@@ -15,9 +15,12 @@ module NetSpider.GraphML.Writer
     -- * Attributes
     AttributeKey,
     AttributeValue(..),
-    ToAttributes(..)
+    ToAttributes(..),
+    valueFromAeson,
+    attributesFromAeson
   ) where
 
+import qualified Data.Aeson as Aeson
 import Data.Foldable (foldl')
 import Data.Greskell.Graph
   ( PropertyMap, Property(..), allProperties
@@ -28,6 +31,7 @@ import qualified Data.HashMap.Strict as HM
 import Data.Int (Int8, Int16, Int32, Int64)
 import Data.Maybe (catMaybes)
 import Data.Monoid ((<>), Monoid(..), mconcat)
+import qualified Data.Scientific as Sci
 import Data.Semigroup (Semigroup(..))
 import Data.Text (Text, pack, unpack)
 import qualified Data.Text.Lazy as TL
@@ -131,6 +135,32 @@ instance (PropertyMap m, Property p) => ToAttributes (m p AttributeValue) where
 instance ToAttributes a => ToAttributes (Maybe a) where
   toAttributes Nothing = []
   toAttributes (Just a) = toAttributes a
+
+-- | Make 'AttributeValue' from aeson's 'Aeson.Value'. It returns
+-- 'Nothing', if the input is null, an object or an array. If the
+-- input is a number, the output uses either 'AttrLong' or
+-- 'AttrDouble'.
+valueFromAeson :: Aeson.Value -> Maybe AttributeValue
+valueFromAeson v =
+  case v of
+    Aeson.String t -> Just $ AttrString t
+    Aeson.Bool b -> Just $ AttrBoolean b
+    Aeson.Number n ->
+      case Sci.floatingOrInteger n of
+        Left f -> Just $ AttrDouble f
+        Right i -> Just $ AttrLong i
+    _ -> Nothing
+
+-- | Make attributes from aeson's 'Aeson.Value'. It assumes the input
+-- is an object, and its values can be converted by
+-- 'valueFromAeson'. Otherwise, it returns 'Nothing'.
+attributesFromAeson :: Aeson.Value -> Maybe [(AttributeKey, AttributeValue)]
+attributesFromAeson v =
+  case v of
+    Aeson.Object o -> mapM convElem $ HM.toList o
+    _ -> Nothing
+  where
+    convElem (k, val) = fmap ((,) k) $ valueFromAeson val
 
 sbuild :: Show a => a -> TLB.Builder
 sbuild = TLB.fromString . show
