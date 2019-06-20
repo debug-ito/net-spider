@@ -19,6 +19,9 @@ module NetSpider.GraphML.Writer
   ) where
 
 import Data.Foldable (foldl')
+import Data.Greskell.Graph
+  ( PropertyMap, Property(..), allProperties
+  )
 import Data.Hashable (Hashable(..))
 import Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HM
@@ -97,9 +100,6 @@ instance ToNodeID Bool where
   toNodeID True = "true"
   toNodeID False = "false"
 
-  
--- TODO: use ToAtom to define ToNodeID.
-
 -- | Key of attribute.
 type AttributeKey = Text
 
@@ -119,8 +119,18 @@ class ToAttributes a where
 instance ToAttributes () where
   toAttributes _ = []
 
--- TODO: use net-spider-pangraph's ToAttributes to define this
--- ToAttributes.
+instance ToAttributes [(AttributeKey, AttributeValue)] where
+  toAttributes = id
+
+instance (PropertyMap m, Property p) => ToAttributes (m p AttributeValue) where
+  toAttributes = toAttributes . map toPair . allProperties
+    where
+      toPair p = (propertyKey p, propertyValue p)
+
+-- | 'Nothing' is mapped to empty attributes.
+instance ToAttributes a => ToAttributes (Maybe a) where
+  toAttributes Nothing = []
+  toAttributes (Just a) = toAttributes a
 
 sbuild :: Show a => a -> TLB.Builder
 sbuild = TLB.fromString . show
