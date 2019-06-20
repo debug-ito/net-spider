@@ -4,7 +4,7 @@ module NetSpider.GraphML.WriterSpec (main,spec) where
 import Data.Maybe (fromJust)
 import Data.Text (Text)
 import qualified Data.Text.Lazy as TL
-import qualified Data.Text.Lazy.IO as TL
+-- import qualified Data.Text.Lazy.IO as TLIO
 import NetSpider.Snapshot.Internal
   ( SnapshotNode(..), SnapshotLink(..)
   )
@@ -57,11 +57,11 @@ spec = do
                       _linkAttributes = ()
                     }
                   ]
-          expected = TL.intercalate "\n"
+          expected = mconcat $ map (<> "\n")
                      [ "<?xml version=\"1.0\" encoding=\"UTF-8\"?>",
                        "<graphml xmlns=\"http://graphml.graphdrawing.org/xmlns\"",
-                       "xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"",
-                       "xsi:schemaLocation=\"http://graphml.graphdrawing.org/xmlns http://graphml.graphdrawing.org/xmlns/1.0/graphml.xsd\">",
+                       " xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"",
+                       " xsi:schemaLocation=\"http://graphml.graphdrawing.org/xmlns http://graphml.graphdrawing.org/xmlns/1.0/graphml.xsd\">",
                        "<key id=\"d0\" for=\"node\" attr.name=\"@timestamp\" attr.type=\"long\"/>",
                        "<key id=\"d1\" for=\"node\" attr.name=\"@is_on_boundary\" attr.type=\"boolean\"/>",
                        "<key id=\"d2\" for=\"node\" attr.name=\"@tz_offset_min\" attr.type=\"int\"/>",
@@ -84,7 +84,7 @@ spec = do
                        "    <data key=\"d2\">540</data>",
                        "    <data key=\"d3\">false</data>",
                        "    <data key=\"d4\"></data>",
-                       "    <data key=\"d1\">true</data>",
+                       "    <data key=\"d1\">false</data>",
                        "  </node>",
                        "  <edge source=\"&quot;the root&quot;\" target=\"☃\" directed=\"true\">",
                        "    <data key=\"d5\">100</data>",
@@ -95,8 +95,9 @@ spec = do
                        "    <data key=\"d7\">false</data>",
                        "    <data key=\"d8\"></data>",
                        "  </edge>",
-                       "</graph>"
+                       "</graph>",
+                       "</graphml>"
                      ]
           got = writeGraphML nodes links
-      TL.putStrLn got
+      -- TLIO.putStrLn got
       got `shouldBe` expected
