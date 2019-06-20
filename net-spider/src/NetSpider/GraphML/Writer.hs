@@ -25,7 +25,7 @@ import qualified Data.HashMap.Strict as HM
 import Data.Maybe (catMaybes)
 import Data.Monoid ((<>), Monoid(..), mconcat)
 import Data.Semigroup (Semigroup(..))
-import Data.Text (Text, pack)
+import Data.Text (Text, pack, unpack)
 import qualified Data.Text.Lazy as TL
 import qualified Data.Text.Lazy.Builder as TLB
 import Data.Time (TimeZone(..))
@@ -265,4 +265,15 @@ encodeNodeID :: ToNodeID n => n -> TLB.Builder
 encodeNodeID = encodeXML . toNodeID
 
 encodeXML :: Text -> TLB.Builder
-encodeXML = TLB.fromText -- TODO
+encodeXML = mconcat . map escape . unpack
+  where
+    escape c =
+      case c of
+        '<' -> "&lt;"
+        '>' -> "&gt;"
+        '&' -> "&amp;"
+        '"' -> "&quot;"
+        '\'' -> "&apos;"
+        '\n' -> "&#x0a;"
+        '\r' -> "&#x0d;"
+        _ -> TLB.singleton c
