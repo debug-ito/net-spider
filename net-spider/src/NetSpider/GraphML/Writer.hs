@@ -33,7 +33,7 @@ import GHC.Generics (Generic)
 
 import NetSpider.Snapshot
   ( SnapshotNode, nodeId, nodeTimestamp, isOnBoundary,
-    SnapshotLink, sourceNode, destinationNode, linkTimestamp
+    SnapshotLink, sourceNode, destinationNode, linkTimestamp, isDirected
   )
 import NetSpider.Timestamp (Timestamp(epochTime, timeZone))
 
@@ -268,9 +268,13 @@ writeGraphML input_nodes input_links =
                   <> (mconcat $ map showAttribute' $ nodeMetaValues n)
                   <> "  </node>\n"
     writeLink l = "  <edge source=\"" <> (encodeNodeID $ sourceNode l)
-                  <> "\" target=\"" <> (encodeNodeID $ destinationNode l) <> "\">\n"
+                  <> "\" target=\"" <> (encodeNodeID $ destinationNode l)
+                  <> "\" directed=\"" <> showDirected l <> "\">\n"
                   <> (mconcat $ map showAttribute' $ linkMetaValues l)
                   <> "  </edge>\n"
+    showDirected l = if isDirected l
+                     then "true"
+                     else "false"
 
 encodeNodeID :: ToNodeID n => n -> TLB.Builder
 encodeNodeID = encodeXML . toNodeID
