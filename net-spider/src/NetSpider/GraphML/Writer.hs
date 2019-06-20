@@ -134,6 +134,14 @@ data KeyMeta =
 
 instance Hashable KeyMeta
 
+makeMetaValue :: AttributeDomain -> AttributeKey -> AttributeValue -> (KeyMeta, AttributeValue)
+makeMetaValue d k v = (meta, v)
+  where
+    meta = KeyMeta { kmName = k,
+                     kmType = valueType v,
+                     kmDomain = d
+                   }
+
 -- | Storage of key metadata.
 data KeyStore =
   KeyStore
@@ -175,42 +183,44 @@ showKeyMetaWithIndex index km = "<key id=\"" <> id_str <> "\" for=\"" <> domain_
     name_str = encodeXML $ kmName km
     type_str = showAttributeType $ kmType km
 
-keyMetaTimestamp :: KeyMeta
-keyMetaTimestamp = KeyMeta { kmName = "@timestamp",
-                             kmType = ATLong,
-                             kmDomain = DomainAll
-                           }
+-- keyMetaTimestamp :: KeyMeta
+-- keyMetaTimestamp = KeyMeta { kmName = "@timestamp",
+--                              kmType = ATLong,
+--                              kmDomain = DomainAll
+--                            }
+-- 
+-- keyMetaIsOnBoundary :: KeyMeta
+-- keyMetaIsOnBoundary = KeyMeta { kmName = "@is_on_boundary",
+--                                 kmType = ATBoolean,
+--                                 kmDomain = DomainNode
+--                               }
 
-keyMetaIsOnBoundary :: KeyMeta
-keyMetaIsOnBoundary = KeyMeta { kmName = "@is_on_boundary",
-                                kmType = ATBoolean,
-                                kmDomain = DomainNode
-                              }
-
-timestampGraphMLAttrs :: Timestamp -> [(KeyMeta, AttributeValue)]
-timestampGraphMLAttrs t = [(keyMetaTimestamp, AttrLong $ toInteger $ epochTime t)]
+timestampAttrs :: Timestamp -> [(AttributeKey, AttributeValue)]
+timestampAttrs t = [("@timestamp", AttrLong $ toInteger $ epochTime t)]
   -- TODO: write timezone
 
-nodeKeyMetas :: ToAttributes na => SnapshotNode n na -> [KeyMeta]
-nodeKeyMetas n = map fst $ nodeGraphMLAttrs n
+nodeMetaKeys :: ToAttributes na => SnapshotNode n na -> [KeyMeta]
+nodeMetaKeys n = map fst $ nodeMetaValues n
 
-nodeGraphMLAttrs :: ToAttributes na => SnapshotNode n na -> [(KeyMeta, AttributeValue)]
-nodeGraphMLAttrs n = base <> attrs
+nodeMetaValues :: ToAttributes na => SnapshotNode n na -> [(KeyMeta, AttributeValue)]
+nodeMetaValues n = map convert $ base <> attrs
   where
     timestamp = case nodeTimestamp n of
                   Nothing -> []
-                  Just t -> timestampGraphMLAttrs t
-    base = timestamp <> [(keyMetaIsOnBoundary, AttrBoolean $ isOnBoundary n)]
+                  Just t -> timestampAttrs t
+    base = timestamp <> [("@is_on_boundary", AttrBoolean $ isOnBoundary n)]
     attrs = [] -- TODO
+    convert (k, v) = makeMetaValue DomainNode k v
 
-linkKeyMetas :: ToAttributes la => SnapshotLink n la -> [KeyMeta]
-linkKeyMetas l = map fst $ linkGraphMLAttrs l
+linkMetaKeys :: ToAttributes la => SnapshotLink n la -> [KeyMeta]
+linkMetaKeys l = map fst $ linkMetaValues l
 
-linkGraphMLAttrs :: ToAttributes la => SnapshotLink n la -> [(KeyMeta, AttributeValue)]
-linkGraphMLAttrs l = base <> attrs
+linkMetaValues :: ToAttributes la => SnapshotLink n la -> [(KeyMeta, AttributeValue)]
+linkMetaValues l = map convert $ base <> attrs
   where
-    base = timestampGraphMLAttrs $ linkTimestamp l
+    base = timestampAttrs $ linkTimestamp l
     attrs = [] -- TODO
+    convert (k, v) = makeMetaValue DomainEdge k v
 
 showAttribute :: KeyStore -> KeyMeta -> AttributeValue -> TLB.Builder
 showAttribute ks km val =
@@ -240,7 +250,7 @@ writeGraphML input_nodes input_links =
                      <> " xsi:schemaLocation=\"http://graphml.graphdrawing.org/xmlns http://graphml.graphdrawing.org/xmlns/1.0/graphml.xsd\">\n"
     graphml_footer = "</graphml>\n"
     keys = showAllKeys "" key_store
-    key_metas = concat $ map nodeKeyMetas input_nodes <> map linkKeyMetas input_links
+    key_metas = concat $ map nodeMetaKeys input_nodes <> map linkMetaKeys input_links
     key_store = foldl' (\acc m -> addKey m acc) emptyKeyStore key_metas
     graph_header = "<graph edgedefault=\"undirected\">\n"
     graph_footer = "</graph>\n"
@@ -248,11 +258,11 @@ writeGraphML input_nodes input_links =
     edges = mconcat $ map writeLink input_links
     showAttribute' (k,v) = ("    " <> ) $ showAttribute key_store k v
     writeNode n = "  <node id=\"" <> (encodeNodeID $ nodeId n) <> "\">\n"
-                  <> (mconcat $ map showAttribute' $ nodeGraphMLAttrs n)
+                  <> (mconcat $ map showAttribute' $ nodeMetaValues n)
                   <> "  </node>\n"
     writeLink l = "  <edge source=\"" <> (encodeNodeID $ sourceNode l)
                   <> "\" target=\"" <> (encodeNodeID $ destinationNode l) <> "\">\n"
-                  <> (mconcat $ map showAttribute' $ linkGraphMLAttrs l)
+                  <> (mconcat $ map showAttribute' $ linkMetaValues l)
                   <> "  </edge>\n"
 
 encodeNodeID :: ToNodeID n => n -> TLB.Builder
