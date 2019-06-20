@@ -8,11 +8,12 @@ module NetSpider.RPL.Example
        ( main
        ) where
 
-import qualified Data.ByteString as B
+import qualified Data.Text.Lazy.IO as TLIO
 import Control.Exception (bracket)
 import Control.Monad (forM_, when)
 import Data.List (sortOn)
 import Data.Monoid ((<>))
+import NetSpider.GraphML.Writer (writeGraphML)
 import NetSpider.Input
   ( defConfig,
     connectWith, close, addFoundNode, clearAll,
@@ -23,15 +24,12 @@ import NetSpider.Output
     defQuery, unifyLinkSamples, unifyStd,
     SnapshotNode, SnapshotLink
   )
-import NetSpider.Pangraph (makePangraphIO)
 import NetSpider.RPL.FindingID (FindingID)
 import NetSpider.RPL.DIO
   ( dioUnifierConf, FoundNodeDIO, DIONode, MergedDIOLink
   )
 import NetSpider.RPL.DAO (FoundNodeDAO)
 import NetSpider.RPL.ContikiNG (parseFile, pSyslogHead)
--- import qualified Pangraph.GraphML.Writer as GraphML
-import qualified Pangraph.Gml.Writer as GML
 import System.Environment (getArgs)
 import System.IO (hPutStrLn, stderr)
 
@@ -81,8 +79,7 @@ main = do
   print snodes
   putStrLn "--------- SnapshotLinks"
   print slinks
-  graph <- makePangraphIO snodes slinks
-  B.writeFile "result.gml" $ GML.write graph
+  TLIO.writeFile "result.graphml" $ writeGraphML snodes slinks
     where
       getHead nodes = case reverse $ sortOn foundAt nodes of
         [] -> []
