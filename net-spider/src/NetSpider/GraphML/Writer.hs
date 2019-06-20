@@ -28,13 +28,14 @@ import Data.Semigroup (Semigroup(..))
 import Data.Text (Text, pack)
 import qualified Data.Text.Lazy as TL
 import qualified Data.Text.Lazy.Builder as TLB
+import Data.Time (TimeZone(..))
 import GHC.Generics (Generic)
 
 import NetSpider.Snapshot
   ( SnapshotNode, nodeId, nodeTimestamp, isOnBoundary,
     SnapshotLink, sourceNode, destinationNode, linkTimestamp
   )
-import NetSpider.Timestamp (Timestamp(epochTime))
+import NetSpider.Timestamp (Timestamp(epochTime, timeZone))
 
 -- | Node ID in GraphML.
 type NodeID = Text
@@ -183,21 +184,16 @@ showKeyMetaWithIndex index km = "<key id=\"" <> id_str <> "\" for=\"" <> domain_
     name_str = encodeXML $ kmName km
     type_str = showAttributeType $ kmType km
 
--- keyMetaTimestamp :: KeyMeta
--- keyMetaTimestamp = KeyMeta { kmName = "@timestamp",
---                              kmType = ATLong,
---                              kmDomain = DomainAll
---                            }
--- 
--- keyMetaIsOnBoundary :: KeyMeta
--- keyMetaIsOnBoundary = KeyMeta { kmName = "@is_on_boundary",
---                                 kmType = ATBoolean,
---                                 kmDomain = DomainNode
---                               }
-
 timestampAttrs :: Timestamp -> [(AttributeKey, AttributeValue)]
-timestampAttrs t = [("@timestamp", AttrLong $ toInteger $ epochTime t)]
-  -- TODO: write timezone
+timestampAttrs t = [("@timestamp", AttrLong $ toInteger $ epochTime t)] ++ timezone_attrs
+  where
+    timezone_attrs =
+      case timeZone t of
+        Nothing -> []
+        Just tz -> [ ("@tz_offset_min", AttrInt $ timeZoneMinutes tz),
+                     ("@tz_summer_only", AttrBoolean $ timeZoneSummerOnly tz),
+                     ("@tz_name", AttrString $ pack $ timeZoneName tz)
+                   ]
 
 nodeMetaKeys :: ToAttributes na => SnapshotNode n na -> [KeyMeta]
 nodeMetaKeys n = map fst $ nodeMetaValues n
