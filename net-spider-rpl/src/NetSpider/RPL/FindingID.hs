@@ -34,6 +34,7 @@ import GHC.Generics (Generic)
 import Net.IPv6 (IPv6(..))
 import qualified Net.IPv6 as IPv6
 import NetSpider.Pangraph.Atom (ToAtom(..))
+import NetSpider.GraphML.Writer (ToNodeID(..))
 
 -- | Type of local finding.
 data FindingType = FindingDIO
@@ -110,6 +111,9 @@ instance Hashable FindingID where
 instance ToAtom FindingID where
   toAtom = toAtom . idToText
 
+instance ToNodeID FindingID where
+  toNodeID = idToText
+
 -- | 'IPv6' address with additional type-class instances.
 newtype IPv6ID = IPv6ID { unIPv6ID :: IPv6 }
                deriving (Show,Eq,Ord,Generic)
@@ -138,6 +142,9 @@ instance FromGraphSON IPv6ID where
 
 instance ToAtom IPv6ID where
   toAtom = toAtom . ipv6ToText
+
+instance ToNodeID IPv6ID where
+  toNodeID = ipv6ToText
 
 -- | Extract 'IPv6ID' from 'FindingID'.
 ipv6Only :: FindingID -> IPv6ID

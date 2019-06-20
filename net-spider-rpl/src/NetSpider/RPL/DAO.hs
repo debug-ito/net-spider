@@ -26,6 +26,7 @@ import Data.Greskell
 import Data.Greskell.Extra (writePropertyKeyValues)
 import NetSpider.Found (FoundNode)
 import NetSpider.Graph (NodeAttributes(..), LinkAttributes(..))
+import qualified NetSpider.GraphML.Writer as GraphML
 import qualified NetSpider.Pangraph as Pan
 import NetSpider.Pangraph.Atom (toAtom, Atom)
 import NetSpider.Unify (UnifyStdConfig, lsLinkAttributes, latestLinkSample)
@@ -63,6 +64,13 @@ instance Pan.ToAttributes DAONode where
       Nothing -> []
       Just p -> [("dao_route_num", toAtom $ p)]
 
+instance GraphML.ToAttributes DAONode where
+  toAttributes dn =
+    case daoRouteNum dn of
+      Nothing -> []
+      Just p -> [("dao_route_num", GraphML.AttrInt $ fromIntegral $ p)]
+
+
 -- | Link attributes about DAO.
 --
 -- In Storing mode of RPL, a 'DAOLink' represents a link between the
@@ -89,6 +97,9 @@ instance LinkAttributes DAOLink where
 
 instance Pan.ToAttributes DAOLink where
   toAttributes dl = [ ("path_lifetime_sec", toAtom $ pathLifetimeSec dl) ]
+
+instance GraphML.ToAttributes DAOLink where
+  toAttributes dl = [ ("path_lifetime_sec", GraphML.AttrInt $ fromIntegral $ pathLifetimeSec dl) ]
 
 -- | 'UnifyStdConfig' for RPL DAO data.
 daoUnifierConf :: UnifyStdConfig FindingID DAONode DAOLink DAOLink ()

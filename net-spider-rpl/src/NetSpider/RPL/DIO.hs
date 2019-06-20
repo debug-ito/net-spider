@@ -33,6 +33,7 @@ import Data.Text (Text, unpack)
 import Data.Word (Word32)
 import NetSpider.Found (FoundNode, LinkState(..))
 import NetSpider.Graph (NodeAttributes(..), LinkAttributes(..))
+import qualified NetSpider.GraphML.Writer as GraphML
 import qualified NetSpider.Pangraph as Pan
 import NetSpider.Pangraph.Atom (toAtom, Atom)
 import NetSpider.Unify (UnifyStdConfig, lsLinkAttributes, latestLinkSample)
@@ -73,6 +74,11 @@ instance NodeAttributes DIONode where
 instance Pan.ToAttributes DIONode where
   toAttributes ln = [ ("rank", toAtom $ rank ln),
                       ("dio_interval", toAtom $ dioInterval ln)
+                    ]
+
+instance GraphML.ToAttributes DIONode where
+  toAttributes ln = [ ("rank", GraphML.AttrInt $ fromIntegral $ rank ln),
+                      ("dio_interval", GraphML.AttrInt $ fromIntegral $ dioInterval ln)
                     ]
 
 -- | Classification of RPL neighbors.
@@ -161,6 +167,18 @@ toAttributesPrefix prefix ll =
 instance Pan.ToAttributes DIOLink where
   toAttributes = toAttributesPrefix ""
 
+instance GraphML.ToAttributes DIOLink where
+  toAttributes ll = [ ("neighbor_type", GraphML.AttrString $ neighborTypeToText $ neighborType ll),
+                      ("neighbor_rank", GraphML.AttrInt $ fromIntegral $ neighborRank ll)
+                    ]
+                    ++ at_metric
+    where
+      at_metric =
+        case metric ll of
+          Nothing -> []
+          Just m -> [("metric", GraphML.AttrInt $ fromIntegral m)]
+                    
+
 -- | Link attributes merging two 'DIOLink's from the two end nodes
 -- of the link.
 data MergedDIOLink =
@@ -169,6 +187,14 @@ data MergedDIOLink =
     fromDest :: Maybe DIOLink
   }
   deriving (Show,Eq,Ord)
+
+withKeyPrefix :: Monoid k
+              => k
+              -> [(k, v)]
+              -> [(k, v)]
+withKeyPrefix prefix = map prependPrefix
+  where
+    prependPrefix (k, v) = (prefix <> k, v)
 
 -- | 'UnifyStdConfig' for RPL DIO data
 dioUnifierConf :: UnifyStdConfig FindingID DIONode DIOLink MergedDIOLink ()
@@ -204,4 +230,13 @@ instance Pan.ToAttributes MergedDIOLink where
     ( case fromDest ml of
         Nothing -> []
         Just dl -> toAttributesPrefix "dest_" dl
+    )
+
+instance GraphML.ToAttributes MergedDIOLink where
+  toAttributes ml =
+    (withKeyPrefix "source_" $ GraphML.toAttributes $ fromSource ml)
+    ++
+    ( case fromDest ml of
+        Nothing -> []
+        Just dl -> withKeyPrefix "dest_" $ GraphML.toAttributes dl
     )

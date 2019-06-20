@@ -68,6 +68,8 @@ instance Pan.ToAttributes CombinedLink where
   toAttributes (CombinedDAOLink sl) =
     ("link_type", "dao") : Pan.toAttributes sl
 
+-- TODO: define instance GraphML.ToAttributes
+
 combinedLinkType :: CombinedLink -> FindingType
 combinedLinkType (CombinedDIOLink _) = FindingDIO
 combinedLinkType (CombinedDAOLink _) = FindingDAO
