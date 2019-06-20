@@ -73,8 +73,19 @@ instance ToAttributes () where
 -- TODO: use net-spider-pangraph's ToAttributes to define this
 -- ToAttributes.
 
+sbuild :: Show a => a -> TLB.Builder
+sbuild = TLB.fromString . show
+
 showAttributeValue :: AttributeValue -> TLB.Builder
-showAttributeValue _ = "" -- TODO
+showAttributeValue v =
+  case v of
+    AttrBoolean False -> "false"
+    AttrBoolean True -> "true"
+    AttrInt i -> sbuild i
+    AttrLong i -> sbuild i
+    AttrFloat f -> sbuild f
+    AttrDouble d -> sbuild d
+    AttrString t -> encodeXML t
 
 -- | Type specifier of 'AttributeValue'
 data AttributeType = ATBoolean
@@ -173,7 +184,7 @@ showKeyMeta :: KeyStore -> KeyMeta -> Maybe TLB.Builder
 showKeyMeta ks km = fmap (\i -> showKeyMetaWithIndex i km) $ keyIndex ks km
 
 showAttributeID :: Int -> TLB.Builder
-showAttributeID index = "d" <> (TLB.fromString $ show index)
+showAttributeID index = "d" <> sbuild index
 
 showKeyMetaWithIndex :: Int -> KeyMeta -> TLB.Builder
 showKeyMetaWithIndex index km = "<key id=\"" <> id_str <> "\" for=\"" <> domain_str
