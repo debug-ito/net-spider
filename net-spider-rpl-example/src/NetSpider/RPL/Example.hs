@@ -1,4 +1,4 @@
-{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE OverloadedStrings, RankNTypes #-}
 -- |
 -- Module: NetSpider.RPL.Example
 -- Description: Example executable of NetSpider.RPL
@@ -8,7 +8,9 @@ module NetSpider.RPL.Example
        ( main
        ) where
 
+import Data.Text (pack)
 import qualified Data.Text.Lazy.IO as TLIO
+import qualified Data.Text.IO as TIO
 import Control.Exception (bracket)
 import Control.Monad (forM_, when)
 import Data.List (sortOn)
@@ -17,17 +19,19 @@ import NetSpider.GraphML.Writer (writeGraphML)
 import NetSpider.Input
   ( defConfig,
     connectWith, close, addFoundNode, clearAll,
-    FoundNode(subjectNode, foundAt)
+    FoundNode(subjectNode, foundAt, neighborLinks, nodeAttributes),
+    FoundLink(targetNode, linkAttributes)
   )
 import NetSpider.Output
   ( getSnapshot,
     defQuery, unifyLinkSamples, unifyStd,
     SnapshotNode, SnapshotLink
   )
-import NetSpider.RPL.FindingID (FindingID)
+import NetSpider.RPL.FindingID (FindingID, idToText)
 import NetSpider.RPL.DIO
   ( dioUnifierConf, FoundNodeDIO, DIONode, MergedDIOLink
   )
+import qualified NetSpider.RPL.DIO as DIO
 import NetSpider.RPL.DAO (FoundNodeDAO)
 import NetSpider.RPL.ContikiNG (parseFile, pSyslogHead)
 import System.Environment (getArgs)
@@ -46,6 +50,17 @@ putDIONodes dio_nodes = do
       when ((index `mod` 100) == 0) $ hPutStrLn stderr ("Add DIO node [" <> show index <> "]")
       addFoundNode sp dio_node
     getSnapshot sp query
+
+printDIONode :: FoundNodeDIO -> IO ()
+printDIONode fn = do
+  TIO.putStrLn ("DIONode " <> (idToText $ subjectNode fn) <> ", rank " <> rank_text)
+  forM_ plinks $ \l -> do
+    TIO.putStrLn ("  -> " <> (idToText $ targetNode l))
+  where
+    plinks = filter isPreferredParentLink $ neighborLinks fn
+    rank_text = pack $ show $ DIO.rank $ nodeAttributes fn
+    isPreferredParentLink l =
+      (DIO.neighborType $ linkAttributes l) == DIO.PreferredParent
 
 loadFile :: FilePath
          -> IO ([FoundNodeDIO], [FoundNodeDAO])
@@ -74,11 +89,12 @@ main :: IO ()
 main = do
   filenames <- getArgs
   (dio_nodes, _) <- fmap (concatPairs . map (filterPairs getHead)) $ mapM loadFile filenames
+  forM_ dio_nodes printDIONode
   (snodes, slinks) <- putDIONodes dio_nodes
-  putStrLn "--------- SnapshotNodes"
-  print snodes
-  putStrLn "--------- SnapshotLinks"
-  print slinks
+  -- putStrLn "--------- SnapshotNodes"
+  -- print snodes
+  -- putStrLn "--------- SnapshotLinks"
+  -- print slinks
   TLIO.writeFile "result.graphml" $ writeGraphML snodes slinks
     where
       getHead nodes = case reverse $ sortOn foundAt nodes of
