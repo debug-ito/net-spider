@@ -30,3 +30,7 @@ data Spider n na fla =
     spiderClient :: Gr.Client
   }
 
+-- Implementation note: Type parameters n, na, fla are phantom. They
+-- are used to bind the input types (type arguments for FoundNode etc)
+-- and the output types (type arguments for SnapshotNode etc)
+
