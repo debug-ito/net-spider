@@ -8,13 +8,15 @@ module NetSpider.RPL.Example
        ( main
        ) where
 
-import Data.Text (pack)
 import qualified Data.Text.Lazy.IO as TLIO
 import qualified Data.Text.IO as TIO
 import Control.Exception (bracket)
 import Control.Monad (forM_, when)
+import Data.HashMap.Strict (HashMap)
+import qualified Data.HashMap.Strict as HM
 import Data.List (sortOn)
 import Data.Monoid ((<>))
+import Data.Text (pack)
 import NetSpider.GraphML.Writer (writeGraphML)
 import NetSpider.Input
   ( defConfig,
@@ -84,6 +86,22 @@ concatPairs [] = ([],[])
 concatPairs ((as, bs) : rest) = (as ++ rest_as, bs ++ rest_bs)
   where
     (rest_as, rest_bs) = concatPairs rest
+
+type NodeMap n = HashMap FindingID [n]
+
+collectNodes :: [FoundNode FindingID na la] -> NodeMap (FoundNode FindingID na la)
+collectNodes = foldr addNode HM.empty
+  where
+    addNode n acc = HM.insertWith f (subjectNode n) [n] acc
+      where
+        f new old = new ++ old
+
+getLatestNodes :: NodeMap (FoundNode n na la) -> [FoundNode n na la]
+getLatestNodes nm = concat $ HM.elems $ fmap filterLatest nm
+  where
+    filterLatest fns = getHead $ reverse $ sortOn foundAt fns
+    getHead [] = []
+    getHead (a : _) = [a]
 
 main :: IO ()
 main = do
