@@ -54,7 +54,7 @@ spec :: Spec
 spec = do
   spec_getSnapshot
 
-makeOneNeighborExample :: Spider Text () () -> IO ()
+makeOneNeighborExample :: Spider -> IO ()
 makeOneNeighborExample spider = do
   let link = FoundLink { targetNode = "n2",
                          linkState = LinkToTarget,

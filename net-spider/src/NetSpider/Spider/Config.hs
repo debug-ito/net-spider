@@ -15,6 +15,7 @@ module NetSpider.Spider.Config
 
 import Control.Monad.Logger (LogLevel(..))
 import Data.Greskell (Key)
+import Data.Text (Text)
 import Network.Greskell.WebSocket (Host, Port)
 
 import qualified Network.Greskell.WebSocket as Gr
@@ -22,7 +23,7 @@ import qualified Network.Greskell.WebSocket as Gr
 import NetSpider.Graph (VNode)
 
 -- | Configuration to create a 'Spider' object.
-data Config n na fla =
+data Config =
   Config
   { wsHost :: Gr.Host,
     -- ^ Host of WebSocket endpoint of Tinkerpop Gremlin
@@ -30,7 +31,7 @@ data Config n na fla =
     wsPort :: Gr.Port,
     -- ^ Port of WebSocket endpoint of Tinkerpop Gremlin
     -- Server. Default: 8182
-    nodeIdKey :: Key VNode n,
+    nodeIdKey :: Text,
     -- ^ Name of vertex property that stores the node ID. Default:
     -- \"@node_id\".
     logThreshold :: LogLevel
@@ -40,7 +41,7 @@ data Config n na fla =
     -- @since 0.2.0.0
   }
 
-defConfig :: Config n na fla
+defConfig :: Config
 defConfig =
   Config
   { wsHost = "localhost",

@@ -33,7 +33,7 @@ main = hspec spec
 
 typeTestCase :: (FromGraphSON n, ToJSON n, Ord n, Hashable n, Show n, NodeAttributes na, Eq na, Show na, LinkAttributes la, Eq la, Show la)
              => String
-             -> Config n na la
+             -> Config
              -> n
              -> n
              -> na
@@ -69,7 +69,7 @@ attributeTestCase type_label na la = typeTestCase (type_label ++ " attributes") 
 
 nodeIdTestCase :: (FromGraphSON n, ToJSON n, Ord n, Hashable n, Show n)
                => String
-               -> Key VNode n
+               -> Text
                -> n -> n -> SpecWith (Host,Port)
 nodeIdTestCase label node_id_key n1 n2 = typeTestCase (label ++ " nodeID") conf n1 n2 () ()
   where
@@ -90,7 +90,7 @@ timestampTestCase label ts = specify label $ withSpider $ \spider -> do
                              }
            }
   addFoundNode spider fn
-  (got_ns, got_ls) <- getSnapshotSimple spider "n1"
+  (got_ns, got_ls) <- getSnapshotSimple spider ("n1" :: Text)
   let (got_n1, got_n2, got_l) = case (sort got_ns, sort got_ls) of
         ([a,b], [c]) -> (a,b,c)
         _ -> error ("Unexpected pattern: got = " ++ show (got_ns, got_ls))

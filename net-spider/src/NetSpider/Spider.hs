@@ -74,13 +74,13 @@ import NetSpider.Unify (LinkSampleUnifier, LinkSample(..), LinkSampleID, linkSam
 
 -- | Connect to the WebSocket endpoint of Tinkerpop Gremlin Server
 -- that hosts the NetSpider database.
-connectWS :: Eq n => Host -> Port -> IO (Spider n na la)
+connectWS :: Host -> Port -> IO Spider
 connectWS host port = connectWith $ defConfig { wsHost = host,
                                                 wsPort = port
                                               }
 
 -- | Connect to the server with the given 'Config'.
-connectWith :: Config n na fla -> IO (Spider n na fla)
+connectWith :: Config -> IO Spider
 connectWith conf = do
   client <- Gr.connect (wsHost conf) (wsPort conf)
   return $ Spider { spiderConfig = conf,
@@ -88,11 +88,11 @@ connectWith conf = do
                   }
   
 -- | Close and release the 'Spider' object.
-close :: Spider n na fla -> IO ()
+close :: Spider -> IO ()
 close sp = Gr.close $ spiderClient sp
 
 submitB :: (ToGreskell g, r ~ GreskellReturn g, AsIterator r, v ~ IteratorItem r, FromGraphSON v)
-        => Spider n na fla -> Binder g -> IO (Gr.ResultHandle v)
+        => Spider -> Binder g -> IO (Gr.ResultHandle v)
 submitB sp b = Gr.submit (spiderClient sp) script mbs
   where
     (script, bs) = runBinder b
@@ -100,12 +100,12 @@ submitB sp b = Gr.submit (spiderClient sp) script mbs
 
 -- | Clear all content in the NetSpider database. This is mainly for
 -- testing.
-clearAll :: Spider n na fla -> IO ()
+clearAll :: Spider -> IO ()
 clearAll spider = Gr.drainResults =<< submitB spider (return gClearAll)
 
 -- | Add a 'FoundNode' (observation of a node) to the NetSpider
 -- database.
-addFoundNode :: (ToJSON n, LinkAttributes fla, NodeAttributes na) => Spider n na fla -> FoundNode n na fla -> IO ()
+addFoundNode :: (ToJSON n, LinkAttributes fla, NodeAttributes na) => Spider -> FoundNode n na fla -> IO ()
 addFoundNode spider found_node = do
   subject_vid <- getOrMakeNode spider $ subjectNode found_node
   link_pairs <- traverse linkAndTargetVID $ neighborLinks found_node
@@ -120,12 +120,12 @@ addFoundNode spider found_node = do
 vToMaybe :: Vector a -> Maybe a
 vToMaybe v = v V.!? 0
   
-getNode :: (ToJSON n) => Spider n na fla -> n -> IO (Maybe EID)
+getNode :: (ToJSON n) => Spider -> n -> IO (Maybe EID)
 getNode spider nid = fmap vToMaybe $ Gr.slurpResults =<< submitB spider gt
   where
     gt = gNodeEID <$.> gHasNodeID spider nid <*.> pure gAllNodes
 
-getOrMakeNode :: (ToJSON n) => Spider n na fla -> n -> IO EID
+getOrMakeNode :: (ToJSON n) => Spider -> n -> IO EID
 getOrMakeNode spider nid = do
   mvid <- getNode spider nid
   case mvid of
@@ -144,7 +144,7 @@ getOrMakeNode spider nid = do
 -- This function is very simple, and should be used only for small
 -- graphs.
 getSnapshotSimple :: (FromGraphSON n, ToJSON n, Ord n, Hashable n, Show n, LinkAttributes fla, NodeAttributes na)
-                  => Spider n na fla
+                  => Spider
                   -> n -- ^ ID of the node where it starts traversing.
                   -> IO ([SnapshotNode n na], [SnapshotLink n fla])
 getSnapshotSimple spider start_nid = getSnapshot spider $ defQuery [start_nid]
@@ -153,7 +153,7 @@ getSnapshotSimple spider start_nid = getSnapshot spider $ defQuery [start_nid]
 -- | Get the snapshot graph from the history graph as specified by the
 -- 'Query'.
 getSnapshot :: (FromGraphSON n, ToJSON n, Ord n, Hashable n, Show n, LinkAttributes fla, NodeAttributes na)
-            => Spider n na fla
+            => Spider
             -> Query n na fla sla
             -> IO ([SnapshotNode n na], [SnapshotLink n sla])
 getSnapshot spider query = do
@@ -164,7 +164,7 @@ getSnapshot spider query = do
   return (nodes, links)
 
 recurseVisitNodesForSnapshot :: (ToJSON n, Ord n, Hashable n, FromGraphSON n, Show n, LinkAttributes fla, NodeAttributes na)
-                             => Spider n na fla
+                             => Spider
                              -> Query n na fla sla
                              -> IORef (SnapshotState n na fla)
                              -> IO ()
@@ -182,7 +182,7 @@ recurseVisitNodesForSnapshot spider query ref_state = go
 
 -- | Returns the result of query: (latest VFoundNode, list of traversed edges)
 traverseEFindsOneHop :: (FromGraphSON n, NodeAttributes na, LinkAttributes fla)
-                     => Spider n na fla
+                     => Spider
                      -> Interval Timestamp
                      -> EID
                      -> IO (Maybe (VFoundNode na), [(VFoundNode na, EFinds fla, n)])
@@ -222,7 +222,7 @@ makeLinkSample subject_nid vfn efinds target_nid =
              }
 
 visitNodeForSnapshot :: (ToJSON n, Ord n, Hashable n, FromGraphSON n, Show n, LinkAttributes fla, NodeAttributes na)
-                     => Spider n na fla
+                     => Spider
                      -> Query n na fla sla
                      -> IORef (SnapshotState n na fla)
                      -> n

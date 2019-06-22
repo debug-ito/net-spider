@@ -20,17 +20,17 @@ import NetSpider.Log (LogLine)
 import NetSpider.Spider.Internal.Spider (Spider(..))
 import NetSpider.Spider.Config (Config(..))
 
-runLogger :: Spider n na fla -> LoggingT IO a -> IO a
+runLogger :: Spider -> LoggingT IO a -> IO a
 runLogger spider act = Log.runStderrLoggingT $ Log.filterLogger fil act
   where
     fil _ level = level >= (logThreshold $ spiderConfig spider)
 
-logLine :: Spider n na fla -> LogLine -> IO ()
+logLine :: Spider -> LogLine -> IO ()
 logLine spider (loc, src, level, msg) = runLogger spider $ Log.monadLoggerLog loc src level msg
 
-logDebug :: Spider n na fla -> Text -> IO ()
+logDebug :: Spider -> Text -> IO ()
 logDebug spider msg = runLogger spider $ Log.logDebugN msg
 
-logWarn :: Spider n na fla -> Text -> IO ()
+logWarn :: Spider -> Text -> IO ()
 logWarn spider msg = runLogger spider $ Log.logWarnN msg
 

@@ -41,10 +41,10 @@ import NetSpider.Unify
 withServer :: SpecWith (Host,Port) -> Spec
 withServer = before $ needEnvHostPort Need "NET_SPIDER_TEST"
 
-withSpider :: Eq n => (Spider n na fla -> IO ()) -> (Host, Port) -> IO ()
+withSpider :: (Spider -> IO ()) -> (Host, Port) -> IO ()
 withSpider = withSpider' $ defConfig { logThreshold = LevelWarn }
 
-withSpider' :: Config n na fla -> (Spider n na fla -> IO ()) -> (Host, Port) -> IO ()
+withSpider' :: Config -> (Spider -> IO ()) -> (Host, Port) -> IO ()
 withSpider' orig_conf action (host, port) = bracket (connectWith conf) close $ \spider -> do
   clearAll spider
   action spider

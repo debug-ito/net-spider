@@ -13,20 +13,9 @@ import qualified Network.Greskell.WebSocket as Gr
 import NetSpider.Spider.Config (Config)
 
 -- | An IO agent of the NetSpider database.
---
--- - Type @n@: node ID. Note that type of node ID has nothing to do
---   with type of vertex ID used by Gremlin implementation. Node ID
---   (in net-spider) is stored as a vertex property. See 'nodeIdKey'
---   config field.
--- - Type @na@: node attributes. It should implement
---   'NetSpider.Graph.NodeAttributes' class. You can set this to @()@
---   if you don't need node attributes.
--- - Type @fla@: attributes of found links. It should implement
---   'NetSpider.Graph.LinkAttributes' class. You can set this to @()@
---   if you don't need link attributes.
-data Spider n na fla =
+data Spider =
   Spider
-  { spiderConfig :: Config n na fla,
+  { spiderConfig :: Config,
     spiderClient :: Gr.Client
   }
 

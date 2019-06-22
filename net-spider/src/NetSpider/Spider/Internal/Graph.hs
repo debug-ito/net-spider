@@ -42,6 +42,7 @@ import Data.Greskell
     Key, oDecr, gLimit,
     pGt, pGte, pLt, pLte
   )
+import qualified Data.Greskell as Gr
 import Data.Int (Int64)
 import Data.Interval (lowerBound', upperBound')
 import Data.Text (Text, pack)
@@ -58,19 +59,19 @@ import NetSpider.Timestamp (Timestamp(..))
 import NetSpider.Spider.Config (Config(..))
 import NetSpider.Spider.Internal.Spider (Spider(..))
 
-spiderNodeIdKey :: Spider n na fla -> Key VNode n
-spiderNodeIdKey = nodeIdKey . spiderConfig
+spiderNodeIdKey :: Spider -> Key VNode n
+spiderNodeIdKey = Gr.key . nodeIdKey . spiderConfig
 
 gNodeEID :: Walk Transform VNode EID
 gNodeEID = gId
 
-gNodeID :: Spider n na fla -> Walk Transform VNode n
+gNodeID :: Spider -> Walk Transform VNode n
 gNodeID spider = gValues [spiderNodeIdKey spider]
 
 gAllNodes :: GTraversal Transform () VNode
 gAllNodes = gHasLabel "node" $. sV [] $ source "g"
 
-gHasNodeID :: (ToJSON n, WalkType c) => Spider n na fla -> n -> Binder (Walk c VNode VNode)
+gHasNodeID :: (ToJSON n, WalkType c) => Spider -> n -> Binder (Walk c VNode VNode)
 gHasNodeID spider nid = do
   var_nid <- newBind nid
   return $ gHas2 (spiderNodeIdKey spider) var_nid
@@ -80,7 +81,7 @@ gHasNodeEID eid = do
   var_eid <- newBind eid
   return $ gHasId var_eid
 
-gMakeNode :: ToJSON n => Spider n na fla -> n -> Binder (GTraversal SideEffect () VNode)
+gMakeNode :: ToJSON n => Spider -> n -> Binder (GTraversal SideEffect () VNode)
 gMakeNode spider nid = do
   var_nid <- newBind nid
   return $ gProperty (spiderNodeIdKey spider) var_nid $. sAddV "node" $ source "g"
