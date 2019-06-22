@@ -31,7 +31,7 @@ import NetSpider.Query
     Extended(..), (<..<), (<..<=), (<=..<=), policyOverwrite, policyAppend
   )
 import NetSpider.Snapshot
-  ( SnapshotLink,
+  ( SnapshotNode, SnapshotLink,
     nodeId, linkNodeTuple, isDirected, linkTimestamp,
     isOnBoundary, nodeTimestamp
   )
@@ -56,10 +56,12 @@ spec = do
 
 makeOneNeighborExample :: Spider -> IO ()
 makeOneNeighborExample spider = do
-  let link = FoundLink { targetNode = "n2",
+  let link :: FoundLink Text ()
+      link = FoundLink { targetNode = "n2",
                          linkState = LinkToTarget,
                          linkAttributes = ()
                        }
+      nbs :: FoundNode Text () ()
       nbs = FoundNode { subjectNode = "n1",
                         foundAt = fromS "2018-12-01T10:00",
                         neighborLinks = return link,
@@ -87,12 +89,17 @@ spec_getSnapshot = withServer $ describe "getSnapshotSimple, getSnapshot" $ do
   spec_getSnapshot_timeInterval
   spec_getSnapshot_foundNodePolicy
 
+getSnapshotSimpleNoAttr :: Spider -> Text -> IO ([SnapshotNode Text ()], [SnapshotLink Text ()])
+getSnapshotSimpleNoAttr = getSnapshotSimple
+
+getSnapshotSimpleNodeAttr :: Spider -> Text -> IO ([SnapshotNode Text AText], [SnapshotLink Text ()])
+getSnapshotSimpleNodeAttr = getSnapshotSimple
 
 spec_getSnapshot1 :: SpecWith (Host,Port)
 spec_getSnapshot1 = do
   specify "one neighbor" $ withSpider $ \spider -> do
     makeOneNeighborExample spider
-    (got_ns, got_ls) <- debugShowE $ getSnapshotSimple spider "n1"
+    (got_ns, got_ls) <- debugShowE $ getSnapshotSimpleNoAttr spider "n1"
     let (got_n1, got_n2, got_link) = case (sort got_ns, sort got_ls) of
           ([a, b], [c]) -> (a, b, c)
           _ -> error ("Unexpected result: got = " ++ show (got_ns, got_ls))
@@ -116,7 +123,7 @@ spec_getSnapshot1 = do
                           nodeAttributes = ()
                         }
     addFoundNode spider nbs
-    (got_ns, got_ls) <- getSnapshotSimple spider "n1"
+    (got_ns, got_ls) <- getSnapshotSimpleNoAttr spider "n1"
     let got_n1 = case (sort got_ns, sort got_ls) of
           ([a], []) -> a
           _ -> error ("Unexpected result: got = " ++ show (got_ns, got_ls))
@@ -126,7 +133,7 @@ spec_getSnapshot1 = do
     S.nodeAttributes got_n1 `shouldBe` Just ()
   specify "missing starting node" $ withSpider $ \spider -> do
     makeOneNeighborExample spider
-    (got_ns, got_ls) <- getSnapshotSimple spider "no node"
+    (got_ns, got_ls) <- getSnapshotSimpleNoAttr spider "no node"
     got_ns `shouldBe` mempty
     got_ls `shouldBe` mempty
   specify "mutual neighbors" $ withSpider $ \spider -> do
@@ -150,7 +157,7 @@ spec_getSnapshot1 = do
                            nodeAttributes = ()
                          }
     mapM_ (addFoundNode spider) [nbs1, nbs2]
-    (got_ns, got_ls) <- getSnapshotSimple spider "n1"
+    (got_ns, got_ls) <- getSnapshotSimpleNoAttr spider "n1"
     let (got_n1, got_n2, got_l) = case (sort got_ns, sort got_ls) of
           ([a,b], [c]) -> (a,b,c)
           _ -> error ("Unexpected result: got = " ++ show (got_ns, got_ls))

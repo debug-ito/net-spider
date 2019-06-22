@@ -20,10 +20,10 @@ import ServerTest.Common
 import NetSpider.Found (FoundNode(..), FoundLink(..), LinkState(..))
 import NetSpider.Graph (NodeAttributes(..), LinkAttributes(..), VNode)
 import NetSpider.Spider
-  ( addFoundNode, getSnapshotSimple
+  ( addFoundNode, getSnapshotSimple, Spider
   )
 import NetSpider.Spider.Config (Host, Port, Config(..), defConfig)
-import NetSpider.Snapshot (nodeTimestamp, linkTimestamp)
+import NetSpider.Snapshot (nodeTimestamp, linkTimestamp, SnapshotNode, SnapshotLink)
 import qualified NetSpider.Snapshot as S (nodeAttributes, linkAttributes)
 import NetSpider.Timestamp (Timestamp(..), fromS)
 
@@ -89,8 +89,10 @@ timestampTestCase label ts = specify label $ withSpider $ \spider -> do
                                linkAttributes = ()
                              }
            }
+      getSnapshotSimple' :: Spider -> Text -> IO ([SnapshotNode Text ()], [SnapshotLink Text ()])
+      getSnapshotSimple' = getSnapshotSimple
   addFoundNode spider fn
-  (got_ns, got_ls) <- getSnapshotSimple spider ("n1" :: Text)
+  (got_ns, got_ls) <- getSnapshotSimple' spider "n1"
   let (got_n1, got_n2, got_l) = case (sort got_ns, sort got_ls) of
         ([a,b], [c]) -> (a,b,c)
         _ -> error ("Unexpected pattern: got = " ++ show (got_ns, got_ls))
