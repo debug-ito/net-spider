@@ -16,7 +16,8 @@ module NetSpider.RPL.DIO
     NeighborType(..),
     neighborTypeToText,
     neighborTypeFromText,
-    -- * Unifier
+    -- * Query
+    defQuery,
     dioUnifierConf
   ) where
 
@@ -36,6 +37,7 @@ import NetSpider.Graph (NodeAttributes(..), LinkAttributes(..))
 import qualified NetSpider.GraphML.Writer as GraphML
 import qualified NetSpider.Pangraph as Pan
 import NetSpider.Pangraph.Atom (toAtom, Atom)
+import qualified NetSpider.Query as Query
 import NetSpider.Unify (UnifyStdConfig, lsLinkAttributes, latestLinkSample)
 import qualified NetSpider.Unify as Unify
 
@@ -196,7 +198,16 @@ withKeyPrefix prefix = map prependPrefix
   where
     prependPrefix (k, v) = (prefix <> k, v)
 
--- | 'UnifyStdConfig' for RPL DIO data
+-- | Default 'Query.Query' for DIO nodes.
+defQuery :: [FindingID] -- ^ 'Query.startsFrom' field.
+         -> Query.Query FindingID DIONode DIOLink MergedDIOLink
+defQuery start =
+  (Query.defQuery start)
+  { Query.startsFrom = start,
+    Query.unifyLinkSamples = Unify.unifyStd dioUnifierConf
+  }
+
+-- | 'UnifyStdConfig' for RPL DIO data. Used in 'defQuery'.
 dioUnifierConf :: UnifyStdConfig FindingID DIONode DIOLink MergedDIOLink ()
 dioUnifierConf = Unify.UnifyStdConfig
                  { Unify.makeLinkSubId = const (),
