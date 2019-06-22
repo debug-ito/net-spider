@@ -17,7 +17,7 @@ module NetSpider.RPL.DIO
     neighborTypeToText,
     neighborTypeFromText,
     -- * Query
-    defQuery,
+    dioDefQuery,
     dioUnifierConf
   ) where
 
@@ -199,9 +199,9 @@ withKeyPrefix prefix = map prependPrefix
     prependPrefix (k, v) = (prefix <> k, v)
 
 -- | Default 'Query.Query' for DIO nodes.
-defQuery :: [FindingID] -- ^ 'Query.startsFrom' field.
+dioDefQuery :: [FindingID] -- ^ 'Query.startsFrom' field.
          -> Query.Query FindingID DIONode DIOLink MergedDIOLink
-defQuery start =
+dioDefQuery start =
   (Query.defQuery start)
   { Query.startsFrom = start,
     Query.unifyLinkSamples = Unify.unifyStd dioUnifierConf

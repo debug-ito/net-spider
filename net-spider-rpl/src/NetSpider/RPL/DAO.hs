@@ -10,7 +10,8 @@ module NetSpider.RPL.DAO
     FoundNodeDAO,
     DAONode(..),
     DAOLink(..),
-    -- * Unifier
+    -- * Query
+    daoDefQuery,
     daoUnifierConf
   ) where
 
@@ -29,6 +30,7 @@ import NetSpider.Graph (NodeAttributes(..), LinkAttributes(..))
 import qualified NetSpider.GraphML.Writer as GraphML
 import qualified NetSpider.Pangraph as Pan
 import NetSpider.Pangraph.Atom (toAtom, Atom)
+import qualified NetSpider.Query as Query
 import NetSpider.Unify (UnifyStdConfig, lsLinkAttributes, latestLinkSample)
 import qualified NetSpider.Unify as Unify
 
@@ -101,6 +103,15 @@ instance Pan.ToAttributes DAOLink where
 instance GraphML.ToAttributes DAOLink where
   toAttributes dl = [ ("path_lifetime_sec", GraphML.AttrInt $ fromIntegral $ pathLifetimeSec dl) ]
 
--- | 'UnifyStdConfig' for RPL DAO data.
+-- | Default 'Query.Query' for DAO nodes.
+daoDefQuery :: [FindingID] -- ^ 'Query.startsFrom' field.
+            -> Query.Query FindingID DAONode DAOLink DAOLink
+daoDefQuery start =
+  (Query.defQuery start)
+  { Query.startsFrom = start,
+    Query.unifyLinkSamples = Unify.unifyStd daoUnifierConf
+  }
+
+-- | 'UnifyStdConfig' for RPL DAO data. Used in 'defQuery'.
 daoUnifierConf :: UnifyStdConfig FindingID DAONode DAOLink DAOLink ()
 daoUnifierConf = Unify.defUnifyStdConfig { Unify.negatesLinkSample = \_ _ -> False }
