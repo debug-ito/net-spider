@@ -138,17 +138,13 @@ instance ToAttributes a => ToAttributes (Maybe a) where
 
 -- | Make 'AttributeValue' from aeson's 'Aeson.Value'. It returns
 -- 'Nothing', if the input is null, an object or an array. If the
--- input is a number, the output uses either 'AttrLong' or
--- 'AttrDouble'.
+-- input is a number, the output uses 'AttrDouble'.
 valueFromAeson :: Aeson.Value -> Maybe AttributeValue
 valueFromAeson v =
   case v of
     Aeson.String t -> Just $ AttrString t
     Aeson.Bool b -> Just $ AttrBoolean b
-    Aeson.Number n ->
-      case Sci.floatingOrInteger n of
-        Left f -> Just $ AttrDouble f
-        Right i -> Just $ AttrLong i
+    Aeson.Number n -> Just $ AttrDouble $ Sci.toRealFloat n
     _ -> Nothing
 
 -- | Make attributes from aeson's 'Aeson.Value'. It assumes the input
