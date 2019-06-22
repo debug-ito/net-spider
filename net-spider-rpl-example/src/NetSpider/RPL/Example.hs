@@ -22,11 +22,12 @@ import NetSpider.Input
   ( defConfig,
     connectWith, close, addFoundNode, clearAll,
     FoundNode(subjectNode, foundAt, neighborLinks, nodeAttributes),
-    FoundLink(targetNode, linkAttributes)
+    FoundLink(targetNode, linkAttributes),
+    LinkAttributes, NodeAttributes
   )
 import NetSpider.Output
   ( getSnapshot,
-    defQuery, unifyLinkSamples, unifyStd,
+    defQuery, unifyLinkSamples, unifyStd, Query(startsFrom),
     SnapshotNode, SnapshotLink
   )
 import NetSpider.RPL.FindingID (FindingID, idToText)
@@ -39,17 +40,24 @@ import NetSpider.RPL.ContikiNG (parseFile, pSyslogHead)
 import System.Environment (getArgs)
 import System.IO (hPutStrLn, stderr)
 
-putDIONodes :: [FoundNodeDIO] -> IO ([SnapshotNode FindingID DIONode], [SnapshotLink FindingID MergedDIOLink])
-putDIONodes dio_nodes = do
-  let conf = defConfig
-      start_id = subjectNode (dio_nodes !! 0)
-      query = DIO.dioDefQuery [start_id]
-  bracket (connectWith conf) close $ \sp -> do
-    clearAll sp
-    forM_ (zip dio_nodes ([0 ..] :: [Integer])) $ \(dio_node, index) -> do
-      when ((index `mod` 100) == 0) $ hPutStrLn stderr ("Add DIO node [" <> show index <> "]")
-      addFoundNode sp dio_node
+putNodes :: (LinkAttributes fla, NodeAttributes na)
+         => Bool
+         -> Query FindingID na fla sla
+         -> [FoundNode FindingID na fla]
+         -> IO ([SnapshotNode FindingID na], [SnapshotLink FindingID sla])
+putNodes do_clear query_base input_nodes = do
+  let start_id = subjectNode (input_nodes !! 0)
+      query = query_base { startsFrom = [start_id] }
+  bracket (connectWith defConfig) close $ \sp -> do
+    when do_clear $ clearAll sp
+    forM_ (zip input_nodes ([0 ..] :: [Integer])) $ \(input_node, index) -> do
+      when ((index `mod` 100) == 0) $ hPutStrLn stderr ("Add node [" <> show index <> "]")
+      addFoundNode sp input_node
+    hPutStrLn stderr "Add done"
     getSnapshot sp query
+
+putDIONodes :: [FoundNodeDIO] -> IO ([SnapshotNode FindingID DIONode], [SnapshotLink FindingID MergedDIOLink])
+putDIONodes dio_nodes = putNodes True (DIO.dioDefQuery []) dio_nodes
 
 printDIONode :: FoundNodeDIO -> IO ()
 printDIONode fn = do
