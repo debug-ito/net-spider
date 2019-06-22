@@ -31,7 +31,7 @@ import NetSpider.Output
   )
 import NetSpider.RPL.FindingID (FindingID, idToText)
 import NetSpider.RPL.DIO
-  ( dioUnifierConf, FoundNodeDIO, DIONode, MergedDIOLink
+  ( FoundNodeDIO, DIONode, MergedDIOLink
   )
 import qualified NetSpider.RPL.DIO as DIO
 import NetSpider.RPL.DAO (FoundNodeDAO)
@@ -43,9 +43,7 @@ putDIONodes :: [FoundNodeDIO] -> IO ([SnapshotNode FindingID DIONode], [Snapshot
 putDIONodes dio_nodes = do
   let conf = defConfig
       start_id = subjectNode (dio_nodes !! 0)
-      query = (defQuery [start_id])
-              { unifyLinkSamples = unifyStd dioUnifierConf
-              }
+      query = DIO.dioDefQuery [start_id]
   bracket (connectWith conf) close $ \sp -> do
     clearAll sp
     forM_ (zip dio_nodes ([0 ..] :: [Integer])) $ \(dio_node, index) -> do
