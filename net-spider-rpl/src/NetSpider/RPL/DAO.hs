@@ -22,9 +22,10 @@ import Data.Greskell
 import Control.Applicative ((<$>), (<*>))
 import Data.Aeson (ToJSON(..))
 import Data.Greskell
-  ( parseOneValue
+  ( parseOneValue, parseListValues
   )
 import Data.Greskell.Extra (writePropertyKeyValues)
+import Data.Maybe (listToMaybe)
 import NetSpider.Found (FoundNode)
 import NetSpider.Graph (NodeAttributes(..), LinkAttributes(..))
 import qualified NetSpider.GraphML.Writer as GraphML
@@ -56,9 +57,11 @@ data DAONode =
 instance NodeAttributes DAONode where
   writeNodeAttributes dn = writePropertyKeyValues pairs
     where
-      pairs = [ ("dao_route_num", toJSON $ daoRouteNum dn)
-              ]
-  parseNodeAttributes ps = DAONode <$> parseOneValue "dao_route_num" ps
+      pairs =
+        case daoRouteNum dn of
+          Nothing -> []
+          Just n -> [("dao_route_num", toJSON n)]
+  parseNodeAttributes ps = fmap (DAONode . listToMaybe) $ parseListValues "dao_route_num" ps
 
 instance Pan.ToAttributes DAONode where
   toAttributes dn = 
