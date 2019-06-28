@@ -74,6 +74,18 @@ printDIONode fn = do
     isPreferredParentLink l =
       (DIO.neighborType $ linkAttributes l) == DIO.PreferredParent
 
+printDAONode :: FoundNodeDAO -> IO ()
+printDAONode fn = do
+  TIO.putStrLn ("DAONode " <> (idToText $ subjectNode fn) <> route_num_text)
+  forM_ (neighborLinks fn) $ \l -> do
+    TIO.putStrLn ("  -> " <> (idToText $ targetNode l) <> ", lifetime " <> lt_text l)
+  where
+    lt_text l = pack $ show $ DAO.pathLifetimeSec $ linkAttributes l
+    route_num_text =
+      case DAO.daoRouteNum $ nodeAttributes fn of
+        Nothing -> ""
+        Just n -> ", route_num " <> (pack $ show n)
+
 loadFile :: FilePath
          -> IO ([FoundNodeDIO], [FoundNodeDAO])
 loadFile file = do
@@ -113,11 +125,15 @@ getLatestNodes nm = concat $ HM.elems $ fmap filterLatest nm
     getHead [] = []
     getHead (a : _) = [a]
 
+getLatestForEachNode :: [FoundNode FindingID na la] -> [FoundNode FindingID na la]
+getLatestForEachNode = getLatestNodes . collectNodes
+
 main :: IO ()
 main = do
   filenames <- getArgs
-  (dio_nodes, dao_nodes) <- fmap (concatPairs . map (filterPairs getHead)) $ mapM loadFile filenames
+  (dio_nodes, dao_nodes) <- fmap (concatPairs . map (filterPairs getLatestForEachNode)) $ mapM loadFile filenames
   forM_ dio_nodes printDIONode
+  forM_ dao_nodes printDAONode
   -- (snodes, slinks) <- putNodes True (DIO.dioDefQuery []) dio_nodes
   (snodes, slinks) <- putNodes True (DAO.daoDefQuery []) dao_nodes
   -- putStrLn "--------- SnapshotNodes"
