@@ -36,6 +36,7 @@ import NetSpider.RPL.DIO
   )
 import qualified NetSpider.RPL.DIO as DIO
 import NetSpider.RPL.DAO (FoundNodeDAO)
+import qualified NetSpider.RPL.DAO as DAO
 import NetSpider.RPL.ContikiNG (parseFile, pSyslogHead)
 import System.Environment (getArgs)
 import System.IO (hPutStrLn, stderr)
@@ -56,8 +57,11 @@ putNodes do_clear query_base input_nodes = do
     hPutStrLn stderr "Add done"
     getSnapshot sp query
 
-putDIONodes :: [FoundNodeDIO] -> IO ([SnapshotNode FindingID DIONode], [SnapshotLink FindingID MergedDIOLink])
-putDIONodes dio_nodes = putNodes True (DIO.dioDefQuery []) dio_nodes
+-- putDIONodes :: [FoundNodeDIO] -> IO ([SnapshotNode FindingID DIONode], [SnapshotLink FindingID MergedDIOLink])
+-- putDIONodes dio_nodes = putNodes True (DIO.dioDefQuery []) dio_nodes
+-- 
+-- putDAONodes :: []
+-- putDAONodes = 
 
 printDIONode :: FoundNodeDIO -> IO ()
 printDIONode fn = do
@@ -112,9 +116,10 @@ getLatestNodes nm = concat $ HM.elems $ fmap filterLatest nm
 main :: IO ()
 main = do
   filenames <- getArgs
-  (dio_nodes, _) <- fmap (concatPairs . map (filterPairs getHead)) $ mapM loadFile filenames
+  (dio_nodes, dao_nodes) <- fmap (concatPairs . map (filterPairs getHead)) $ mapM loadFile filenames
   forM_ dio_nodes printDIONode
-  (snodes, slinks) <- putDIONodes dio_nodes
+  -- (snodes, slinks) <- putNodes True (DIO.dioDefQuery []) dio_nodes
+  (snodes, slinks) <- putNodes True (DAO.daoDefQuery []) dao_nodes
   -- putStrLn "--------- SnapshotNodes"
   -- print snodes
   -- putStrLn "--------- SnapshotLinks"
