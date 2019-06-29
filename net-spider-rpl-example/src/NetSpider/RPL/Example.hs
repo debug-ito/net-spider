@@ -14,7 +14,7 @@ import Control.Exception (bracket)
 import Control.Monad (forM_, when)
 import Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HM
-import Data.List (sortOn)
+import Data.List (sortOn, reverse)
 import Data.Monoid ((<>))
 import Data.Text (pack)
 import NetSpider.GraphML.Writer (writeGraphML)
@@ -128,6 +128,9 @@ getLatestNodes nm = concat $ HM.elems $ fmap filterLatest nm
 getLatestForEachNode :: [FoundNode FindingID na la] -> [FoundNode FindingID na la]
 getLatestForEachNode = getLatestNodes . collectNodes
 
+sortDAONodes :: [FoundNodeDAO] -> [FoundNodeDAO]
+sortDAONodes = reverse . sortOn (DAO.daoRouteNum . nodeAttributes)
+
 main :: IO ()
 main = do
   filenames <- getArgs
@@ -135,7 +138,7 @@ main = do
   forM_ dio_nodes printDIONode
   forM_ dao_nodes printDAONode
   -- (snodes, slinks) <- putNodes True (DIO.dioDefQuery []) dio_nodes
-  (snodes, slinks) <- putNodes True (DAO.daoDefQuery []) dao_nodes
+  (snodes, slinks) <- putNodes True (DAO.daoDefQuery []) $ sortDAONodes dao_nodes
   -- putStrLn "--------- SnapshotNodes"
   -- print snodes
   -- putStrLn "--------- SnapshotLinks"
