@@ -39,6 +39,7 @@ import NetSpider.RPL.DIO
 import qualified NetSpider.RPL.DIO as DIO
 import NetSpider.RPL.DAO (FoundNodeDAO)
 import qualified NetSpider.RPL.DAO as DAO
+import qualified NetSpider.RPL.Combined as RPL
 import NetSpider.RPL.ContikiNG (parseFile, pSyslogHead)
 import System.Environment (getArgs)
 import System.IO (hPutStrLn, stderr)
@@ -137,19 +138,16 @@ main = do
   (dio_nodes, dao_nodes) <- fmap (concatPairs . map (filterPairs getLatestForEachNode)) $ mapM loadFile filenames
   forM_ dio_nodes printDIONode
   forM_ dao_nodes printDAONode
-  -- (snodes, slinks) <- putNodes True (DIO.dioDefQuery []) dio_nodes
+  let dio_query = (DIO.dioDefQuery [subjectNode (dio_nodes !! 0)])
+  dio_graph <- putNodes True dio_query dio_nodes
   let dao_input = sortDAONodes dao_nodes
-      dao_query = (DAO.daoDefQuery [])
-                  { startsFrom = [subjectNode (dao_input !! 0)],
-                    timeInterval = 0 `secUpTo` foundAt (dao_input !! 0)
+      dao_query = (DAO.daoDefQuery [subjectNode (dao_input !! 0)])
+                  { timeInterval = 0 `secUpTo` foundAt (dao_input !! 0)
                   }
-  dao_graph <- putNodes True dao_query dao_input
-  -- putStrLn "--------- SnapshotNodes"
-  -- print snodes
-  -- putStrLn "--------- SnapshotLinks"
-  -- print slinks
-  TLIO.writeFile "result.graphml" $ writeGraphML dao_graph
-    where
-      getHead nodes = case reverse $ sortOn foundAt nodes of
-        [] -> []
-        (x : _) -> [x]
+  dao_graph <- putNodes False dao_query dao_input
+  let com_graph = RPL.combineGraphs dio_graph dao_graph
+  TLIO.writeFile "result.graphml" $ writeGraphML com_graph
+  --   where
+  --     getHead nodes = case reverse $ sortOn foundAt nodes of
+  --       [] -> []
+  --       (x : _) -> [x]
