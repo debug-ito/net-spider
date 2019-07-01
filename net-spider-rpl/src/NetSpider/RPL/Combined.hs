@@ -57,8 +57,7 @@ instance Monoid CombinedNode where
   mempty = CombinedNode Nothing Nothing
 
 instance Pan.ToAttributes CombinedNode where
-  toAttributes cn = (Pan.toAttributes $ attrsDIO cn)
-                    ++ (Pan.toAttributes $ attrsDAO cn)
+  toAttributes = Pan.attributesFromGraphML
 
 instance GraphML.ToAttributes CombinedNode where
   toAttributes cn = (GraphML.toAttributes $ attrsDIO cn)
@@ -70,10 +69,7 @@ data CombinedLink = CombinedDIOLink MergedDIOLink
                   deriving (Show,Eq,Ord)
 
 instance Pan.ToAttributes CombinedLink where
-  toAttributes (CombinedDIOLink ll) =
-    ("link_type", "dio") : Pan.toAttributes ll
-  toAttributes (CombinedDAOLink sl) =
-    ("link_type", "dao") : Pan.toAttributes sl
+  toAttributes = Pan.attributesFromGraphML
 
 instance GraphML.ToAttributes CombinedLink where
   toAttributes (CombinedDIOLink ll) =

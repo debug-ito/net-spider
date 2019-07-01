@@ -80,9 +80,7 @@ instance NodeAttributes DIONode where
                            <*> parseOneValue "dio_interval" ps
 
 instance Pan.ToAttributes DIONode where
-  toAttributes ln = [ ("rank", toAtom $ rank ln),
-                      ("dio_interval", toAtom $ dioInterval ln)
-                    ]
+  toAttributes = Pan.attributesFromGraphML
 
 instance GraphML.ToAttributes DIONode where
   toAttributes ln = [ ("rank", GraphML.AttrInt $ fromIntegral $ rank ln),
@@ -161,19 +159,8 @@ dioLinkState l =
     PreferredParent -> LinkToTarget
     _ -> LinkUnused
 
-toAttributesPrefix :: Atom -> DIOLink -> [Pan.Attribute]
-toAttributesPrefix prefix ll = 
-  [ (prefix <> "neighbor_type", toAtom $ neighborTypeToText $ neighborType ll),
-    (prefix <> "neighbor_rank", toAtom $ neighborRank ll)
-  ]
-  ++
-  ( case metric ll of
-      Nothing -> []
-      Just metric_val -> [(prefix <> "metric", toAtom metric_val)]
-  )
-
 instance Pan.ToAttributes DIOLink where
-  toAttributes = toAttributesPrefix ""
+  toAttributes = Pan.attributesFromGraphML
 
 instance GraphML.ToAttributes DIOLink where
   toAttributes ll = [ ("neighbor_type", GraphML.AttrString $ neighborTypeToText $ neighborType ll),
@@ -241,13 +228,7 @@ dioUnifierConf = Unify.UnifyStdConfig
         main_ll = lsLinkAttributes main_link
 
 instance Pan.ToAttributes MergedDIOLink where
-  toAttributes ml =
-    toAttributesPrefix "source_" (fromSource ml)
-    ++
-    ( case fromDest ml of
-        Nothing -> []
-        Just dl -> toAttributesPrefix "dest_" dl
-    )
+  toAttributes = Pan.attributesFromGraphML
 
 instance GraphML.ToAttributes MergedDIOLink where
   toAttributes ml =

@@ -70,10 +70,7 @@ instance NodeAttributes DAONode where
   parseNodeAttributes ps = fmap (DAONode . listToMaybe) $ parseListValues "dao_route_num" ps
 
 instance Pan.ToAttributes DAONode where
-  toAttributes dn = 
-    case daoRouteNum dn of
-      Nothing -> []
-      Just p -> [("dao_route_num", toAtom $ p)]
+  toAttributes = Pan.attributesFromGraphML
 
 instance GraphML.ToAttributes DAONode where
   toAttributes dn =
@@ -107,7 +104,7 @@ instance LinkAttributes DAOLink where
   parseLinkAttributes ps = DAOLink <$> parseOneValue "path_lifetime_sec" ps
 
 instance Pan.ToAttributes DAOLink where
-  toAttributes dl = [ ("path_lifetime_sec", toAtom $ pathLifetimeSec dl) ]
+  toAttributes = Pan.attributesFromGraphML
 
 instance GraphML.ToAttributes DAOLink where
   toAttributes dl = [ ("path_lifetime_sec", GraphML.AttrInt $ fromIntegral $ pathLifetimeSec dl) ]
