@@ -21,6 +21,7 @@ module NetSpider.Pangraph
          -- * Utility
          timestampAttributes,
          writePangraph,
+         attributesFromGraphML,
          -- * Re-exports
          Attribute,
          Key,
@@ -33,6 +34,7 @@ import Data.Greskell.Graph (PropertyMap(allProperties), Property(..))
 import Data.Text (pack)
 import Data.Text.Encoding (encodeUtf8)
 import Data.Time.LocalTime (TimeZone(..))
+import qualified NetSpider.GraphML.Writer as NGraphML
 import NetSpider.Snapshot
   ( SnapshotNode, SnapshotLink,
     nodeId, nodeAttributes, nodeTimestamp, isOnBoundary,
@@ -138,3 +140,7 @@ makePangraphIO ns ls = case makePangraph ns ls of
 -- | Write 'P.Pangraph' to the given file in GraphML format.
 writePangraph :: P.Pangraph -> FilePath -> IO ()
 writePangraph p file = BS.writeFile file $ GraphML.write p
+
+-- | Make Pangraph attributes from GraphML's attributes.
+attributesFromGraphML :: NGraphML.ToAttributes a => a -> [Attribute]
+attributesFromGraphML = toAttributes . NGraphML.toAttributes

@@ -20,6 +20,7 @@ import Data.Text (Text)
 import Data.Text.Encoding (encodeUtf8)
 import qualified Data.Text.Lazy as TL
 import Data.Word (Word, Word8, Word16, Word32)
+import qualified NetSpider.GraphML.Writer as GraphML
 
 -- | 'Atom' is the type for Node ID and attributes in Pangraph data
 -- model.
@@ -88,3 +89,13 @@ instance ToAtom Double where
 
 instance ToAtom Bool where
   toAtom = showAtom
+
+instance ToAtom GraphML.AttributeValue where
+  toAtom v =
+    case v of
+      GraphML.AttrBoolean b -> showAtom b
+      GraphML.AttrInt i -> showAtom i
+      GraphML.AttrLong l -> showAtom l
+      GraphML.AttrFloat f -> showAtom f
+      GraphML.AttrDouble d -> showAtom d
+      GraphML.AttrString t -> showAtom t
