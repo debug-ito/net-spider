@@ -29,7 +29,8 @@ import NetSpider.Output
   ( getSnapshot,
     defQuery, unifyLinkSamples, unifyStd,
     Query(startsFrom, timeInterval),
-    SnapshotNode, SnapshotLink, secUpTo
+    SnapshotNode, SnapshotLink, secUpTo,
+    SnapshotGraph
   )
 import NetSpider.RPL.FindingID (FindingID, idToText)
 import NetSpider.RPL.DIO
@@ -46,7 +47,7 @@ putNodes :: (LinkAttributes fla, NodeAttributes na)
          => Bool
          -> Query FindingID na fla sla
          -> [FoundNode FindingID na fla]
-         -> IO ([SnapshotNode FindingID na], [SnapshotLink FindingID sla])
+         -> IO (SnapshotGraph FindingID na sla)
 putNodes do_clear query input_nodes = do
   bracket (connectWith defConfig) close $ \sp -> do
     when do_clear $ clearAll sp
@@ -142,12 +143,12 @@ main = do
                   { startsFrom = [subjectNode (dao_input !! 0)],
                     timeInterval = 0 `secUpTo` foundAt (dao_input !! 0)
                   }
-  (snodes, slinks) <- putNodes True dao_query dao_input
+  dao_graph <- putNodes True dao_query dao_input
   -- putStrLn "--------- SnapshotNodes"
   -- print snodes
   -- putStrLn "--------- SnapshotLinks"
   -- print slinks
-  TLIO.writeFile "result.graphml" $ writeGraphML snodes slinks
+  TLIO.writeFile "result.graphml" $ writeGraphML dao_graph
     where
       getHead nodes = case reverse $ sortOn foundAt nodes of
         [] -> []
