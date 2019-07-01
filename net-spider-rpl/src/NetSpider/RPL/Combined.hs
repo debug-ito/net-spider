@@ -85,6 +85,10 @@ combinedLinkType :: CombinedLink -> FindingType
 combinedLinkType (CombinedDIOLink _) = FindingDIO
 combinedLinkType (CombinedDAOLink _) = FindingDAO
 
+-- | Combine DIO and DAO 'SnapshotNode's. Attributes from 'DIONode'
+-- and 'DAONode' for the same 'IPv6ID' are combined into one
+-- 'CombinedNode'. Timestamp of a combined 'SnapshotNode' is the
+-- latest timestamp of input nodes for that 'IPv6ID'.
 combineNodes :: [SnapshotNode FindingID DIONode]
              -> [SnapshotNode FindingID DAONode]
              -> [SnapshotNode IPv6ID CombinedNode]
@@ -109,6 +113,9 @@ combineNodes dio_ns dao_ns = concatNodes $ map fromDIO dio_ns ++ map fromDAO dao
             mmerged_attr = mconcat $ map nodeAttributes group_nodes
             hasNodeAttr n = isJust $ nodeAttributes n
 
+-- | Convert DIO and DAO links into combined links. Despite its name,
+-- this function does not combine input links. It just make one
+-- combined link from each of the input links.
 combineLinks :: [SnapshotLink FindingID MergedDIOLink]
              -> [SnapshotLink FindingID DAOLink]
              -> [SnapshotLink IPv6ID CombinedLink]
@@ -120,6 +127,8 @@ combineLinks dio_ls dao_ls = map fromDIO dio_ls ++ map fromDAO dao_ls
 -- | 'SnapshotGraph' combining DIO and DAO networks.
 type SnapshotGraphCombined = SnapshotGraph IPv6ID CombinedNode CombinedLink
 
+-- | Combine DIO and DAO graphs into the combined graph, using
+-- 'combineNodes' and 'combineLinks'.
 combineGraphs :: SnapshotGraphDIO
               -> SnapshotGraphDAO
               -> SnapshotGraphCombined
