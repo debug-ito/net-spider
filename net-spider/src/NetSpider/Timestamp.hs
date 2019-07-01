@@ -12,13 +12,16 @@ module NetSpider.Timestamp
          now,
          -- * Manipulation
          addSec,
-         -- * Conversion
+         -- * Convert to Timestamp
          parseTimestamp,
          fromS,
          fromZonedTime,
          fromUTCTime,
          fromSystemTime,
          fromLocalTime,
+         -- * Convert from Timestamp
+         toTime,
+         showTimestamp,
          showEpochTime
        ) where
 
@@ -28,13 +31,14 @@ import Data.Int (Int64)
 import Data.List (sortOn)
 import Data.Text (Text, pack)
 import Data.Time.Calendar (Day, fromGregorian)
+import Data.Time.Clock (UTCTime)
+import Data.Time.Clock.System (utcToSystemTime, SystemTime(..))
+import qualified Data.Time.Format as DTFormat
 import Data.Time.LocalTime
   ( TimeZone(..), getZonedTime, ZonedTime(..), zonedTimeToUTC, LocalTime(LocalTime), localTimeToUTC,
     TimeOfDay(TimeOfDay)
   )
 import qualified Data.Time.LocalTime as LocalTime
-import Data.Time.Clock (UTCTime)
-import Data.Time.Clock.System (utcToSystemTime, SystemTime(..))
 import qualified Text.ParserCombinators.ReadP as P
 import Text.Read (readEither)
 
@@ -59,11 +63,35 @@ instance Ord Timestamp where
 fromEpochMillisecond :: Int64 -> Timestamp
 fromEpochMillisecond msec = Timestamp msec Nothing
 
+-- | Show 'Timestamp' with a basic ISO 8601 format.
+--
+-- >>> showTimestamp $ fromS "2019-10-20T12:45:00"
+-- "2019-10-20T12:45:00.000"
+-- >>> showTimestamp $ fromS "1999-03-21T10:11Z"
+-- "1999-03-21T10:11:00.000Z"
+-- >>> showTimestamp $ fromS "2016-11-30T22:03:00.034+09:00"
+-- "2016-11-30T22:03:00.034+09:00"
+-- >>> showTimestamp $ fromS "2000-04-07T09:31-05:00"
+-- "2000-04-07T09:31:00.000-05:00"
+showTimestamp :: Timestamp -> Text
+showTimestamp = pack . either simpleFormat simpleFormat . toTime
+  where
+    simpleFormat :: DTFormat.FormatTime t => t -> String
+    simpleFormat = DTFormat.formatTime DTFormat.defaultTimeLocale "%Y-%m-%dT%H:%M:%S.%03q"
+
 -- | Show 'epochTime' of 'Timestamp' as 'Text'.
 --
 -- @since 0.2.0.0
 showEpochTime :: Timestamp -> Text
 showEpochTime = pack . show . epochTime
+
+-- | Convert to 'LocalTime' (if the 'Timestamp' has no time zone) or
+-- 'ZonedTime' (otherwise).
+toTime :: Timestamp -> Either LocalTime ZonedTime
+toTime ts = maybe (Left localtime) (Right . toZT) $ timeZone ts
+  where
+    localtime = undefined -- TODO
+    toZT zone = ZonedTime localtime zone
 
 -- | Get the current system time.
 --
