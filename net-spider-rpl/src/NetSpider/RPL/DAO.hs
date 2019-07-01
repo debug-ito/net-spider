@@ -8,6 +8,7 @@
 module NetSpider.RPL.DAO
   ( -- * Types
     FoundNodeDAO,
+    SnapshotGraphDAO,
     DAONode(..),
     DAOLink(..),
     -- * Query
@@ -32,6 +33,7 @@ import qualified NetSpider.GraphML.Writer as GraphML
 import qualified NetSpider.Pangraph as Pan
 import NetSpider.Pangraph.Atom (toAtom, Atom)
 import qualified NetSpider.Query as Query
+import NetSpider.Snapshot (SnapshotGraph)
 import NetSpider.Unify (UnifyStdConfig, lsLinkAttributes, latestLinkSample)
 import qualified NetSpider.Unify as Unify
 
@@ -39,6 +41,10 @@ import NetSpider.RPL.FindingID (FindingID)
 
 -- | 'FoundNode' for a network described by DAOs.
 type FoundNodeDAO = FoundNode FindingID DAONode DAOLink
+
+-- | 'SnapshotGraph' for a network described by DAOs. This is what you
+-- get by 'daoDefQuery'.
+type SnapshotGraphDAO = SnapshotGraph FindingID DAONode DAOLink
 
 -- | Node attributes about DAO.
 data DAONode =

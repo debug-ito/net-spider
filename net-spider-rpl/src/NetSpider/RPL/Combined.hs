@@ -9,10 +9,11 @@
 -- "NetSpider.RPL.DAO") graphs.
 module NetSpider.RPL.Combined
   ( -- * Functions
+    combineGraphs,
     combineNodes,
     combineLinks,
-    combineGraphs,
     -- * Types
+    SnapshotGraphCombined,
     CombinedNode(..),
     CombinedLink(..),
     combinedLinkType
@@ -25,13 +26,13 @@ import Data.Monoid (Monoid(..), First(..))
 import GHC.Exts (groupWith)
 import qualified NetSpider.Pangraph as Pan
 import NetSpider.Snapshot
-  ( SnapshotNode, SnapshotLink,
+  ( SnapshotNode, SnapshotLink, SnapshotGraph,
     nodeId, nodeAttributes
   )
 
 import NetSpider.RPL.FindingID (FindingID(..), FindingType(..), IPv6ID, ipv6Only)
-import NetSpider.RPL.DIO (DIONode, MergedDIOLink)
-import NetSpider.RPL.DAO (DAONode, DAOLink)
+import NetSpider.RPL.DIO (DIONode, MergedDIOLink, SnapshotGraphDIO)
+import NetSpider.RPL.DAO (DAONode, DAOLink, SnapshotGraphDAO)
 
 -- | Node attributes combining 'DIONode' and 'DAONode'.
 data CombinedNode =
@@ -105,8 +106,11 @@ combineLinks dio_ls dao_ls = map fromDIO dio_ls ++ map fromDAO dao_ls
     fromDIO = bimap ipv6Only (\ll -> CombinedDIOLink ll)
     fromDAO = bimap ipv6Only (\sl -> CombinedDAOLink sl)
 
-combineGraphs :: ([SnapshotNode FindingID DIONode], [SnapshotLink FindingID MergedDIOLink])
-              -> ([SnapshotNode FindingID DAONode], [SnapshotLink FindingID DAOLink])
-              -> ([SnapshotNode IPv6ID CombinedNode], [SnapshotLink IPv6ID CombinedLink])
+-- | 'SnapshotGraph' combining DIO and DAO networks.
+type SnapshotGraphCombined = SnapshotGraph IPv6ID CombinedNode CombinedLink
+
+combineGraphs :: SnapshotGraphDIO
+              -> SnapshotGraphDAO
+              -> SnapshotGraphCombined
 combineGraphs (dio_ns, dio_ls) (dao_ns, dao_ls) =
   (combineNodes dio_ns dao_ns, combineLinks dio_ls dao_ls)

@@ -8,6 +8,7 @@
 module NetSpider.RPL.DIO
   ( -- * Types
     FoundNodeDIO,
+    SnapshotGraphDIO,
     DIONode(..),
     DIOLink(..),
     dioLinkState,
@@ -38,6 +39,7 @@ import qualified NetSpider.GraphML.Writer as GraphML
 import qualified NetSpider.Pangraph as Pan
 import NetSpider.Pangraph.Atom (toAtom, Atom)
 import qualified NetSpider.Query as Query
+import NetSpider.Snapshot (SnapshotGraph)
 import NetSpider.Unify (UnifyStdConfig, lsLinkAttributes, latestLinkSample)
 import qualified NetSpider.Unify as Unify
 
@@ -45,6 +47,10 @@ import NetSpider.RPL.FindingID (FindingID)
 
 -- | 'FoundNode' for a network described by DIOs.
 type FoundNodeDIO = FoundNode FindingID DIONode DIOLink
+
+-- | 'SnapshotGraph' for a network described by DIOs. This is what you
+-- get by 'dioDefQuery'.
+type SnapshotGraphDIO = SnapshotGraph FindingID DIONode MergedDIOLink
 
 -- | RPL rank
 type Rank = Word
