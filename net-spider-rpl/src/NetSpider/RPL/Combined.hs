@@ -20,6 +20,7 @@ module NetSpider.RPL.Combined
   ) where
 
 import Data.Bifunctor (bimap, second)
+import Data.List (sortOn, reverse)
 import Data.Semigroup (Semigroup(..))
 import Data.Maybe (isJust)
 import Data.Monoid (Monoid(..), First(..))
@@ -28,7 +29,7 @@ import qualified NetSpider.GraphML.Writer as GraphML
 import qualified NetSpider.Pangraph as Pan
 import NetSpider.Snapshot
   ( SnapshotNode, SnapshotLink, SnapshotGraph,
-    nodeId, nodeAttributes
+    nodeId, nodeAttributes, nodeTimestamp
   )
 
 import NetSpider.RPL.FindingID (FindingID(..), FindingType(..), IPv6ID, ipv6Only)
@@ -91,8 +92,9 @@ combineNodes dio_ns dao_ns = concatNodes $ map fromDIO dio_ns ++ map fromDAO dao
   where
     fromDIO = bimap ipv6Only (\ln -> CombinedNode (Just ln) Nothing)
     fromDAO = bimap ipv6Only (\sn -> CombinedNode Nothing (Just sn))
-    concatNodes nodes = map merge $ groupWith nodeId nodes
+    concatNodes nodes = map (merge . sortByTimestamp) $ groupWith nodeId nodes
       where
+        sortByTimestamp = reverse . sortOn nodeTimestamp
         merge [] = error "Empty group should not happen."
         merge group_nodes@(head_node : _) =
           case mmerged_attr of
