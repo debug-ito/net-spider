@@ -27,8 +27,9 @@ import NetSpider.Input
   )
 import NetSpider.Output
   ( getSnapshot,
-    defQuery, unifyLinkSamples, unifyStd, Query(startsFrom),
-    SnapshotNode, SnapshotLink
+    defQuery, unifyLinkSamples, unifyStd,
+    Query(startsFrom, timeInterval),
+    SnapshotNode, SnapshotLink, secUpTo
   )
 import NetSpider.RPL.FindingID (FindingID, idToText)
 import NetSpider.RPL.DIO
@@ -46,9 +47,7 @@ putNodes :: (LinkAttributes fla, NodeAttributes na)
          -> Query FindingID na fla sla
          -> [FoundNode FindingID na fla]
          -> IO ([SnapshotNode FindingID na], [SnapshotLink FindingID sla])
-putNodes do_clear query_base input_nodes = do
-  let start_id = subjectNode (input_nodes !! 0)
-      query = query_base { startsFrom = [start_id] }
+putNodes do_clear query input_nodes = do
   bracket (connectWith defConfig) close $ \sp -> do
     when do_clear $ clearAll sp
     forM_ (zip input_nodes ([0 ..] :: [Integer])) $ \(input_node, index) -> do
@@ -138,7 +137,12 @@ main = do
   forM_ dio_nodes printDIONode
   forM_ dao_nodes printDAONode
   -- (snodes, slinks) <- putNodes True (DIO.dioDefQuery []) dio_nodes
-  (snodes, slinks) <- putNodes True (DAO.daoDefQuery []) $ sortDAONodes dao_nodes
+  let dao_input = sortDAONodes dao_nodes
+      dao_query = (DAO.daoDefQuery [])
+                  { startsFrom = [subjectNode (dao_input !! 0)],
+                    timeInterval = 0 `secUpTo` foundAt (dao_input !! 0)
+                  }
+  (snodes, slinks) <- putNodes True dao_query dao_input
   -- putStrLn "--------- SnapshotNodes"
   -- print snodes
   -- putStrLn "--------- SnapshotLinks"
