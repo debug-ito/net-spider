@@ -136,7 +136,7 @@ spec = do
                        "</graph>",
                        "</graphml>"
                      ]
-          got = writeGraphML nodes links
+          got = writeGraphML (nodes, links)
       -- TLIO.putStrLn got
       got `shouldBe` expected
     specify "with attributes" $ do
@@ -210,7 +210,7 @@ spec = do
                        "</graph>",
                        "</graphml>"
                      ]
-          got = writeGraphML nodes links
+          got = writeGraphML (nodes, links)
       -- TLIO.putStrLn got
       got `shouldBe` expected
   describe "writeGraphMLWith" $ do
@@ -263,5 +263,5 @@ spec = do
           opt = defWriteOption
                 { woptDefaultDirected = False
                 }
-          got = writeGraphMLWith opt nodes links
+          got = writeGraphMLWith opt (nodes, links)
       got `shouldBe` expected

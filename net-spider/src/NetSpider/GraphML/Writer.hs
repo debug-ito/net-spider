@@ -48,7 +48,8 @@ import GHC.Generics (Generic)
 
 import NetSpider.Snapshot
   ( SnapshotNode, nodeId, nodeTimestamp, isOnBoundary, nodeAttributes,
-    SnapshotLink, sourceNode, destinationNode, linkTimestamp, isDirected, linkAttributes
+    SnapshotLink, sourceNode, destinationNode, linkTimestamp, isDirected, linkAttributes,
+    SnapshotGraph
   )
 import NetSpider.Timestamp (Timestamp(epochTime, timeZone))
 
@@ -351,15 +352,15 @@ defWriteOption =
 
 -- | 'writeGraphMLWith' the default options.
 writeGraphML :: (ToNodeID n, ToAttributes na, ToAttributes la)
-             => [SnapshotNode n na] -> [SnapshotLink n la] -> TL.Text
+             => SnapshotGraph n na la
+             -> TL.Text
 writeGraphML = writeGraphMLWith defWriteOption
 
 writeGraphMLWith :: (ToNodeID n, ToAttributes na, ToAttributes la)
                  => WriteOption
-                 -> [SnapshotNode n na]
-                 -> [SnapshotLink n la]
+                 -> SnapshotGraph n na la
                  -> TL.Text
-writeGraphMLWith wopt input_nodes input_links =
+writeGraphMLWith wopt (input_nodes, input_links) =
   TLB.toLazyText ( xml_header
                    <> graphml_header
                    <> keys
