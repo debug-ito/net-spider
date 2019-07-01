@@ -51,24 +51,21 @@ putNodes :: (LinkAttributes fla, NodeAttributes na)
          -> IO (SnapshotGraph FindingID na sla)
 putNodes do_clear query input_nodes = do
   bracket (connectWith defConfig) close $ \sp -> do
-    when do_clear $ clearAll sp
+    when do_clear $ do
+      hPutStrLn stderr "---- Clear graph database"
+      clearAll sp
+    hPutStrLn stderr ("---- Add " <> (show $ length $ input_nodes) <> " FoundNodes")
     forM_ (zip input_nodes ([0 ..] :: [Integer])) $ \(input_node, index) -> do
       when ((index `mod` 100) == 0) $ hPutStrLn stderr ("Add node [" <> show index <> "]")
       addFoundNode sp input_node
     hPutStrLn stderr "Add done"
     getSnapshot sp query
 
--- putDIONodes :: [FoundNodeDIO] -> IO ([SnapshotNode FindingID DIONode], [SnapshotLink FindingID MergedDIOLink])
--- putDIONodes dio_nodes = putNodes True (DIO.dioDefQuery []) dio_nodes
--- 
--- putDAONodes :: []
--- putDAONodes = 
-
 printDIONode :: FoundNodeDIO -> IO ()
 printDIONode fn = do
-  TIO.putStrLn ("DIONode " <> (idToText $ subjectNode fn) <> ", rank " <> rank_text)
+  TIO.hPutStrLn stderr ("---- DIONode " <> (idToText $ subjectNode fn) <> ", rank " <> rank_text)
   forM_ plinks $ \l -> do
-    TIO.putStrLn ("  -> " <> (idToText $ targetNode l))
+    TIO.hPutStrLn stderr ("  -> " <> (idToText $ targetNode l))
   where
     plinks = filter isPreferredParentLink $ neighborLinks fn
     rank_text = pack $ show $ DIO.rank $ nodeAttributes fn
@@ -77,9 +74,9 @@ printDIONode fn = do
 
 printDAONode :: FoundNodeDAO -> IO ()
 printDAONode fn = do
-  TIO.putStrLn ("DAONode " <> (idToText $ subjectNode fn) <> route_num_text)
+  TIO.hPutStrLn stderr ("---- DAONode " <> (idToText $ subjectNode fn) <> route_num_text)
   forM_ (neighborLinks fn) $ \l -> do
-    TIO.putStrLn ("  -> " <> (idToText $ targetNode l) <> ", lifetime " <> lt_text l)
+    TIO.hPutStrLn stderr ("  -> " <> (idToText $ targetNode l) <> ", lifetime " <> lt_text l)
   where
     lt_text l = pack $ show $ DAO.pathLifetimeSec $ linkAttributes l
     route_num_text =
@@ -90,11 +87,10 @@ printDAONode fn = do
 loadFile :: FilePath
          -> IO ([FoundNodeDIO], [FoundNodeDAO])
 loadFile file = do
-  putStrLn ("------ Loading " <> file)
+  hPutStrLn stderr ("---- Loading " <> file)
   (dio_nodes, dao_nodes) <- parseFile phead file
-  putStrLn ("------ " <> (show $ length dio_nodes) <> " DIO Nodes")
-  -- print dio_nodes
-  putStrLn ("------ " <> (show $ length dao_nodes) <> " DAO Nodes")
+  hPutStrLn stderr ((show $ length dio_nodes) <> " DIO Nodes")
+  hPutStrLn stderr ((show $ length dao_nodes) <> " DAO Nodes")
   return (dio_nodes, dao_nodes)
   where
     phead = pSyslogHead 2019 Nothing
@@ -146,8 +142,4 @@ main = do
                   }
   dao_graph <- putNodes False dao_query dao_input
   let com_graph = RPL.combineGraphs dio_graph dao_graph
-  TLIO.writeFile "result.graphml" $ writeGraphML com_graph
-  --   where
-  --     getHead nodes = case reverse $ sortOn foundAt nodes of
-  --       [] -> []
-  --       (x : _) -> [x]
+  TLIO.putStr $ writeGraphML com_graph
