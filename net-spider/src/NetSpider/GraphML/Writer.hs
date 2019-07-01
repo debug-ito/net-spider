@@ -8,6 +8,12 @@
 module NetSpider.GraphML.Writer
   ( -- * Functions
     writeGraphML,
+    writeGraphMLWith,
+    -- * Options
+    WriteOption,
+    defWriteOption,
+    -- ** accessors for WriteOption
+    woptDefaultDirected,
     -- * NodeID
     NodeID,
     ToNodeID(..),
@@ -323,9 +329,37 @@ showAttribute ks km val =
         key_id_str = showAttributeID index
         val_str = showAttributeValue val
 
+-- | Options to write GraphML. Use 'defWriteOption' to get the default
+-- values.
+data WriteOption =
+  WriteOption
+  { woptDefaultDirected :: Bool
+    -- ^ If 'True', set GraphML's @edgedefault@ attribute to
+    -- @directed@. If 'False', set it to @undirected@. Note that
+    -- regardless of this option, each @edge@ element specifies
+    -- @directed@ attribute explicitly.
+    --
+    -- Default: 'True'
+  }
+  deriving (Show,Eq,Ord)
+
+defWriteOption :: WriteOption
+defWriteOption =
+  WriteOption
+  { woptDefaultDirected = True
+  }
+
+-- | 'writeGraphMLWith' the default options.
 writeGraphML :: (ToNodeID n, ToAttributes na, ToAttributes la)
              => [SnapshotNode n na] -> [SnapshotLink n la] -> TL.Text
-writeGraphML input_nodes input_links =
+writeGraphML = writeGraphMLWith defWriteOption
+
+writeGraphMLWith :: (ToNodeID n, ToAttributes na, ToAttributes la)
+                 => WriteOption
+                 -> [SnapshotNode n na]
+                 -> [SnapshotLink n la]
+                 -> TL.Text
+writeGraphMLWith wopt input_nodes input_links =
   TLB.toLazyText ( xml_header
                    <> graphml_header
                    <> keys
@@ -344,7 +378,10 @@ writeGraphML input_nodes input_links =
     keys = showAllKeys "" key_store
     key_metas = concat $ map nodeMetaKeys input_nodes <> map linkMetaKeys input_links
     key_store = foldl' (\acc m -> addKey m acc) emptyKeyStore key_metas
-    graph_header = "<graph edgedefault=\"undirected\">\n"
+    edgedefault_str = if woptDefaultDirected wopt
+                      then "directed"
+                      else "undirected"
+    graph_header = "<graph edgedefault=\"" <> edgedefault_str <> "\">\n"
     graph_footer = "</graph>\n"
     nodes = mconcat $ map writeNode input_nodes
     edges = mconcat $ map writeLink input_links

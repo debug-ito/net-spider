@@ -18,7 +18,10 @@ import NetSpider.GraphML.Writer
   ( writeGraphML,
     ToAttributes(..),
     AttributeValue(..),
-    attributesFromAeson
+    attributesFromAeson,
+    writeGraphMLWith,
+    defWriteOption,
+    woptDefaultDirected
   )
 
 main :: IO ()
@@ -106,7 +109,7 @@ spec = do
                        "<key id=\"d6\" for=\"edge\" attr.name=\"@tz_offset_min\" attr.type=\"int\"/>",
                        "<key id=\"d7\" for=\"edge\" attr.name=\"@tz_summer_only\" attr.type=\"boolean\"/>",
                        "<key id=\"d8\" for=\"edge\" attr.name=\"@tz_name\" attr.type=\"string\"/>",
-                       "<graph edgedefault=\"undirected\">",
+                       "<graph edgedefault=\"directed\">",
                        "  <node id=\"&quot;the root&quot;\">",
                        "    <data key=\"d0\">100</data>",
                        "    <data key=\"d1\">false</data>",
@@ -185,7 +188,7 @@ spec = do
                        "<key id=\"d5\" for=\"edge\" attr.name=\"@timestamp\" attr.type=\"long\"/>",
                        "<key id=\"d6\" for=\"edge\" attr.name=\"at2_huga\" attr.type=\"string\"/>",
                        "<key id=\"d7\" for=\"edge\" attr.name=\"at2_quux\" attr.type=\"double\"/>",
-                       "<graph edgedefault=\"undirected\">",
+                       "<graph edgedefault=\"directed\">",
                        "  <node id=\"100\">",
                        "    <data key=\"d0\">155</data>",
                        "    <data key=\"d1\">false</data>",
@@ -209,4 +212,56 @@ spec = do
                      ]
           got = writeGraphML nodes links
       -- TLIO.putStrLn got
+      got `shouldBe` expected
+  describe "writeGraphMLWith" $ do
+    specify "woptDefaultDirected = False" $ do
+      let nodes :: [SnapshotNode Text ()]
+          nodes = [ SnapshotNode
+                    { _nodeId = "n1",
+                      _isOnBoundary = False,
+                      _nodeTimestamp = Just $ fromEpochMillisecond 200,
+                      _nodeAttributes = Just ()
+                    },
+                    SnapshotNode
+                    { _nodeId = "n2",
+                      _isOnBoundary = False,
+                      _nodeTimestamp = Nothing,
+                      _nodeAttributes = Nothing
+                    }
+                  ]
+          links :: [SnapshotLink Text ()]
+          links = [ SnapshotLink
+                    { _sourceNode = "n1",
+                      _destinationNode = "n2",
+                      _isDirected = True,
+                      _linkTimestamp = fromEpochMillisecond 200,
+                      _linkAttributes = ()
+                    }
+                  ]
+          expected = mconcat $ map (<> "\n")
+                     [ "<?xml version=\"1.0\" encoding=\"UTF-8\"?>",
+                       "<graphml xmlns=\"http://graphml.graphdrawing.org/xmlns\"",
+                       " xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"",
+                       " xsi:schemaLocation=\"http://graphml.graphdrawing.org/xmlns http://graphml.graphdrawing.org/xmlns/1.0/graphml.xsd\">",
+                       "<key id=\"d0\" for=\"node\" attr.name=\"@timestamp\" attr.type=\"long\"/>",
+                       "<key id=\"d1\" for=\"node\" attr.name=\"@is_on_boundary\" attr.type=\"boolean\"/>",
+                       "<key id=\"d2\" for=\"edge\" attr.name=\"@timestamp\" attr.type=\"long\"/>",
+                       "<graph edgedefault=\"undirected\">",
+                       "  <node id=\"n1\">",
+                       "    <data key=\"d0\">200</data>",
+                       "    <data key=\"d1\">false</data>",
+                       "  </node>",
+                       "  <node id=\"n2\">",
+                       "    <data key=\"d1\">false</data>",
+                       "  </node>",
+                       "  <edge source=\"n1\" target=\"n2\" directed=\"true\">",
+                       "    <data key=\"d2\">200</data>",
+                       "  </edge>",
+                       "</graph>",
+                       "</graphml>"
+                     ]
+          opt = defWriteOption
+                { woptDefaultDirected = False
+                }
+          got = writeGraphMLWith opt nodes links
       got `shouldBe` expected
