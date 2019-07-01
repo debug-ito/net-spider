@@ -10,7 +10,8 @@
 --
 -- @since 0.3.0.0
 module NetSpider.Snapshot.Internal
-       ( SnapshotLink(..),
+       ( SnapshotGraph,
+         SnapshotLink(..),
          linkNodeTuple,
          linkNodePair,
          SnapshotNode(..)
@@ -19,6 +20,9 @@ module NetSpider.Snapshot.Internal
 import Data.Bifunctor (Bifunctor(..))
 import NetSpider.Pair (Pair(..))
 import NetSpider.Timestamp (Timestamp)
+
+-- | The snapshot graph, which is a collection nodes and links.
+type SnapshotGraph n na la = ([SnapshotNode n na], [SnapshotLink n la])
 
 -- | A link in the snapshot graph.
 --

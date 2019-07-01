@@ -58,7 +58,7 @@ import NetSpider.Query
     Interval
   )
 import NetSpider.Query.Internal (FoundNodePolicy(..))
-import NetSpider.Snapshot.Internal (SnapshotNode(..), SnapshotLink(..))
+import NetSpider.Snapshot.Internal (SnapshotGraph, SnapshotNode(..), SnapshotLink(..))
 import NetSpider.Spider.Config (Config(..), defConfig)
 import NetSpider.Spider.Internal.Graph
   ( gMakeFoundNode, gAllNodes, gHasNodeID, gHasNodeEID, gNodeEID, gNodeID, gMakeNode, gClearAll,
@@ -146,7 +146,7 @@ getOrMakeNode spider nid = do
 getSnapshotSimple :: (FromGraphSON n, ToJSON n, Ord n, Hashable n, Show n, LinkAttributes fla, NodeAttributes na)
                   => Spider n na fla
                   -> n -- ^ ID of the node where it starts traversing.
-                  -> IO ([SnapshotNode n na], [SnapshotLink n fla])
+                  -> IO (SnapshotGraph n na fla)
 getSnapshotSimple spider start_nid = getSnapshot spider $ defQuery [start_nid]
 
 
@@ -155,7 +155,7 @@ getSnapshotSimple spider start_nid = getSnapshot spider $ defQuery [start_nid]
 getSnapshot :: (FromGraphSON n, ToJSON n, Ord n, Hashable n, Show n, LinkAttributes fla, NodeAttributes na)
             => Spider n na fla
             -> Query n na fla sla
-            -> IO ([SnapshotNode n na], [SnapshotLink n sla])
+            -> IO (SnapshotGraph n na sla)
 getSnapshot spider query = do
   ref_state <- newIORef $ initSnapshotState $ startsFrom query
   recurseVisitNodesForSnapshot spider query ref_state

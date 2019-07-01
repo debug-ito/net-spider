@@ -6,7 +6,9 @@
 -- A snapshot graph is a graph constructed from the NetSpider
 -- database. It reprensents a graph at specific time.
 module NetSpider.Snapshot
-       ( -- * SnapshotNode
+       ( -- * SnapshotGraph
+         SnapshotGraph,
+         -- * SnapshotNode
          SnapshotNode,
          nodeId,
          isOnBoundary,
@@ -24,13 +26,13 @@ module NetSpider.Snapshot
        ) where
 
 import NetSpider.Snapshot.Internal
-  ( SnapshotNode(..),
+  ( SnapshotGraph,
+    SnapshotNode(..),
     SnapshotLink(..),
     linkNodeTuple,
     linkNodePair
   )
 import NetSpider.Timestamp (Timestamp)
-
 
 nodeId :: SnapshotNode n na -> n
 nodeId = _nodeId
