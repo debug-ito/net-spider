@@ -51,7 +51,10 @@ import NetSpider.Snapshot
     SnapshotLink, sourceNode, destinationNode, linkTimestamp, isDirected, linkAttributes,
     SnapshotGraph
   )
-import NetSpider.Timestamp (Timestamp(epochTime, timeZone))
+import NetSpider.Timestamp
+  ( Timestamp(epochTime, timeZone),
+    showTimestamp
+  )
 
 -- | Node ID in GraphML.
 type NodeID = Text
@@ -288,7 +291,10 @@ showKeyMetaWithIndex index km = "<key id=\"" <> id_str <> "\" for=\"" <> domain_
     type_str = showAttributeType $ kmType km
 
 timestampAttrs :: Timestamp -> [(AttributeKey, AttributeValue)]
-timestampAttrs t = [("@timestamp", AttrLong $ toInteger $ epochTime t)] ++ timezone_attrs
+timestampAttrs t =
+  [ ("@timestamp", AttrLong $ toInteger $ epochTime t),
+    ("@timestamp_str", AttrString $ showTimestamp t)
+  ] ++ timezone_attrs
   where
     timezone_attrs =
       case timeZone t of
