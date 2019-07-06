@@ -21,6 +21,7 @@ module NetSpider.Timestamp
          fromLocalTime,
          -- * Convert from Timestamp
          toTime,
+         toSystemTime,
          showTimestamp,
          showEpochTime
        ) where
@@ -32,11 +33,11 @@ import Data.List (sortOn)
 import Data.Text (Text, pack)
 import Data.Time.Calendar (Day, fromGregorian)
 import Data.Time.Clock (UTCTime)
-import Data.Time.Clock.System (utcToSystemTime, SystemTime(..))
+import Data.Time.Clock.System (utcToSystemTime, SystemTime(..), systemToUTCTime)
 import qualified Data.Time.Format as DTFormat
 import Data.Time.LocalTime
   ( TimeZone(..), getZonedTime, ZonedTime(..), zonedTimeToUTC, LocalTime(LocalTime), localTimeToUTC,
-    TimeOfDay(TimeOfDay)
+    TimeOfDay(TimeOfDay), utcToLocalTime, utcToZonedTime
   )
 import qualified Data.Time.LocalTime as LocalTime
 import qualified Text.ParserCombinators.ReadP as P
@@ -86,12 +87,28 @@ showEpochTime :: Timestamp -> Text
 showEpochTime = pack . show . epochTime
 
 -- | Convert to 'LocalTime' (if the 'Timestamp' has no time zone) or
--- 'ZonedTime' (otherwise).
+-- 'ZonedTime' (otherwise). If it makes the 'LocalTime' as if the time
+-- zone was UTC.
 toTime :: Timestamp -> Either LocalTime ZonedTime
 toTime ts = maybe (Left localtime) (Right . toZT) $ timeZone ts
   where
-    localtime = undefined -- TODO
-    toZT zone = ZonedTime localtime zone
+    utctime = systemToUTCTime $ toSystemTime ts
+    localtime = utcToLocalTime LocalTime.utc utctime
+    toZT tz = utcToZonedTime tz utctime
+
+-- | Convert 'Timestamp' to 'SystemTime'. It discards 'timeZone'
+-- field.
+--
+-- >>> toSystemTime $ fromEpochMillisecond 1043221
+-- MkSystemTime {systemSeconds = 1043, systemNanoseconds = 221000000}
+-- >>> toSystemTime $ fromEpochMillisecond (-192332)
+-- MkSystemTime {systemSeconds = -193, systemNanoseconds = 668000000}
+toSystemTime :: Timestamp -> SystemTime
+toSystemTime ts = MkSystemTime sec nsec
+  where
+    epoch_time = epochTime ts
+    sec = epoch_time `div` 1000
+    nsec = fromIntegral (epoch_time `mod` 1000) * 1000000
 
 -- | Get the current system time.
 --
