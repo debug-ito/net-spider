@@ -30,6 +30,7 @@ import Control.Applicative ((<$>), (<*>), (<*), (*>), optional)
 import Data.Char (isDigit)
 import Data.Int (Int64)
 import Data.List (sortOn)
+import Data.Monoid ((<>))
 import Data.Text (Text, pack)
 import Data.Time.Calendar (Day, fromGregorian)
 import Data.Time.Clock (UTCTime)
@@ -42,6 +43,7 @@ import Data.Time.LocalTime
 import qualified Data.Time.LocalTime as LocalTime
 import qualified Text.ParserCombinators.ReadP as P
 import Text.Read (readEither)
+import Text.Printf (printf)
 
 -- | Timestamp when graph elements are observed.
 data Timestamp =
@@ -75,10 +77,24 @@ fromEpochMillisecond msec = Timestamp msec Nothing
 -- >>> showTimestamp $ fromS "2000-04-07T09:31-05:00"
 -- "2000-04-07T09:31:00.000-05:00"
 showTimestamp :: Timestamp -> Text
-showTimestamp = pack . either simpleFormat simpleFormat . toTime
+showTimestamp = pack . either simpleFormat formatZT . toTime
   where
+    dtFormat :: DTFormat.FormatTime t => String -> t -> String
+    dtFormat = DTFormat.formatTime DTFormat.defaultTimeLocale
     simpleFormat :: DTFormat.FormatTime t => t -> String
-    simpleFormat = DTFormat.formatTime DTFormat.defaultTimeLocale "%Y-%m-%dT%H:%M:%S.%03q"
+    simpleFormat = dtFormat "%Y-%m-%dT%H:%M:%S.%03q"
+    formatZT zt = simpleFormat zt <> formatZone (zonedTimeZone zt)
+    formatZone z = if timeZoneName z == ""
+                   then formatOffset $ timeZoneMinutes z
+                   else if z == LocalTime.utc
+                        then "Z"
+                        else dtFormat "%Z" z
+    formatOffset o = sign <> hour <> ":" <> minute
+      where
+        sign = if o < 0 then "-" else "+"
+        abo = abs o
+        hour = printf "%02d" (abo `div` 60)
+        minute = printf "%02d" (abo `mod` 60)
 
 -- | Show 'epochTime' of 'Timestamp' as 'Text'.
 --
