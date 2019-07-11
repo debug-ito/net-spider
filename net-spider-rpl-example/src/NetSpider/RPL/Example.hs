@@ -134,12 +134,16 @@ main = do
   (dio_nodes, dao_nodes) <- fmap (concatPairs . map (filterPairs getLatestForEachNode)) $ mapM loadFile filenames
   forM_ dio_nodes printDIONode
   forM_ dao_nodes printDAONode
-  let dio_query = (DIO.dioDefQuery [subjectNode (dio_nodes !! 0)])
-  dio_graph <- putNodes True dio_query dio_nodes
-  let dao_input = sortDAONodes dao_nodes
-      dao_query = (DAO.daoDefQuery [subjectNode (dao_input !! 0)])
-                  { timeInterval = 0 `secUpTo` foundAt (dao_input !! 0)
-                  }
-  dao_graph <- putNodes False dao_query dao_input
+  dio_graph <- if null dio_nodes
+               then return ([], [])
+               else let dio_query = (DIO.dioDefQuery [subjectNode (dio_nodes !! 0)])
+                    in putNodes True dio_query dio_nodes
+  dao_graph <- if null dao_nodes
+               then return ([], [])
+               else let dao_input = sortDAONodes dao_nodes
+                        dao_query = (DAO.daoDefQuery [subjectNode (dao_input !! 0)])
+                          { timeInterval = 0 `secUpTo` foundAt (dao_input !! 0)
+                          }
+                    in putNodes False dao_query dao_input
   let com_graph = RPL.combineGraphs dio_graph dao_graph
   TLIO.putStr $ writeGraphML com_graph
