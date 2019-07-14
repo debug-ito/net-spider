@@ -47,6 +47,7 @@ import System.IO (hPutStrLn, stderr)
 
 main :: IO ()
 main = do
+  -- Get syslog filenames from command-line arguments
   filenames <- getArgs
   
   -- Read DIO and DAO FoundNodes. It might take a long time to insert
@@ -54,13 +55,17 @@ main = do
   -- FoundNode per node into the net-spider database.
   (dio_nodes, dao_nodes) <- fmap (concatPairs . map (filterPairs getLatestForEachNode))
                             $ mapM loadFile filenames
+  hPutStrLn stderr ("---- Load done")
   forM_ dio_nodes printDIONode
   forM_ dao_nodes printDAONode
+  
   clearDB
+  -- Input DIO FoundNodes and get DIO SnapshotGraph.
   dio_graph <- if null dio_nodes
                then return ([], [])
                else let dio_query = (DIO.dioDefQuery [subjectNode (dio_nodes !! 0)])
                     in putNodes dio_query dio_nodes
+  -- Input DAO FoundNodes and get DAO SnapshotGraph.
   dao_graph <- if null dao_nodes
                then return ([], [])
                else let dao_input = sortDAONodes dao_nodes
@@ -68,7 +73,10 @@ main = do
                           { timeInterval = 0 `secUpTo` foundAt (dao_input !! 0)
                           }
                     in putNodes dao_query dao_input
+
+  -- Merge DIO and DAO SnapshotGraphs into one.
   let com_graph = RPL.combineGraphs dio_graph dao_graph
+  -- Write the merged SnapshotGraph in GraphML to stdout.
   TLIO.putStr $ writeGraphML com_graph
 
 -- | Read a Contiki-NG log file, parse it with
