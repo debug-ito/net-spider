@@ -36,8 +36,6 @@ import Data.Word (Word32)
 import NetSpider.Found (FoundNode, LinkState(..))
 import NetSpider.Graph (NodeAttributes(..), LinkAttributes(..))
 import qualified NetSpider.GraphML.Writer as GraphML
-import qualified NetSpider.Pangraph as Pan
-import NetSpider.Pangraph.Atom (toAtom, Atom)
 import qualified NetSpider.Query as Query
 import NetSpider.Snapshot (SnapshotGraph)
 import NetSpider.Unify (UnifyStdConfig, lsLinkAttributes, latestLinkSample)
@@ -78,9 +76,6 @@ instance NodeAttributes DIONode where
   parseNodeAttributes ps = DIONode
                            <$> parseOneValue "rank" ps
                            <*> parseOneValue "dio_interval" ps
-
-instance Pan.ToAttributes DIONode where
-  toAttributes = Pan.attributesFromGraphML
 
 instance GraphML.ToAttributes DIONode where
   toAttributes ln = [ ("rank", GraphML.AttrInt $ fromIntegral $ rank ln),
@@ -159,9 +154,6 @@ dioLinkState l =
     PreferredParent -> LinkToTarget
     _ -> LinkUnused
 
-instance Pan.ToAttributes DIOLink where
-  toAttributes = Pan.attributesFromGraphML
-
 instance GraphML.ToAttributes DIOLink where
   toAttributes ll = [ ("neighbor_type", GraphML.AttrString $ neighborTypeToText $ neighborType ll),
                       ("neighbor_rank", GraphML.AttrInt $ fromIntegral $ neighborRank ll)
@@ -226,9 +218,6 @@ dioUnifierConf = Unify.UnifyStdConfig
             sub_ll = lsLinkAttributes sub_link
       where
         main_ll = lsLinkAttributes main_link
-
-instance Pan.ToAttributes MergedDIOLink where
-  toAttributes = Pan.attributesFromGraphML
 
 instance GraphML.ToAttributes MergedDIOLink where
   toAttributes ml =

@@ -30,8 +30,6 @@ import Data.Maybe (listToMaybe)
 import NetSpider.Found (FoundNode)
 import NetSpider.Graph (NodeAttributes(..), LinkAttributes(..))
 import qualified NetSpider.GraphML.Writer as GraphML
-import qualified NetSpider.Pangraph as Pan
-import NetSpider.Pangraph.Atom (toAtom, Atom)
 import qualified NetSpider.Query as Query
 import NetSpider.Snapshot (SnapshotGraph)
 import NetSpider.Unify (UnifyStdConfig, lsLinkAttributes, latestLinkSample)
@@ -69,9 +67,6 @@ instance NodeAttributes DAONode where
           Just n -> [("dao_route_num", toJSON n)]
   parseNodeAttributes ps = fmap (DAONode . listToMaybe) $ parseListValues "dao_route_num" ps
 
-instance Pan.ToAttributes DAONode where
-  toAttributes = Pan.attributesFromGraphML
-
 instance GraphML.ToAttributes DAONode where
   toAttributes dn =
     case daoRouteNum dn of
@@ -102,9 +97,6 @@ instance LinkAttributes DAOLink where
       pairs = [ ("path_lifetime_sec", toJSON $ pathLifetimeSec dl)
               ]
   parseLinkAttributes ps = DAOLink <$> parseOneValue "path_lifetime_sec" ps
-
-instance Pan.ToAttributes DAOLink where
-  toAttributes = Pan.attributesFromGraphML
 
 instance GraphML.ToAttributes DAOLink where
   toAttributes dl = [ ("path_lifetime_sec", GraphML.AttrInt $ fromIntegral $ pathLifetimeSec dl) ]

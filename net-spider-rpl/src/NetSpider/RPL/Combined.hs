@@ -26,7 +26,6 @@ import Data.Maybe (isJust)
 import Data.Monoid (Monoid(..), First(..))
 import GHC.Exts (groupWith)
 import qualified NetSpider.GraphML.Writer as GraphML
-import qualified NetSpider.Pangraph as Pan
 import NetSpider.Snapshot
   ( SnapshotNode, SnapshotLink, SnapshotGraph,
     nodeId, nodeAttributes, nodeTimestamp
@@ -56,9 +55,6 @@ instance Monoid CombinedNode where
   mappend a b = a <> b
   mempty = CombinedNode Nothing Nothing
 
-instance Pan.ToAttributes CombinedNode where
-  toAttributes = Pan.attributesFromGraphML
-
 instance GraphML.ToAttributes CombinedNode where
   toAttributes cn = (GraphML.toAttributes $ attrsDIO cn)
                     ++ (GraphML.toAttributes $ attrsDAO cn)
@@ -67,9 +63,6 @@ instance GraphML.ToAttributes CombinedNode where
 data CombinedLink = CombinedDIOLink MergedDIOLink
                   | CombinedDAOLink DAOLink
                   deriving (Show,Eq,Ord)
-
-instance Pan.ToAttributes CombinedLink where
-  toAttributes = Pan.attributesFromGraphML
 
 instance GraphML.ToAttributes CombinedLink where
   toAttributes (CombinedDIOLink ll) =
