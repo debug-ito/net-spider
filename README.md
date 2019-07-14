@@ -38,6 +38,8 @@ Maintaining the graph database is delegated to [Tinkerpop Gremlin Server](http:/
 * [Snapshot graph for a specific time interval](#snapshot-graph-for-a-specific-time-interval)
 * [Multiple links between a pair of nodes](#multiple-links-between-a-pair-of-nodes)
 * [Merge local findings by end nodes of a link](#merge-local-findings-by-end-nodes-of-a-link)
+* [Note on graph database servers](#note-on-graph-database-servers)
+* [See also](#see-also)
 
 
 ## Use case
@@ -622,6 +624,11 @@ inspectSnapshot spider = do
 
 The `merger` function passed to `getSnapshot` via `unifyStd`. Note that you need to set `negatesLinkSample` field in `UnifyStdConfig`, because setting `merger` to it is a polymorphic update. The result `SnapshotLink` has `SignalStrengths` type as its link attributes, which contains the signal strengths observed at both of the end nodes.
 
+## Note on graph database servers
+
+Sometimes you have to take care of configurations specific to the graph database server you use.
+
+- [Configuration of JanusGraph](https://github.com/debug-ito/net-spider/wiki/Configuration-of-JanusGraph): Configuration guide for JanusGraph.
 
 
 ## See also
