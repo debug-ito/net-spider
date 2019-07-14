@@ -4,7 +4,11 @@
 -- Description: Serialize a Snapshot graph into GraphML format.
 -- Maintainer: Toshio Ito <debug.ito@gmail.com>
 --
--- http://graphml.graphdrawing.org/primer/graphml-primer.html
+-- This module defines tools to serialize a 'SnapshotGraph' into
+-- [GraphML](http://graphml.graphdrawing.org/primer/graphml-primer.html)
+-- format.
+--
+-- @since 0.3.1.0
 module NetSpider.GraphML.Writer
   ( -- * Functions
     writeGraphML,

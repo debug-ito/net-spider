@@ -1,5 +1,18 @@
 # Revision history for net-spider
 
+## 0.3.1.0  -- 2019-XX-YY
+
+* Add `GraphML.Writer` module.
+
+### Snapshot module
+
+* Add `SnapshotGraph` type synonym.
+
+### Timestamp module
+
+* Add `toTime`, `toSystemTime` and `showTimestamp` functions.
+
+
 ## 0.3.0.0  -- 2019-05-03
 
 * Export `Snapshot.Internal` module. This module is only for internal

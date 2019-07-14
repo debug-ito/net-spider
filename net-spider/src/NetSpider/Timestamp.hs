@@ -76,6 +76,8 @@ fromEpochMillisecond msec = Timestamp msec Nothing
 -- "2016-11-30T22:03:00.034+09:00"
 -- >>> showTimestamp $ fromS "2000-04-07T09:31-05:00"
 -- "2000-04-07T09:31:00.000-05:00"
+--
+-- @since 0.3.1.0
 showTimestamp :: Timestamp -> Text
 showTimestamp = pack . either simpleFormat formatZT . toTime
   where
@@ -105,6 +107,8 @@ showEpochTime = pack . show . epochTime
 -- | Convert to 'LocalTime' (if the 'Timestamp' has no time zone) or
 -- 'ZonedTime' (otherwise). If it makes the 'LocalTime' as if the time
 -- zone was UTC.
+--
+-- @since 0.3.1.0
 toTime :: Timestamp -> Either LocalTime ZonedTime
 toTime ts = maybe (Left localtime) (Right . toZT) $ timeZone ts
   where
@@ -119,6 +123,8 @@ toTime ts = maybe (Left localtime) (Right . toZT) $ timeZone ts
 -- MkSystemTime {systemSeconds = 1043, systemNanoseconds = 221000000}
 -- >>> toSystemTime $ fromEpochMillisecond (-192332)
 -- MkSystemTime {systemSeconds = -193, systemNanoseconds = 668000000}
+--
+-- @since 0.3.1.0
 toSystemTime :: Timestamp -> SystemTime
 toSystemTime ts = MkSystemTime sec nsec
   where

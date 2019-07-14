@@ -22,6 +22,8 @@ import NetSpider.Pair (Pair(..))
 import NetSpider.Timestamp (Timestamp)
 
 -- | The snapshot graph, which is a collection nodes and links.
+--
+-- @since 0.3.1.0
 type SnapshotGraph n na la = ([SnapshotNode n na], [SnapshotLink n la])
 
 -- | A link in the snapshot graph.
