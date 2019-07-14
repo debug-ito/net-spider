@@ -622,6 +622,15 @@ inspectSnapshot spider = do
 
 The `merger` function passed to `getSnapshot` via `unifyStd`. Note that you need to set `negatesLinkSample` field in `UnifyStdConfig`, because setting `merger` to it is a polymorphic update. The result `SnapshotLink` has `SignalStrengths` type as its link attributes, which contains the signal strengths observed at both of the end nodes.
 
+
+
+## See also
+
+- [net-spider](http://hackage.haskell.org/package/net-spider): net-spider core package.
+- [net-spider-rpl](http://hackage.haskell.org/package/net-spider-rpl): net-spider data model for RPL ([RFC 6550 - RPL: IPv6 Routing Protocol for Low-Power and Lossy Networks](https://tools.ietf.org/html/rfc6550))
+- [net-spider-pangraph](http://hackage.haskell.org/package/net-spider-pangraph): Conversion between net-spider and [pangraph](https://hackage.haskell.org/package/pangraph).
+
+
 ## Author
 
 Toshio Ito <debug.ito@gmail.com>
