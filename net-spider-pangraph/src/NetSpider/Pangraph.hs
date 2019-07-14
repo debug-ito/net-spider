@@ -142,5 +142,7 @@ writePangraph :: P.Pangraph -> FilePath -> IO ()
 writePangraph p file = BS.writeFile file $ GraphML.write p
 
 -- | Make Pangraph attributes from GraphML's attributes.
+--
+-- @since 0.1.1.0
 attributesFromGraphML :: NGraphML.ToAttributes a => a -> [Attribute]
 attributesFromGraphML = toAttributes . NGraphML.toAttributes
