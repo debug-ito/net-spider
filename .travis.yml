@@ -109,9 +109,9 @@ matrix:
 
   ## pangraph-0.2.1 does not support lts-13 https://github.com/tuura/pangraph/issues/38
 
-  #- env: BUILD=stack ARGS="--resolver lts-13"
-  #  compiler: ": #stack 8.6.3"
-  #  addons: {apt: {packages: [libgmp-dev]}}
+  - env: BUILD=stack ARGS="--resolver lts-13" NO_PAN=1
+    compiler: ": #stack 8.6.3"
+    addons: {apt: {packages: [libgmp-dev]}}
 
   # Nightly builds are allowed to fail
   - env: BUILD=stack ARGS="--resolver nightly"
@@ -224,7 +224,8 @@ script:
   set -ex
   case "$BUILD" in
     stack)
-      stack --no-terminal $ARGS test --bench --no-run-benchmarks --haddock --no-haddock-deps
+      if [ "x$NO_PAN" = "x" ]; then export TARGET="" ; else export TARGET=$(find -maxdepth 1 -type d | grep -v '^\./\.' | grep -v 'pangraph'); fi
+      stack --no-terminal $ARGS test --bench --no-run-benchmarks --haddock --no-haddock-deps $TARGET
       ;;
     cabal)
       cabal install --enable-tests --enable-benchmarks --force-reinstalls --ghc-options=-O0 --reorder-goals --max-backjumps=-1 $CABALARGS $PACKAGES
