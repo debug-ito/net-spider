@@ -1,6 +1,6 @@
 # Revision history for net-spider-pangraph
 
-## 0.1.1.0  -- 2019-XX-YY
+## 0.1.1.0  -- 2019-07-15
 
 * Add `attributesFromGraphML` function.
 * Add `ToAtom` instance to `NetSpider.GraphML.Writer.AttributeValue`.
