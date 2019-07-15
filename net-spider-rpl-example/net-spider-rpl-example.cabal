@@ -51,4 +51,4 @@ executable net-spider-rpl-example
 
 source-repository head
   type:                 git
---  location:             
+  location:             https://github.com/debug-ito/net-spider.git
