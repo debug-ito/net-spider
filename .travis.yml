@@ -203,7 +203,7 @@ install:
 
       # Build the dependencies
       
-      if [ "x$NO_PAN" = "x" ]; then export TARGETS="" ; else export TARGETS=$(find -maxdepth 1 -type d | grep -v '^\./\.' | grep -v 'pangraph'); fi
+      if [ "x$NO_PAN" = "x" ]; then export TARGETS="" ; else export TARGETS=$(find -maxdepth 1 -type d | sed s@\./@@ | grep -v '^\.' | grep -v pangraph); fi
 
       stack --no-terminal --install-ghc $ARGS test --bench --only-dependencies $TARGETS
       ;;
