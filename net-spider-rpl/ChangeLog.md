@@ -1,6 +1,6 @@
 # Revision history for net-spider-rpl
 
-## 0.2.0.0  -- 2019-XX-YY
+## 0.2.0.0  -- 2019-07-15
 
 * [BREAKING CHANGE] Type class instances from net-spider-pangraph are
   removed. This is because
