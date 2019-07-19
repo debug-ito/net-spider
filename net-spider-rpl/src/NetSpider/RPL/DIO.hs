@@ -14,6 +14,7 @@ module NetSpider.RPL.DIO
     dioLinkState,
     MergedDIOLink(..),
     Rank,
+    TrickleInterval,
     NeighborType(..),
     neighborTypeToText,
     neighborTypeFromText,
