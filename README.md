@@ -85,11 +85,13 @@ By default, it accepts WebSocket connections at port 8182.
 Then in your application, connect to the server and get `Spider` object.
 
 ```haskell basic
+import qualified Data.Text.Lazy.IO as TLIO
 import NetSpider.Pair (Pair(..))
 import NetSpider.Spider
   (Spider, connectWS, close, addFoundNode, clearAll, getSnapshotSimple)
 import NetSpider.Found
   (FoundNode(..), FoundLink(..), LinkState(LinkBidirectional))
+import NetSpider.GraphML.Writer (writeGraphML)
 import NetSpider.Timestamp (fromS)
 import NetSpider.Snapshot
   (nodeId, nodeTimestamp, linkNodePair, linkTimestamp)
@@ -165,7 +167,8 @@ So, by combining these local findings, we can infer the network topology is like
 The above graph can be obtained by `getSnapshotSimple` function. This function retrieves the snapshot graph that is supposed to be the latest state of the network.
 
 ```haskell basic
-  (raw_nodes, raw_links) <- getSnapshotSimple spider "switch1"
+  got_graph <- getSnapshotSimple spider "switch1"
+  let (raw_nodes, raw_links) = got_graph
 ```
 
 The snapshot graph is expressed as lists of `SnapshotNode`s and `SnapshotLink`s. They are independent of each other, so it is easy to render the graph using, for example, [graphviz](http://graphviz.org/).
@@ -192,6 +195,15 @@ The snapshot graph is expressed as lists of `SnapshotNode`s and `SnapshotLink`s.
                                        fromS "2018-08-20T13:00:22"
                                      ]
 ```
+
+With [NetSpider.GraphML.Writer module](http://hackage.haskell.org/package/net-spider/docs/NetSpider-GraphML-Writer.html), you can format the snapshot graph into [GraphML](http://graphml.graphdrawing.org/).
+
+```haskell basic
+  TLIO.putStrLn $ writeGraphML got_graph
+```
+
+GraphML is a popular file format for attribute graphs. Graph visualizer/manipulator software, such as [Cytoscape](https://cytoscape.org/) and [Gephi](https://gephi.org/), can read it.
+
 
 ## The Spider type
 
