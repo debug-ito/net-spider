@@ -30,6 +30,10 @@
 -- * "NetSpider.Graph"
 -- * "NetSpider.Snapshot"
 --
+-- == Formatter
+--
+-- * "NetSpider.GraphML.Writer": Write a SnapshotGraph in GraphML format.
+--
 -- == Utility
 --
 -- * "NetSpider.Pair"

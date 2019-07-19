@@ -63,9 +63,11 @@ import NetSpider.Timestamp
 -- | Node ID in GraphML.
 type NodeID = Text
 
+-- | Type that can be converted to 'NodeID'.
 class ToNodeID a where
   toNodeID :: a -> NodeID
 
+-- | Make a 'NodeID' by calling 'show'.
 nodeIDByShow :: Show a => a -> NodeID
 nodeIDByShow = pack . show
 
@@ -366,6 +368,8 @@ writeGraphML :: (ToNodeID n, ToAttributes na, ToAttributes la)
              -> TL.Text
 writeGraphML = writeGraphMLWith defWriteOption
 
+-- | Show the 'SnapshotGraph' into GraphML format. 'WriteOption'
+-- controls the conversion.
 writeGraphMLWith :: (ToNodeID n, ToAttributes na, ToAttributes la)
                  => WriteOption
                  -> SnapshotGraph n na la
