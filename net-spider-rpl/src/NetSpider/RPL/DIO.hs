@@ -56,6 +56,8 @@ type Rank = Word
 
 -- | The interval of Trickle timer as decribed as number of doublings
 -- of the minimum interval, i.e. log2(I / Imin).
+--
+-- @since 0.2.1.0
 type TrickleInterval = Word
 
 -- | Node attributes about DIO.
