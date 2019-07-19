@@ -1,5 +1,9 @@
 # Revision history for net-spider
 
+## 0.3.1.1  -- 2019-07-19
+
+* Add documentation about `GraphML.Writer` module.
+
 ## 0.3.1.0  -- 2019-07-15
 
 * Add `GraphML.Writer` module.
