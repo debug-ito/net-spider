@@ -1,5 +1,13 @@
 # Revision history for net-spider-rpl
 
+## 0.2.1.0  -- 2019-07-19
+
+### DIO module
+
+* Export `TrickleInterval` type synonym. It should have been exported
+  in the first place.
+
+
 ## 0.2.0.0  -- 2019-07-15
 
 * [BREAKING CHANGE] Type class instances from net-spider-pangraph are
