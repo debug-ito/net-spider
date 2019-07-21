@@ -21,7 +21,9 @@ library
   -- other-extensions:     
   exposed-modules:      NetSpider.CLI
   -- other-modules:        
-  build-depends:        base
+  build-depends:        base,
+                        net-spider,
+                        optparse-applicative
 
 -- executable net-spider-cli
 --   default-language:     Haskell2010
