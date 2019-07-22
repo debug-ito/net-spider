@@ -47,6 +47,16 @@ test-suite spec
   build-depends:        base, net-spider-cli,
                         hspec
 
+test-suite doctest
+  type:                 exitcode-stdio-1.0
+  default-language:     Haskell2010
+  hs-source-dirs:       test
+  ghc-options:          -Wall -fno-warn-unused-imports "-with-rtsopts=-M512m"
+  main-is:              DocTest.hs
+  build-depends:        base,
+                        doctest >=0.13 && <0.17,
+                        doctest-discover >=0.1.0.7 && <0.3
+
 source-repository head
   type:                 git
 --  location:             

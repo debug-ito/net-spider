@@ -4,12 +4,17 @@
 -- Maintainer: Toshio Ito <debug.ito@gmail.com>
 -- 
 module NetSpider.CLI
-       (parserSnapshotQuery) where
+       ( parserSnapshotQuery,
+         Config,
+         nodeIDParser,
+         parseTimeIntervalEnd,
+         IntervalEnd
+       ) where
 
 import Control.Applicative ((<$>), (<*>), many)
 import Data.Monoid (mconcat)
 import qualified NetSpider.Query as Q
-import NetSpider.Timestamp (Timestamp)
+import NetSpider.Timestamp (Timestamp, parseTimestamp)
 import qualified Options.Applicative as Opt
 
 -- | Configuration for parsers.
@@ -39,13 +44,51 @@ parserSnapshotQuery conf basis = fmap fromParsedElement the_parser
 
 type ErrorMsg = String
 
--- TODO: time intervalじゃなくて、上限と下限を別オプションにするほうが
--- 使いやすいか？その場合、inclusiveかexclusiveかはどう表現するか？ =とかつけるか？
+-- | Upper or lower end of 'Q.Interval'. The 'Bool' field is 'True'
+-- if the end is inclusive.
+type IntervalEnd a = (Q.Extended a, Bool)
 
--- | Parse a 'String' into a time interval.
+-- | Parse the 'String' into an end of time interval.
 --
--- >>> parseTimeInterval "[2019-10-09T12:03:22, 2019-10-09T13:05:33.231]"
--- TODO
--- >>> parseTimeInterval "(2019-10-09T12:03:22, 2019-10-09T13:05:33.231]"
-parseTimeInterval :: String -> Either ErrorMsg (Q.Interval Timestamp)
-parseTimeInterval = undefined
+-- If the 'String' is prefixed with \'i\', the end is inclusive. If
+-- the prefix is \'x\', the end is exclusive. Without such prefix,
+-- the end is inclusive by default.
+--
+-- Timestamp is parsed by 'parseTimestamp'. Positive infinity is
+-- expressed as \'+inf\' (note that \'+\' is mandatory), and
+-- negative infinity as \'-inf\'.
+--
+-- >>> parseTimeIntervalEnd "2019-10-09T12:03:22"
+-- Right (Finite (Timestamp {epochTime = 1570622602000, timeZone = Nothing}),True)
+-- >>> parseTimeIntervalEnd "i2019-10-09T12:03:22"
+-- Right (Finite (Timestamp {epochTime = 1570622602000, timeZone = Nothing}),True)
+-- >>> parseTimeIntervalEnd "x2019-10-09T12:03:22"
+-- Right (Finite (Timestamp {epochTime = 1570622602000, timeZone = Nothing}),False)
+-- >>> parseTimeIntervalEnd "+inf"
+-- Right (PosInf,True)
+-- >>> parseTimeIntervalEnd "i+inf"
+-- Right (PosInf,True)
+-- >>> parseTimeIntervalEnd "x+inf"
+-- Right (PosInf,False)
+-- >>> parseTimeIntervalEnd "-inf"
+-- Right (NegInf,True)
+-- >>> parseTimeIntervalEnd "i-inf"
+-- Right (NegInf,True)
+-- >>> parseTimeIntervalEnd "x-inf"
+-- Right (NegInf,False)
+parseTimeIntervalEnd :: String -> Either ErrorMsg (IntervalEnd Timestamp)
+parseTimeIntervalEnd input = do
+  (is_inclusive, value_part) <- parseInclusive input
+  value <- parseValue value_part
+  return (value, is_inclusive)
+  where
+    parseInclusive "" = Left "Input is empty."
+    parseInclusive ('i' : rest) = Right (True, rest)
+    parseInclusive ('x' : rest) = Right (False, rest)
+    parseInclusive s = Right (True, s)
+    parseValue "+inf" = Right Q.PosInf
+    parseValue "-inf" = Right Q.NegInf
+    parseValue s = maybe (Left err_msg) (Right . Q.Finite) $ parseTimestamp s
+      where
+        err_msg = "Cannot parse into Timestamp: " ++ s
+
