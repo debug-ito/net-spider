@@ -13,6 +13,7 @@ module NetSpider.CLI
 import Control.Applicative ((<$>), (<*>), many)
 import Data.Monoid (mconcat)
 import qualified NetSpider.Query as Q
+import qualified NetSpider.Spider.Config as SConf
 import NetSpider.Timestamp (Timestamp, parseTimestamp)
 import qualified Options.Applicative as Opt
 
@@ -26,7 +27,7 @@ data Config n na fla sla =
     -- ^ Basis for queries for SnapshotGraph
   }
 
--- | Command-line parser for 'Q.Query'.
+-- | Command-line option parser for 'Q.Query'.
 parserSnapshotQuery :: Config n na fla sla
                     -> Opt.Parser (Q.Query n na fla sla)
 parserSnapshotQuery conf = fmap fromParsedElement the_parser
@@ -129,3 +130,12 @@ parseTimeIntervalEnd input = do
       where
         err_msg = "Cannot parse into Timestamp: " ++ s
 
+-- | Command-line option parser for 'SConf.Config' of 'Spider'.
+parserSpiderConfig :: Opt.Parser (SConf.Config n na fla)
+parserSpiderConfig =
+  SConf.Config <$> host <*> port <*> node_id_key <*> log_thresh
+  where
+    host = undefined
+    port = undefined
+    node_id_key = undefined
+    log_thresh = undefined
