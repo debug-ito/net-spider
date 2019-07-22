@@ -39,8 +39,32 @@ parserSnapshotQuery conf basis = fmap fromParsedElement the_parser
                     Opt.metavar "NODE-ID"
                   ]
     pTimeInterval = makeInterval <$> pTimeLower <*> pTimeUpper
-    pTimeLower = undefined -- TODO
-    pTimeUpper = undefined -- TODO
+    pTimeLower = Opt.option (Opt.eitherReader parseTimeIntervalEnd) $ mconcat
+                 [ Opt.short 'f',
+                   Opt.long "time-from",
+                   Opt.help ( "Lower bound of query timestamp. "
+                              ++ "Local findings with timestamp newer than this value are used to create the snapshot graph. "
+                              ++ "ISO 8601 format is used for timestamps (e.g. `2019-03-22T10:20:12+09:00`). "
+                              ++ "The timezone is optional. "
+                              ++ "By default, the lower bound is inclusive. "
+                              ++ "Add prefix 'x' to make it exclusive (e.g. `x2019-03-22T10:20:12+09:00`). "
+                              ++ "Prefix of 'i' explicitly mark the lower bound is inclusive. "
+                              ++ "Special value `x-inf` indicates there is no lower bound. " 
+                              ++ "Default: x-inf"),
+                   Opt.metavar "TIMESTAMP",
+                   Opt.value (Q.NegInf, False)
+                 ]
+    pTimeUpper = Opt.option (Opt.eitherReader parseTimeIntervalEnd) $ mconcat
+                 [ Opt.short 't',
+                   Opt.long "time-to",
+                   Opt.help ( "Upper bound of query timestamp. "
+                              ++ "Local findings with timestamp older than this value are used to create the snapshot graph. "
+                              ++ "See --time-from for format of timestamps. "
+                              ++ "Special value `x+inf` indicates there is no upper bound. " 
+                              ++ "Default: x+inf"),
+                   Opt.metavar "TIMESTAMP",
+                   Opt.value (Q.PosInf, False)
+                 ]
 
 type ErrorMsg = String
 
