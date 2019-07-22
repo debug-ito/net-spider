@@ -5,8 +5,7 @@
 -- 
 module NetSpider.CLI
        ( parserSnapshotQuery,
-         Config,
-         nodeIDParser,
+         Config(..),
          parseTimeIntervalEnd,
          IntervalEnd
        ) where
@@ -17,18 +16,22 @@ import qualified NetSpider.Query as Q
 import NetSpider.Timestamp (Timestamp, parseTimestamp)
 import qualified Options.Applicative as Opt
 
--- | Configuration for parsers.
-data Config n na sla =
+-- | Configuration for CLI.
+data Config n na fla sla =
   Config
-  { nodeIDParser :: Opt.ReadM n
+  { nodeIDParser :: Opt.ReadM n,
+    -- ^ Parser that reads an command-line option to generate a node
+    -- ID.
+    basisSnapshotQuery :: Q.Query n na fla sla
+    -- ^ Basis for queries for SnapshotGraph
   }
 
 -- | Command-line parser for 'Q.Query'.
-parserSnapshotQuery :: Config n na sla
-                    -> Q.Query n na fla sla -- ^ Basis for the query.
+parserSnapshotQuery :: Config n na fla sla
                     -> Opt.Parser (Q.Query n na fla sla)
-parserSnapshotQuery conf basis = fmap fromParsedElement the_parser
+parserSnapshotQuery conf = fmap fromParsedElement the_parser
   where
+    basis = basisSnapshotQuery conf
     fromParsedElement (sf, ti) = basis { Q.startsFrom = sf, Q.timeInterval = ti }
     the_parser = (,) <$> pStartsFrom <*> pTimeInterval
     rNodeID = nodeIDParser conf
