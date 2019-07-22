@@ -29,9 +29,7 @@ parserSnapshotQuery :: Config n na sla
                     -> Opt.Parser (Q.Query n na fla sla)
 parserSnapshotQuery conf basis = fmap fromParsedElement the_parser
   where
-    fromParsedElement (sf, m_ti) =
-      let q = basis { Q.startsFrom = sf }
-      in maybe q (\ti -> q { Q.timeInterval = ti } ) m_ti
+    fromParsedElement (sf, ti) = basis { Q.startsFrom = sf, Q.timeInterval = ti }
     the_parser = (,) <$> pStartsFrom <*> pTimeInterval
     rNodeID = nodeIDParser conf
     pStartsFrom = many $ Opt.option rNodeID $ mconcat
@@ -40,13 +38,25 @@ parserSnapshotQuery conf basis = fmap fromParsedElement the_parser
                     Opt.help "ID of a node from which the Spider starts traversing the history graph. You can specify this option multiple times.",
                     Opt.metavar "NODE-ID"
                   ]
-    pTimeInterval = undefined -- TODO
+    pTimeInterval = makeInterval <$> pTimeLower <*> pTimeUpper
+    pTimeLower = undefined -- TODO
+    pTimeUpper = undefined -- TODO
 
 type ErrorMsg = String
 
 -- | Upper or lower end of 'Q.Interval'. The 'Bool' field is 'True'
 -- if the end is inclusive.
 type IntervalEnd a = (Q.Extended a, Bool)
+
+makeInterval :: Ord a => IntervalEnd a -> IntervalEnd a -> Q.Interval a
+makeInterval (lv, li) (uv, ui) = construct lv uv
+  where
+    construct = 
+      case (li, ui) of
+        (True, True) -> (Q.<=..<=)
+        (False, True) -> (Q.<..<=)
+        (True, False) -> (Q.<=..<)
+        (False, False) -> (Q.<..<)
 
 -- | Parse the 'String' into an end of time interval.
 --
