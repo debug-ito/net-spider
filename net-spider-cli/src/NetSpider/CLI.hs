@@ -5,7 +5,8 @@
 -- Maintainer: Toshio Ito <debug.ito@gmail.com>
 -- 
 module NetSpider.CLI
-       ( parserSnapshotQuery,
+       ( parserSpiderConfig,
+         parserSnapshotQuery,
          Config(..),
          parseTimeIntervalEnd,
          IntervalEnd
@@ -157,4 +158,14 @@ parserSpiderConfig =
                     Opt.value "@node_id",
                     Opt.showDefault
                   ]
-    log_thresh = undefined
+    log_thresh = fmap (logLevelFromVerbosity . length) $ many $ Opt.flag' () $ mconcat
+                 [ Opt.short 'v',
+                   Opt.long "verbose",
+                   Opt.help "Verbose log output. Specify multiple times to make it more verbose."
+                 ]
+
+logLevelFromVerbosity :: Int -> SConf.LogLevel
+logLevelFromVerbosity 2 = SConf.LevelDebug
+logLevelFromVerbosity 1 = SConf.LevelInfo
+logLevelFromVerbosity _ = SConf.LevelWarn
+
