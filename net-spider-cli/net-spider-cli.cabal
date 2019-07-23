@@ -21,7 +21,8 @@ library
   -- other-extensions:     
   exposed-modules:      NetSpider.CLI,
                         NetSpider.CLI.Spider,
-                        NetSpider.CLI.Command
+                        NetSpider.CLI.Command,
+                        NetSpider.CLI.Exec
   -- other-modules:        
   build-depends:        base,
                         net-spider,

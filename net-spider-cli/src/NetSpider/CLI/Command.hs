@@ -8,6 +8,7 @@ module NetSpider.CLI.Command
   ( -- * Top-level parser
     parserCommand,
     Config(..),
+    Command(..),
     -- * \"snapshot\" query
     parserSnapshotQuery,
     -- * Option parsers
