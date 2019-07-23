@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings, StrictData #-}
 -- |
 -- Module: NetSpider.CLI
 -- Description:
@@ -135,7 +136,25 @@ parserSpiderConfig :: Opt.Parser (SConf.Config n na fla)
 parserSpiderConfig =
   SConf.Config <$> host <*> port <*> node_id_key <*> log_thresh
   where
-    host = undefined
-    port = undefined
-    node_id_key = undefined
+    host = Opt.strOption $ mconcat
+           [ Opt.long "host",
+             Opt.help "Hostname or address of Gremlin Server",
+             Opt.metavar "HOSTNAME",
+             Opt.value "localhost",
+             Opt.showDefault
+           ]
+    port = Opt.option Opt.auto $ mconcat
+           [ Opt.long "port",
+             Opt.help "Port number of Gremlin Server WebSocket endpoint",
+             Opt.metavar "PORT",
+             Opt.value 8182,
+             Opt.showDefault
+           ]
+    node_id_key = Opt.strOption $ mconcat
+                  [ Opt.long "node-id-key",
+                    Opt.help "Name of vertex attriute that stores Node ID.",
+                    Opt.metavar "KEY",
+                    Opt.value "@node_id",
+                    Opt.showDefault
+                  ]
     log_thresh = undefined
