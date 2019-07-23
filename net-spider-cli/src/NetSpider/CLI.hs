@@ -5,14 +5,17 @@
 -- Maintainer: Toshio Ito <debug.ito@gmail.com>
 -- 
 module NetSpider.CLI
-       ( parserSpiderConfig,
+       ( parserCommand,
+         Command(..),
+         parserSpiderConfig,
          parserSnapshotQuery,
          Config(..),
          parseTimeIntervalEnd,
-         IntervalEnd
+         IntervalEnd,
+         SpiderConfig
        ) where
 
-import Control.Applicative ((<$>), (<*>), many)
+import Control.Applicative ((<$>), (<*>), many, pure)
 import Data.Monoid (mconcat)
 import qualified NetSpider.Query as Q
 import qualified NetSpider.Spider.Config as SConf
@@ -20,17 +23,42 @@ import NetSpider.Timestamp (Timestamp, parseTimestamp)
 import qualified Options.Applicative as Opt
 
 -- | Configuration for CLI.
-data Config n na fla sla =
+data Config n na fla sla i =
   Config
   { nodeIDParser :: Opt.ReadM n,
     -- ^ Parser that reads an command-line option to generate a node
     -- ID.
-    basisSnapshotQuery :: Q.Query n na fla sla
+    basisSnapshotQuery :: Q.Query n na fla sla,
     -- ^ Basis for queries for SnapshotGraph
+    inputParser :: Opt.Parser i
+    -- ^ Command-line parser for \"input\" command, yielding
+    -- user-defined option type @i@.
   }
 
+-- | 'SConf.Config' of the Spider.
+type SpiderConfig = SConf.Config
+
+-- | Subcommand specified in CLI.
+data Command n na fla sla i =
+    CmdClean
+  | CmdSnapshot (Q.Query n na fla sla)
+  | CmdInput i
+
+-- | Top-level command-line parser.
+parserCommand :: Config n na fla sla i -> Opt.Parser (SpiderConfig n na fla, Command n na fla sla i)
+parserCommand conf = (,) <$> parserSpiderConfig <*> pCommand
+  where
+    pCommand = Opt.hsubparser $ mconcat
+               [ Opt.command "clean"
+                 $ Opt.info (pure CmdClean) (Opt.progDesc "Clean all the content in the database."),
+                 Opt.command "snapshot"
+                 $ Opt.info (fmap CmdSnapshot $ parserSnapshotQuery conf) (Opt.progDesc "Get a SnapshotGraph from the database."),
+                 Opt.command "input"
+                 $ Opt.info (fmap CmdInput $ inputParser conf) (Opt.progDesc "Input local findings to the database.")
+               ]
+
 -- | Command-line option parser for 'Q.Query'.
-parserSnapshotQuery :: Config n na fla sla
+parserSnapshotQuery :: Config n na fla sla i
                     -> Opt.Parser (Q.Query n na fla sla)
 parserSnapshotQuery conf = fmap fromParsedElement the_parser
   where
@@ -133,7 +161,7 @@ parseTimeIntervalEnd input = do
         err_msg = "Cannot parse into Timestamp: " ++ s
 
 -- | Command-line option parser for 'SConf.Config' of 'Spider'.
-parserSpiderConfig :: Opt.Parser (SConf.Config n na fla)
+parserSpiderConfig :: Opt.Parser (SpiderConfig n na fla)
 parserSpiderConfig =
   SConf.Config <$> host <*> port <*> node_id_key <*> log_thresh
   where
