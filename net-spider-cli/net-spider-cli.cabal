@@ -19,7 +19,9 @@ library
   ghc-options:          -Wall -fno-warn-unused-imports
   default-extensions:   OverloadedStrings, StrictData
   -- other-extensions:     
-  exposed-modules:      NetSpider.CLI
+  exposed-modules:      NetSpider.CLI,
+                        NetSpider.CLI.Spider,
+                        NetSpider.CLI.Command
   -- other-modules:        
   build-depends:        base,
                         net-spider,
