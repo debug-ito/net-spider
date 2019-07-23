@@ -25,7 +25,8 @@ library
   -- other-modules:        
   build-depends:        base,
                         net-spider,
-                        optparse-applicative
+                        optparse-applicative,
+                        safe-exceptions
 
 -- executable net-spider-cli
 --   default-language:     Haskell2010
