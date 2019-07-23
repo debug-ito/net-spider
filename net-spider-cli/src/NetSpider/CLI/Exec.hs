@@ -16,14 +16,14 @@ import NetSpider.CLI.Spider
   ( SpiderConfig, clearDatabase
   )
 import NetSpider.CLI.Command
-  ( Command(..), parserCommand, Config
+  ( Command(..), parserCommand, Config(..)
   )
 
 -- | The main routine controlled by the given 'Config'.
 mainBy :: Config n na fla sla i -> IO ()
 mainBy conf = do
   (sconf, cmd) <- Opt.execParser $ Opt.info (parserCommand conf) info_mod
-  execCommand sconf cmd
+  execCommand conf sconf cmd
   where
     info_mod = mconcat
                [ Opt.fullDesc,
@@ -31,7 +31,7 @@ mainBy conf = do
                ]
 
 -- | Execute the 'Command' obtained from CLI.
-execCommand :: SpiderConfig n na fla -> Command n na fla sla i -> IO ()
-execCommand conf CmdClean = clearDatabase conf
-execCommand conf (CmdSnapshot query) = undefined -- TODO
-execCommand conf (CmdInput input) = undefined -- TODO
+execCommand :: Config n na fla sla i -> SpiderConfig n na fla -> Command n na fla sla i -> IO ()
+execCommand _ sconf CmdClean = clearDatabase sconf
+execCommand _ sconf (CmdSnapshot query) = undefined -- TODO
+execCommand conf sconf (CmdInput input) = inputHandler conf sconf input

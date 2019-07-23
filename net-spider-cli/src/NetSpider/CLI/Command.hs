@@ -34,9 +34,11 @@ data Config n na fla sla i =
     -- ID.
     basisSnapshotQuery :: Q.Query n na fla sla,
     -- ^ Basis for queries for SnapshotGraph
-    inputParser :: Opt.Parser i
+    inputParser :: Opt.Parser i,
     -- ^ Command-line parser for \"input\" command, yielding
     -- user-defined option type @i@.
+    inputHandler :: SpiderConfig n na fla -> i -> IO ()
+    -- ^ Action executed by \"input\" command.
   }
 
 -- | Subcommand specified in CLI.
