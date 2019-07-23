@@ -9,18 +9,27 @@ module NetSpider.CLI.Exec
     execCommand
   ) where
 
+import qualified Data.Text.Lazy.IO as TLIO
+import Data.Aeson (ToJSON)
+import Data.Hashable (Hashable)
+import Data.Greskell.GraphSON (FromGraphSON)
 import Data.Monoid (mconcat)
+import NetSpider.Graph (LinkAttributes, NodeAttributes)
+import NetSpider.GraphML.Writer (writeGraphML, ToNodeID, ToAttributes)
+import NetSpider.Spider (getSnapshot)
 import qualified Options.Applicative as Opt
 
 import NetSpider.CLI.Spider
-  ( SpiderConfig, clearDatabase
+  ( SpiderConfig, clearDatabase, withSpider
   )
 import NetSpider.CLI.Command
   ( Command(..), parserCommand, Config(..)
   )
 
 -- | The main routine controlled by the given 'Config'.
-mainBy :: Config n na fla sla i -> IO ()
+mainBy :: (FromGraphSON n, ToJSON n, Ord n, Hashable n, Show n, LinkAttributes fla, NodeAttributes na, ToNodeID n, ToAttributes na, ToAttributes sla)
+       => Config n na fla sla i
+       -> IO ()
 mainBy conf = do
   (sconf, cmd) <- Opt.execParser $ Opt.info (parserCommand conf) info_mod
   execCommand conf sconf cmd
@@ -31,7 +40,13 @@ mainBy conf = do
                ]
 
 -- | Execute the 'Command' obtained from CLI.
-execCommand :: Config n na fla sla i -> SpiderConfig n na fla -> Command n na fla sla i -> IO ()
+execCommand :: (FromGraphSON n, ToJSON n, Ord n, Hashable n, Show n, LinkAttributes fla, NodeAttributes na, ToNodeID n, ToAttributes na, ToAttributes sla)
+            => Config n na fla sla i
+            -> SpiderConfig n na fla
+            -> Command n na fla sla i
+            -> IO ()
 execCommand _ sconf CmdClean = clearDatabase sconf
-execCommand _ sconf (CmdSnapshot query) = undefined -- TODO
+execCommand _ sconf (CmdSnapshot query) = withSpider sconf $ \sp -> do
+  graph <- getSnapshot sp query
+  TLIO.putStrLn $ writeGraphML graph -- TODO: add option to select output format.
 execCommand conf sconf (CmdInput input) = inputHandler conf sconf input
