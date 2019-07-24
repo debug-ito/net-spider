@@ -51,9 +51,10 @@ test-suite spec
   main-is:              Spec.hs
   default-extensions:   OverloadedStrings, StrictData
   -- other-extensions:     
-  -- other-modules:        NetSpider.CLISpec
-  build-depends:        base, net-spider-cli,
+  other-modules:        NetSpider.CLI.SpiderSpec
+  build-depends:        base, net-spider-cli, net-spider, optparse-applicative,
                         hspec
+                        
 
 test-suite doctest
   type:                 exitcode-stdio-1.0
