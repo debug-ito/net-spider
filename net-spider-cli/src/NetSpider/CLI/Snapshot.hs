@@ -13,7 +13,7 @@ import Control.Applicative ((<$>), (<*>), many)
 import qualified NetSpider.Query as Q
 import qualified Options.Applicative as Opt
 
-import NetSpider.CLI.Timestamp (makeInterval, parseTimeIntervalEnd)
+import NetSpider.CLI.Timestamp (makeInterval, readTimeIntervalEnd)
 
 -- | Configuration for makign Snapshot queries.
 data Config n na fla sla =
@@ -42,7 +42,7 @@ parserSnapshotQuery conf = fmap fromParsedElement the_parser
                     Opt.metavar "NODE-ID"
                   ]
     pTimeInterval = makeInterval <$> pTimeLower <*> pTimeUpper
-    pTimeLower = Opt.option (Opt.eitherReader parseTimeIntervalEnd) $ mconcat
+    pTimeLower = Opt.option (Opt.eitherReader readTimeIntervalEnd) $ mconcat
                  [ Opt.short 'f',
                    Opt.long "time-from",
                    Opt.help ( "Lower bound of query timestamp. "
@@ -57,7 +57,7 @@ parserSnapshotQuery conf = fmap fromParsedElement the_parser
                    Opt.metavar "TIMESTAMP",
                    Opt.value (Q.NegInf, False)
                  ]
-    pTimeUpper = Opt.option (Opt.eitherReader parseTimeIntervalEnd) $ mconcat
+    pTimeUpper = Opt.option (Opt.eitherReader readTimeIntervalEnd) $ mconcat
                  [ Opt.short 't',
                    Opt.long "time-to",
                    Opt.help ( "Upper bound of query timestamp. "

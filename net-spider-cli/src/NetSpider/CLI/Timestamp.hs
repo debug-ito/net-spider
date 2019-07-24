@@ -5,7 +5,7 @@
 --
 -- 
 module NetSpider.CLI.Timestamp
-  ( parseTimeIntervalEnd,
+  ( readTimeIntervalEnd,
     IntervalEnd,
     makeInterval,
     ErrorMsg
@@ -40,26 +40,26 @@ makeInterval (lv, li) (uv, ui) = construct lv uv
 -- expressed as \'+inf\' (note that \'+\' is mandatory), and
 -- negative infinity as \'-inf\'.
 --
--- >>> parseTimeIntervalEnd "2019-10-09T12:03:22"
+-- >>> readTimeIntervalEnd "2019-10-09T12:03:22"
 -- Right (Finite (Timestamp {epochTime = 1570622602000, timeZone = Nothing}),True)
--- >>> parseTimeIntervalEnd "i2019-10-09T12:03:22"
+-- >>> readTimeIntervalEnd "i2019-10-09T12:03:22"
 -- Right (Finite (Timestamp {epochTime = 1570622602000, timeZone = Nothing}),True)
--- >>> parseTimeIntervalEnd "x2019-10-09T12:03:22"
+-- >>> readTimeIntervalEnd "x2019-10-09T12:03:22"
 -- Right (Finite (Timestamp {epochTime = 1570622602000, timeZone = Nothing}),False)
--- >>> parseTimeIntervalEnd "+inf"
+-- >>> readTimeIntervalEnd "+inf"
 -- Right (PosInf,True)
--- >>> parseTimeIntervalEnd "i+inf"
+-- >>> readTimeIntervalEnd "i+inf"
 -- Right (PosInf,True)
--- >>> parseTimeIntervalEnd "x+inf"
+-- >>> readTimeIntervalEnd "x+inf"
 -- Right (PosInf,False)
--- >>> parseTimeIntervalEnd "-inf"
+-- >>> readTimeIntervalEnd "-inf"
 -- Right (NegInf,True)
--- >>> parseTimeIntervalEnd "i-inf"
+-- >>> readTimeIntervalEnd "i-inf"
 -- Right (NegInf,True)
--- >>> parseTimeIntervalEnd "x-inf"
+-- >>> readTimeIntervalEnd "x-inf"
 -- Right (NegInf,False)
-parseTimeIntervalEnd :: String -> Either ErrorMsg (IntervalEnd Timestamp)
-parseTimeIntervalEnd input = do
+readTimeIntervalEnd :: String -> Either ErrorMsg (IntervalEnd Timestamp)
+readTimeIntervalEnd input = do
   (is_inclusive, value_part) <- parseInclusive input
   value <- parseValue value_part
   return (value, is_inclusive)
