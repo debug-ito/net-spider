@@ -13,6 +13,8 @@ module NetSpider.Spider
          connectWith,
          -- * Close Spider
          close,
+         -- * Bracket form
+         withSpider,
          -- * Graph operations
          addFoundNode,
          getSnapshotSimple,
@@ -20,7 +22,7 @@ module NetSpider.Spider
          clearAll
        ) where
 
-import Control.Exception.Safe (throwString)
+import Control.Exception.Safe (throwString, bracket)
 import Control.Monad (void, mapM_, mapM)
 import Data.Aeson (ToJSON)
 import Data.Foldable (foldr', toList)
@@ -90,6 +92,11 @@ connectWith conf = do
 -- | Close and release the 'Spider' object.
 close :: Spider n na fla -> IO ()
 close sp = Gr.close $ spiderClient sp
+
+-- | Connect the spider, run the given action and close the
+-- connection.
+withSpider :: Config n na fla -> (Spider n na fla -> IO a) -> IO a
+withSpider conf = bracket (connectWith conf) close
 
 submitB :: (ToGreskell g, r ~ GreskellReturn g, AsIterator r, v ~ IteratorItem r, FromGraphSON v)
         => Spider n na fla -> Binder g -> IO (Gr.ResultHandle v)
