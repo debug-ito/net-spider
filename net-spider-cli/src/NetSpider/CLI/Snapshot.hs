@@ -12,8 +12,7 @@ module NetSpider.CLI.Snapshot
 import Control.Applicative ((<$>), (<*>), many)
 import qualified NetSpider.Query as Q
 import qualified Options.Applicative as Opt
-
-import NetSpider.CLI.Timestamp (makeInterval, readTimeIntervalEnd)
+import NetSpider.Interval (interval, parseTimeIntervalEnd)
 
 -- | Configuration for making Snapshot queries.
 data Config n na fla sla =
@@ -41,8 +40,8 @@ parserSnapshotQuery conf = fmap fromParsedElement the_parser
                     Opt.help "ID of a node from which the Spider starts traversing the history graph. You can specify this option multiple times.",
                     Opt.metavar "NODE-ID"
                   ]
-    pTimeInterval = makeInterval <$> pTimeLower <*> pTimeUpper
-    pTimeLower = Opt.option (Opt.eitherReader readTimeIntervalEnd) $ mconcat
+    pTimeInterval = interval <$> pTimeLower <*> pTimeUpper
+    pTimeLower = Opt.option (Opt.eitherReader parseTimeIntervalEnd) $ mconcat
                  [ Opt.short 'f',
                    Opt.long "time-from",
                    Opt.help ( "Lower bound of query timestamp. "
@@ -57,7 +56,7 @@ parserSnapshotQuery conf = fmap fromParsedElement the_parser
                    Opt.metavar "TIMESTAMP",
                    Opt.value (Q.NegInf, False)
                  ]
-    pTimeUpper = Opt.option (Opt.eitherReader readTimeIntervalEnd) $ mconcat
+    pTimeUpper = Opt.option (Opt.eitherReader parseTimeIntervalEnd) $ mconcat
                  [ Opt.short 't',
                    Opt.long "time-to",
                    Opt.help ( "Upper bound of query timestamp. "
