@@ -53,7 +53,7 @@ test-suite spec
   main-is:              Spec.hs
   default-extensions:   OverloadedStrings, StrictData
   -- other-extensions:     
-  other-modules:        NetSpider.CLISpec
+  -- other-modules:        NetSpider.CLISpec
   build-depends:        base, net-spider-cli,
                         hspec
 
