@@ -29,6 +29,7 @@
 -- * "NetSpider.Timestamp"
 -- * "NetSpider.Graph"
 -- * "NetSpider.Snapshot"
+-- * "NetSpider.Interval"
 --
 -- == Formatter
 --

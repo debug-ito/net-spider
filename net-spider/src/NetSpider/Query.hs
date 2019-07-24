@@ -24,11 +24,13 @@ module NetSpider.Query
          Extended(..)
        ) where
 
-import Data.ExtendedReal (Extended(..))
-import Data.Int (Int64)
-import Data.Interval (Interval, (<=..<=), (<..<=), (<=..<), (<..<))
 import qualified Data.Interval as Interval
 
+import NetSpider.Interval
+  ( secUpTo,
+    Interval, (<=..<=), (<..<=), (<=..<), (<..<),
+    Extended(..)
+  )
 import NetSpider.Timestamp (Timestamp, addSec)
 import NetSpider.Unify (LinkSampleUnifier, unifyToOne)
 import NetSpider.Query.Internal (FoundNodePolicy(..))
@@ -76,15 +78,6 @@ defQuery ns = Query
                 timeInterval = Interval.whole,
                 foundNodePolicy = policyOverwrite
               }
-
--- | @s `secUpTo` ts@ returns the time interval of length @s@ (in
--- seconds) and up to @ts@. The interval is inclusive for both ends.
---
--- @since 0.2.0.0
-secUpTo :: Int64 -> Timestamp -> Interval Timestamp
-secUpTo len end = Finite start <=..<= Finite end
-  where
-    start = addSec (-len) end
 
 -- | A 'FoundNode' always overwrites old 'FoundNode's, so only the
 -- latest one is valid.
