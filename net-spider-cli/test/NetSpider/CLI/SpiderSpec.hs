@@ -1,7 +1,7 @@
 module NetSpider.CLI.SpiderSpec (main,spec) where
 
 import Data.Monoid (mempty)
-import NetSpider.Spider.Config (Config(..))
+import NetSpider.Spider.Config (Config(..), LogLevel(..))
 import Options.Applicative (Parser)
 import qualified Options.Applicative as Opt
 import Test.Hspec
@@ -31,3 +31,10 @@ spec = describe "parserSpiderConfig" $ do
     wsHost sconf `shouldBe` "foo.example.com"
     wsPort sconf `shouldBe` 18822
     nodeIdKey sconf `shouldBe` "@foo"
+  specify "verbosity" $ do
+    let (Right warn) = runP parserSpiderConfig []
+        (Right info) = runP parserSpiderConfig ["-v"]
+        (Right debug) = runP parserSpiderConfig ["-vv"]
+    logThreshold warn `shouldBe` LevelWarn
+    logThreshold info `shouldBe` LevelInfo
+    logThreshold debug `shouldBe` LevelDebug
