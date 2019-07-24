@@ -15,7 +15,7 @@ import qualified Options.Applicative as Opt
 
 import NetSpider.CLI.Timestamp (makeInterval, readTimeIntervalEnd)
 
--- | Configuration for makign Snapshot queries.
+-- | Configuration for making Snapshot queries.
 data Config n na fla sla =
   Config
   { nodeIDParser :: Opt.ReadM n,
