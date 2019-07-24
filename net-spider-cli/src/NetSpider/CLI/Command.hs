@@ -27,12 +27,11 @@ import NetSpider.Graph (LinkAttributes, NodeAttributes)
 import NetSpider.GraphML.Writer (writeGraphML, ToNodeID, ToAttributes)
 import qualified NetSpider.Query as Q
 import NetSpider.Snapshot (SnapshotGraph)
-import NetSpider.Spider (getSnapshot)
+import NetSpider.Spider (getSnapshot, withSpider, clearAll)
 import qualified Options.Applicative as Opt
 
 import NetSpider.CLI.Spider
-  ( parserSpiderConfig, SpiderConfig,
-    clearDatabase, withSpider
+  ( parserSpiderConfig, SpiderConfig
   )
 import qualified NetSpider.CLI.Snapshot as Snapshot
 
@@ -48,7 +47,7 @@ afterAction then_action (Action a) = Action $ fmap modifyAction a
     modifyAction orig_action sconf = then_action =<< orig_action sconf
 
 actionClear :: Action n na fla ()
-actionClear = Action $ pure clearDatabase
+actionClear = Action $ pure $ \sconf -> withSpider sconf clearAll
 
 actionGetSnapshot :: (FromGraphSON n, ToJSON n, Ord n, Hashable n, Show n, LinkAttributes fla, NodeAttributes na)
                   => Snapshot.Config n na fla sla

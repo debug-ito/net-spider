@@ -8,14 +8,10 @@
 module NetSpider.CLI.Spider
   ( -- * Parsers
     SpiderConfig,
-    parserSpiderConfig,
-    -- * Utilities
-    withSpider,
-    clearDatabase
+    parserSpiderConfig
   ) where
 
 import Control.Applicative ((<$>), (<*>), many, pure)
-import Control.Exception.Safe (bracket)
 import Data.Monoid (mconcat)
 import qualified NetSpider.Spider.Config as SConf
 import qualified NetSpider.Spider as Sp
@@ -60,12 +56,3 @@ logLevelFromVerbosity :: Int -> SConf.LogLevel
 logLevelFromVerbosity 2 = SConf.LevelDebug
 logLevelFromVerbosity 1 = SConf.LevelInfo
 logLevelFromVerbosity _ = SConf.LevelWarn
-
--- | Create 'Spider' with the given config, and run the given action
--- on it.
-withSpider :: SpiderConfig n na fla -> (Sp.Spider n na fla -> IO a) -> IO a
-withSpider conf = bracket (Sp.connectWith conf) Sp.close
-
--- | Clear all data from the net-spider graph database.
-clearDatabase :: SpiderConfig n na fla -> IO ()
-clearDatabase conf = withSpider conf Sp.clearAll

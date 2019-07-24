@@ -28,7 +28,6 @@ library
   build-depends:        base,
                         net-spider,
                         optparse-applicative,
-                        safe-exceptions,
                         aeson,
                         hashable,
                         greskell-core,
