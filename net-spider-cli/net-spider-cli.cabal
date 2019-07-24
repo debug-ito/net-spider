@@ -22,7 +22,9 @@ library
   exposed-modules:      NetSpider.CLI,
                         NetSpider.CLI.Spider,
                         NetSpider.CLI.Command,
-                        NetSpider.CLI.Exec
+                        NetSpider.CLI.Exec,
+                        NetSpider.CLI.Timestamp,
+                        NetSpider.CLI.Snapshot
   -- other-modules:        
   build-depends:        base,
                         net-spider,

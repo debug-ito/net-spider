@@ -28,7 +28,7 @@ import NetSpider.CLI.Command
 
 -- | The main routine controlled by the given 'Config'.
 mainBy :: (FromGraphSON n, ToJSON n, Ord n, Hashable n, Show n, LinkAttributes fla, NodeAttributes na, ToNodeID n, ToAttributes na, ToAttributes sla)
-       => Config n na fla sla i
+       => Config n na fla sla
        -> IO ()
 mainBy conf = do
   (sconf, cmd) <- Opt.execParser $ Opt.info (parserCommand conf) info_mod
@@ -41,12 +41,12 @@ mainBy conf = do
 
 -- | Execute the 'Command' obtained from CLI.
 execCommand :: (FromGraphSON n, ToJSON n, Ord n, Hashable n, Show n, LinkAttributes fla, NodeAttributes na, ToNodeID n, ToAttributes na, ToAttributes sla)
-            => Config n na fla sla i
+            => Config n na fla sla
             -> SpiderConfig n na fla
-            -> Command n na fla sla i
+            -> Command n na fla sla
             -> IO ()
 execCommand _ sconf CmdClean = clearDatabase sconf
 execCommand _ sconf (CmdSnapshot query) = withSpider sconf $ \sp -> do
   graph <- getSnapshot sp query
   TLIO.putStrLn $ writeGraphML graph -- TODO: add option to select output format.
-execCommand conf sconf (CmdInput input) = inputHandler conf sconf input
+execCommand conf sconf CmdInput = return () -- TODO: make it customizable.
