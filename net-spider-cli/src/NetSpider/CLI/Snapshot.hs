@@ -17,7 +17,7 @@ import NetSpider.Interval (interval, parseTimeIntervalEnd)
 -- | Configuration for making Snapshot queries.
 data Config n na fla sla =
   Config
-  { nodeIDParser :: Opt.ReadM n,
+  { nodeIDReader :: Opt.ReadM n,
     -- ^ Parser that reads an command-line option to generate a node
     -- ID.
     basisSnapshotQuery :: Q.Query n na fla sla
@@ -33,7 +33,7 @@ parserSnapshotQuery conf = fmap fromParsedElement the_parser
     basis = basisSnapshotQuery conf
     fromParsedElement (sf, ti) = basis { Q.startsFrom = sf, Q.timeInterval = ti }
     the_parser = (,) <$> pStartsFrom <*> pTimeInterval
-    rNodeID = nodeIDParser conf
+    rNodeID = nodeIDReader conf
     pStartsFrom = many $ Opt.option rNodeID $ mconcat
                   [ Opt.short 's',
                     Opt.long "starts-from",

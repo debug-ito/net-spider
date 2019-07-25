@@ -13,7 +13,7 @@ import NetSpider.CLI.TestCommon (runP)
 import NetSpider.CLI.Snapshot (Config(..), parserSnapshotQuery)
 
 defConfig :: Config Int () () ()
-defConfig = Config { nodeIDParser = Opt.auto,
+defConfig = Config { nodeIDReader = Opt.auto,
                      basisSnapshotQuery = (defQuery []) { foundNodePolicy = policyAppend }
                    }
 
