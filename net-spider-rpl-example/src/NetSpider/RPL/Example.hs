@@ -15,9 +15,11 @@ import Control.Monad (forM_, when)
 import Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HM
 import Data.List (sortOn, reverse)
-import Data.Monoid ((<>))
+import Data.Monoid ((<>), mconcat)
 import Data.Text (pack)
 import NetSpider.GraphML.Writer (writeGraphML)
+import qualified NetSpider.CLI.Snapshot as CLIS
+import NetSpider.CLI.Spider (SpiderConfig)
 import NetSpider.Input
   ( defConfig,
     connectWith, close, addFoundNode, clearAll,
@@ -33,7 +35,10 @@ import NetSpider.Output
     SnapshotNode, SnapshotLink, secUpTo,
     SnapshotGraph
   )
-import NetSpider.RPL.FindingID (FindingID, idToText)
+import NetSpider.RPL.FindingID
+  ( FindingID, idToText,
+    IPv6ID, ipv6FromText
+  )
 import NetSpider.RPL.DIO
   ( FoundNodeDIO, DIONode, MergedDIOLink
   )
@@ -42,8 +47,30 @@ import NetSpider.RPL.DAO (FoundNodeDAO)
 import qualified NetSpider.RPL.DAO as DAO
 import qualified NetSpider.RPL.Combined as RPL
 import NetSpider.RPL.ContikiNG (parseFile, pSyslogHead)
+import qualified Options.Applicative as Opt
 import System.Environment (getArgs)
 import System.IO (hPutStrLn, stderr)
+
+data Cmd = CmdClear
+         | CmdInput [FilePath]
+         | CmdSnapshot (Query IPv6ID () () ())
+
+optionParser :: Opt.Parser (SpiderConfig n na fla, Cmd)
+optionParser = Opt.hsubparser $ mconcat commands
+  where
+    commands = [ Opt.command "clear"
+                 Opt.info (pure CmdClear) (Opt.progDesc "Clear the entire database."),
+                 Opt.command "input"
+                 Opt.info parserInput (Opt.progDesc "Input local findings into the database."),
+                 Opt.command "snapshot"
+                 Opt.info parserSnapshot (Opt.progDesc "Get a snapshot graph from the database.")
+               ]
+    parserInput = Opt.strArgument $ mconcat [Opt.metavar "FILE"]
+    ipv6Reader = (maybe (fail "Invalid IPv6") return  . ipv6FromText) =<< Opt.auto
+    parserSnapshot = CLIS.parserSnapshotQuery $
+                     CLIS.Config { CLIS.nodeIDReader = ipv6Reader,
+                                   CLIS.basisSnapshotQuery = defQuery []
+                                 }
 
 main :: IO ()
 main = do

@@ -24,8 +24,10 @@ library
   build-depends:        base >=4.11.1.0 && <4.13,
                         net-spider,
                         net-spider-rpl,
+                        net-spider-cli,
                         text,
-                        unordered-containers
+                        unordered-containers,
+                        optparse-applicative
 
 executable net-spider-rpl-example
   default-language:     Haskell2010
