@@ -15,5 +15,5 @@ module NetSpider.Query.Internal
 data FoundNodePolicy n na=
     PolicyOverwrite
   | PolicyAppend
-  deriving (Show)
+  deriving (Show,Eq)
 
