@@ -1,7 +1,11 @@
 module NetSpider.CLI.SnapshotSpec (main,spec) where
 
 import NetSpider.Interval (interval, Extended(..))
-import NetSpider.Query (startsFrom, defQuery, timeInterval)
+import NetSpider.Query
+  ( startsFrom, defQuery, timeInterval,
+    foundNodePolicy, policyAppend
+  )
+import NetSpider.Timestamp (fromEpochMillisecond)
 import qualified Options.Applicative as Opt
 import Test.Hspec
 
@@ -10,7 +14,7 @@ import NetSpider.CLI.Snapshot (Config(..), parserSnapshotQuery)
 
 defConfig :: Config Int () () ()
 defConfig = Config { nodeIDParser = Opt.auto,
-                     basisSnapshotQuery = defQuery []
+                     basisSnapshotQuery = (defQuery []) { foundNodePolicy = policyAppend }
                    }
 
 main :: IO ()
@@ -20,9 +24,33 @@ spec :: Spec
 spec = describe "parserSnapshotQuery" $ do
   specify "default" $ do
     let (Right got) = runP (parserSnapshotQuery defConfig) []
-        expected = defQuery []
-    startsFrom got `shouldMatchList` startsFrom expected
-    timeInterval got `shouldBe` interval (NegInf, False) (PosInf, True) -- TODO: does it fail??
+    startsFrom got `shouldBe` []
+    timeInterval got `shouldBe` interval (NegInf, False) (PosInf, False)
+    foundNodePolicy got `shouldBe` policyAppend
+  specify "time-from" $ do
+    let (Right got) = runP (parserSnapshotQuery defConfig)
+                      ["--time-from", "2019-02-19T11:12:00"]
+    timeInterval got `shouldBe`
+      interval (Finite $ fromEpochMillisecond 1550574720000, True)
+               (PosInf, False)
+  specify "time-to with exclusive" $ do
+    let (Right got) = runP (parserSnapshotQuery defConfig)
+                      ["--time-to", "x2017-12-20T19:22:02"]
+    timeInterval got `shouldBe`
+      interval (NegInf, False)
+               (Finite $ fromEpochMillisecond 1513797722000, False)
+  specify "both time-from and time-to with inclusive" $ do
+    let (Right got) = runP (parserSnapshotQuery defConfig)
+                      ["-f", "i2018-10-11T14:13:33", "-t", "i2018-10-11T14:13:50.332"]
+    timeInterval got `shouldBe`
+      interval (Finite $ fromEpochMillisecond 1539267213000, True)
+               (Finite $ fromEpochMillisecond 1539267230332, True)
+  specify "explicit infinity" $ do
+    let (Right got) = runP (parserSnapshotQuery defConfig)
+                      ["--time-from", "-inf", "--time-to", "+inf"]
+    timeInterval got `shouldBe` interval (NegInf, True) (PosInf, True)
+  specify "multiple starts-from" $ do
+    let (Right got) = runP (parserSnapshotQuery defConfig)
+                      ["-s", "10", "-s", "12", "-s", "15"]
+    startsFrom got `shouldBe` [10,12,15]
 
--- TODO: more test cases
-  
