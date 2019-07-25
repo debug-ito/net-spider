@@ -2,23 +2,14 @@ module NetSpider.CLI.SpiderSpec (main,spec) where
 
 import Data.Monoid (mempty)
 import NetSpider.Spider.Config (Config(..), LogLevel(..))
-import Options.Applicative (Parser)
-import qualified Options.Applicative as Opt
 import Test.Hspec
 
 import NetSpider.CLI.Spider (parserSpiderConfig)
 
+import NetSpider.CLI.TestCommon (runP)
+
 main :: IO ()
 main = hspec spec
-
-runP :: Parser a -> [String] -> Either String a
-runP p args = toEither $ Opt.execParserPure prefs pinfo args
-  where
-    prefs = Opt.prefs mempty
-    pinfo = Opt.info p mempty
-    toEither (Opt.Success a) = Right a
-    toEither (Opt.Failure f) = Left $ show f
-    toEither (Opt.CompletionInvoked c) = Left $ show c
 
 spec :: Spec
 spec = describe "parserSpiderConfig" $ do
