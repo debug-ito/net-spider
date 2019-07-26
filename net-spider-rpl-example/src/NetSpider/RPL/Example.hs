@@ -13,6 +13,7 @@ import qualified Data.Text.IO as TIO
 import Control.Applicative (many, (<$>), (<*>))
 import Control.Exception (bracket)
 import Control.Monad (forM_, when)
+import Data.Greskell (Key(..))
 import Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HM
 import Data.List (sortOn, reverse)
@@ -23,11 +24,11 @@ import qualified NetSpider.CLI.Snapshot as CLIS
 import NetSpider.CLI.Spider (SpiderConfig, parserSpiderConfig)
 import NetSpider.Input
   ( defConfig,
-    connectWith, close, addFoundNode, clearAll,
+    addFoundNode, clearAll,
     FoundNode(subjectNode, foundAt, neighborLinks, nodeAttributes),
     FoundLink(targetNode, linkAttributes),
     LinkAttributes, NodeAttributes,
-    Spider, withSpider
+    Spider, withSpider, nodeIdKey
   )
 import NetSpider.Output
   ( getSnapshot,
@@ -37,8 +38,8 @@ import NetSpider.Output
     SnapshotGraph
   )
 import NetSpider.RPL.FindingID
-  ( FindingID, idToText,
-    IPv6ID, ipv6FromText
+  ( FindingID(..), idToText, FindingType(..),
+    IPv6ID(..), ipv6FromText
   )
 import NetSpider.RPL.DIO
   ( FoundNodeDIO, DIONode, MergedDIOLink
@@ -87,10 +88,9 @@ main = do
     doClear sconf = do
       hPutStrLn stderr "---- Clear graph database"
       withSpider sconf $ clearAll
+
     doInput sconf filenames = do
       -- filenames is a list of syslog filenames
-
------------ we need to convert sconf into DIO and DAO...
       
       -- Read DIO and DAO FoundNodes. It might take a long time to insert
       -- a lot of FoundNodes, so this example inserts only the latest
@@ -98,32 +98,47 @@ main = do
       (dio_nodes, dao_nodes) <- fmap (concatPairs . map (filterPairs getLatestForEachNode))
                                 $ mapM loadFile filenames
       hPutStrLn stderr ("---- Load done")
+      
+      -- Input DIO and DAO FoundNodes. Note that we have to cast
+      -- SpiderConfig's type to match DIO and DAO FoundNode.
       forM_ dio_nodes printDIONode
+      putNodes (castSpiderConfig sconf) dio_nodes
       forM_ dao_nodes printDAONode
+      putNodes (castSpiderConfig sconf) dao_nodes
 
----------- TODO
-  
-  clearDB
-  -- Input DIO FoundNodes and get DIO SnapshotGraph.
-  dio_graph <- if null dio_nodes
-               then return ([], [])
-               else let dio_query = (DIO.dioDefQuery [subjectNode (dio_nodes !! 0)])
-                    in putNodes dio_query dio_nodes
-  -- Input DAO FoundNodes and get DAO SnapshotGraph.
-  dao_graph <- if null dao_nodes
-               then return ([], [])
-               else let dao_input = sortDAONodes dao_nodes
-                        dao_query = (DAO.daoDefQuery [subjectNode (dao_input !! 0)])
-                          { timeInterval = 0 `secUpTo` foundAt (dao_input !! 0)
-                          }
-                    in putNodes dao_query dao_input
-
-  -- Merge DIO and DAO SnapshotGraphs into one.
-  let com_graph = RPL.combineGraphs dio_graph dao_graph
-  -- Write the merged SnapshotGraph in GraphML to stdout.
-  TLIO.putStr $ writeGraphML com_graph
+    doSnapshot sconf query = do
+      hPutStrLn stderr ("---- Query starts from " ++ (show $ length $ startsFrom query) ++ " nodes")
+      forM_ (startsFrom query) $ \nid -> do
+        hPutStrLn stderr (show nid)
+      -- Get DIO and DAO snapshot graphs with the Query.
+      hPutStrLn stderr ("---- Get DIO SnapshotGraph")
+      dio_graph <- withSpider (castSpiderConfig sconf) $ \sp -> do
+        getSnapshot sp $ rebaseQuery query FindingDIO (DIO.dioDefQuery [])
+      hPutStrLn stderr ("---- Get DAO SnapshotGraph")
+      dao_graph <- withSpider (castSpiderConfig sconf) $ \sp -> do
+        getSnapshot sp $ rebaseQuery query FindingDAO (DAO.daoDefQuery [])
+      
+      -- Merge DIO and DAO SnapshotGraphs into one.
+      let com_graph = RPL.combineGraphs dio_graph dao_graph
+      -- Write the merged SnapshotGraph in GraphML to stdout.
+      hPutStrLn stderr ("---- Format DIO+DAO SnapshotGraph into GraphML")
+      TLIO.putStr $ writeGraphML com_graph
 
 ----------
+
+castSpiderConfig :: SpiderConfig n1 na1 fla1 -> SpiderConfig n2 na2 fla2
+castSpiderConfig sc = sc { nodeIdKey = Key $ unKey $ nodeIdKey sc }
+
+-- | Convert the base of the original query.
+rebaseQuery :: Query IPv6ID na1 fla1 sla1 -- ^ original query
+            -> FindingType -- ^ new finding type
+            -> Query FindingID na2 fla2 sla2 -- ^ new query base
+            -> Query FindingID na2 fla2 sla2
+rebaseQuery orig ftype base = base { startsFrom = map liftToFindingID $ startsFrom orig,
+                                     timeInterval = timeInterval orig
+                                   }
+  where
+    liftToFindingID (IPv6ID ip) = FindingID ftype ip
 
 -- | Read a Contiki-NG log file, parse it with
 -- 'NetSpider.RPL.ContikiNG.parseFile' to get 'FoundNodeDIO' and
@@ -138,21 +153,20 @@ loadFile file = do
   return (dio_nodes, dao_nodes)
   where
     phead = pSyslogHead 2019 Nothing
-  
--- | Put (insert) the given 'FoundNode's into the net-spider database
--- and get a 'SnapshotGraph' by the given 'Query'.
+
+-- | Put (insert) the given 'FoundNode's into the net-spider
+-- database
 putNodes :: (LinkAttributes fla, NodeAttributes na)
-         => Query FindingID na fla sla
+         => SpiderConfig FindingID na fla
          -> [FoundNode FindingID na fla]
-         -> IO (SnapshotGraph FindingID na sla)
-putNodes query input_nodes = do
-  bracket (connectWith defConfig) close $ \sp -> do
+         -> IO ()
+putNodes sconf input_nodes = do
+  withSpider sconf $ \sp -> do
     hPutStrLn stderr ("---- Add " <> (show $ length $ input_nodes) <> " FoundNodes")
     forM_ (zip input_nodes ([0 ..] :: [Integer])) $ \(input_node, index) -> do
       when ((index `mod` 100) == 0) $ hPutStrLn stderr ("Add node [" <> show index <> "]")
       addFoundNode sp input_node
     hPutStrLn stderr "Add done"
-    getSnapshot sp query
 
 ---- Print FoundNodes for debug
 
@@ -215,7 +229,7 @@ getLatestForEachNode :: [FoundNode FindingID na la] -> [FoundNode FindingID na l
 getLatestForEachNode = getLatestNodes . collectNodes
 
 
----- FoundNode utility
-
-sortDAONodes :: [FoundNodeDAO] -> [FoundNodeDAO]
-sortDAONodes = reverse . sortOn (DAO.daoRouteNum . nodeAttributes)
+-- ---- FoundNode utility
+-- 
+-- sortDAONodes :: [FoundNodeDAO] -> [FoundNodeDAO]
+-- sortDAONodes = reverse . sortOn (DAO.daoRouteNum . nodeAttributes)

@@ -27,7 +27,8 @@ library
                         net-spider-cli,
                         text,
                         unordered-containers,
-                        optparse-applicative
+                        optparse-applicative,
+                        greskell
 
 executable net-spider-rpl-example
   default-language:     Haskell2010
