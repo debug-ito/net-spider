@@ -10,6 +10,7 @@ module NetSpider.RPL.Example
 
 import qualified Data.Text.Lazy.IO as TLIO
 import qualified Data.Text.IO as TIO
+import Control.Applicative (many, (<$>), (<*>))
 import Control.Exception (bracket)
 import Control.Monad (forM_, when)
 import Data.HashMap.Strict (HashMap)
@@ -19,7 +20,7 @@ import Data.Monoid ((<>), mconcat)
 import Data.Text (pack)
 import NetSpider.GraphML.Writer (writeGraphML)
 import qualified NetSpider.CLI.Snapshot as CLIS
-import NetSpider.CLI.Spider (SpiderConfig)
+import NetSpider.CLI.Spider (SpiderConfig, parserSpiderConfig)
 import NetSpider.Input
   ( defConfig,
     connectWith, close, addFoundNode, clearAll,
@@ -56,18 +57,19 @@ data Cmd = CmdClear
          | CmdSnapshot (Query IPv6ID () () ())
 
 optionParser :: Opt.Parser (SpiderConfig n na fla, Cmd)
-optionParser = Opt.hsubparser $ mconcat commands
+optionParser = (,) <$> parserSpiderConfig <*> parserCommands
   where
-    commands = [ Opt.command "clear"
+    parserCommands = Opt.hsubparser $ mconcat commands
+    commands = [ Opt.command "clear" $
                  Opt.info (pure CmdClear) (Opt.progDesc "Clear the entire database."),
-                 Opt.command "input"
+                 Opt.command "input" $
                  Opt.info parserInput (Opt.progDesc "Input local findings into the database."),
-                 Opt.command "snapshot"
+                 Opt.command "snapshot" $
                  Opt.info parserSnapshot (Opt.progDesc "Get a snapshot graph from the database.")
                ]
-    parserInput = Opt.strArgument $ mconcat [Opt.metavar "FILE"]
+    parserInput = fmap CmdInput $ many $ Opt.strArgument $ mconcat [Opt.metavar "FILE"]
     ipv6Reader = (maybe (fail "Invalid IPv6") return  . ipv6FromText) =<< Opt.auto
-    parserSnapshot = CLIS.parserSnapshotQuery $
+    parserSnapshot = fmap CmdSnapshot $ CLIS.parserSnapshotQuery $
                      CLIS.Config { CLIS.nodeIDReader = ipv6Reader,
                                    CLIS.basisSnapshotQuery = defQuery []
                                  }
