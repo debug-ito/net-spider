@@ -44,7 +44,7 @@ parserSpiderConfig =
                     Opt.help "Name of vertex attriute that stores Node ID.",
                     Opt.metavar "KEY",
                     Opt.value "@node_id",
-                    Opt.showDefault
+                    Opt.showDefault -- TODO: we should use custom formatter.
                   ]
     log_thresh = fmap (logLevelFromVerbosity . length) $ many $ Opt.flag' () $ mconcat
                  [ Opt.short 'v',

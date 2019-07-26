@@ -24,6 +24,7 @@ data Config n na fla sla =
     -- ^ Basis for queries for SnapshotGraph
   }
 
+-- TODO: how about an option to parse arguments for 'startsFrom'?
 
 -- | Command-line option parser for 'Q.Query'.
 parserSnapshotQuery :: Config n na fla sla
