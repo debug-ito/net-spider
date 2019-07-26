@@ -27,7 +27,7 @@ import NetSpider.Input
     FoundNode(subjectNode, foundAt, neighborLinks, nodeAttributes),
     FoundLink(targetNode, linkAttributes),
     LinkAttributes, NodeAttributes,
-    Spider
+    Spider, withSpider
   )
 import NetSpider.Output
   ( getSnapshot,
@@ -76,17 +76,32 @@ optionParser = (,) <$> parserSpiderConfig <*> parserCommands
 
 main :: IO ()
 main = do
-  -- Get syslog filenames from command-line arguments
-  filenames <- getArgs
-  
-  -- Read DIO and DAO FoundNodes. It might take a long time to insert
-  -- a lot of FoundNodes, so this example inserts only the latest
-  -- FoundNode per node into the net-spider database.
-  (dio_nodes, dao_nodes) <- fmap (concatPairs . map (filterPairs getLatestForEachNode))
-                            $ mapM loadFile filenames
-  hPutStrLn stderr ("---- Load done")
-  forM_ dio_nodes printDIONode
-  forM_ dao_nodes printDAONode
+  (sconf, cmd) <- Opt.execParser $ Opt.info (Opt.helper <*> optionParser) $ mconcat $
+                  [ Opt.progDesc "Example net-spider front-end for RPL data model."
+                  ]
+  case cmd of
+    CmdClear -> doClear sconf
+    CmdInput fs -> doInput sconf fs
+    CmdSnapshot q -> doSnapshot sconf q
+  where
+    doClear sconf = do
+      hPutStrLn stderr "---- Clear graph database"
+      withSpider sconf $ clearAll
+    doInput sconf filenames = do
+      -- filenames is a list of syslog filenames
+
+----------- we need to convert sconf into DIO and DAO...
+      
+      -- Read DIO and DAO FoundNodes. It might take a long time to insert
+      -- a lot of FoundNodes, so this example inserts only the latest
+      -- FoundNode per node into the net-spider database.
+      (dio_nodes, dao_nodes) <- fmap (concatPairs . map (filterPairs getLatestForEachNode))
+                                $ mapM loadFile filenames
+      hPutStrLn stderr ("---- Load done")
+      forM_ dio_nodes printDIONode
+      forM_ dao_nodes printDAONode
+
+---------- TODO
   
   clearDB
   -- Input DIO FoundNodes and get DIO SnapshotGraph.
@@ -108,6 +123,8 @@ main = do
   -- Write the merged SnapshotGraph in GraphML to stdout.
   TLIO.putStr $ writeGraphML com_graph
 
+----------
+
 -- | Read a Contiki-NG log file, parse it with
 -- 'NetSpider.RPL.ContikiNG.parseFile' to get 'FoundNodeDIO' and
 -- 'FoundNodeDAO'.
@@ -121,14 +138,6 @@ loadFile file = do
   return (dio_nodes, dao_nodes)
   where
     phead = pSyslogHead 2019 Nothing
-
-clearDB :: IO ()
-clearDB = do
-  hPutStrLn stderr "---- Clear graph database"
-  bracket (connectWith defConfig) close doClear
-  where
-    doClear :: Spider FindingID () () -> IO ()
-    doClear = clearAll
   
 -- | Put (insert) the given 'FoundNode's into the net-spider database
 -- and get a 'SnapshotGraph' by the given 'Query'.
