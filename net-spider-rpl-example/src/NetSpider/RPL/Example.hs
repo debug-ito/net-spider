@@ -124,6 +124,11 @@ main = do
       hPutStrLn stderr ("---- Format DIO+DAO SnapshotGraph into GraphML")
       TLIO.putStr $ writeGraphML com_graph
 
+-- TODO: now the user has to explicitly specify the startsFrom of
+-- the query. That is a little annoying. Add a new command that
+-- combines 'input' and 'snapshot'.
+
+
 ----------
 
 castSpiderConfig :: SpiderConfig n1 na1 fla1 -> SpiderConfig n2 na2 fla2
