@@ -12,7 +12,9 @@ module NetSpider.CLI.Spider
   ) where
 
 import Control.Applicative ((<$>), (<*>), many, pure)
+import Data.Greskell.Greskell (toGremlin)
 import Data.Monoid (mconcat)
+import Data.Text (unpack)
 import qualified NetSpider.Spider.Config as SConf
 import qualified NetSpider.Spider as Sp
 import qualified Options.Applicative as Opt
@@ -44,7 +46,7 @@ parserSpiderConfig =
                     Opt.help "Name of vertex attriute that stores Node ID.",
                     Opt.metavar "KEY",
                     Opt.value "@node_id",
-                    Opt.showDefault -- TODO: we should use custom formatter.
+                    Opt.showDefaultWith (unpack . toGremlin)
                   ]
     log_thresh = fmap (logLevelFromVerbosity . length) $ many $ Opt.flag' () $ mconcat
                  [ Opt.short 'v',
