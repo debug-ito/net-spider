@@ -39,18 +39,17 @@ parserSnapshotQuery conf = fmap fromParsedElement the_parser
     fromParsedElement (sf, ti) = basis { Q.startsFrom = sf, Q.timeInterval = ti }
     the_parser = (,) <$> ((++) <$> pStartsFrom <*> pStartsFromArgs) <*> pTimeInterval
     rNodeID = nodeIDReader conf
-    nodeID_help = "ID of a node from which the Spider starts traversing the history graph. You can specify this option multiple times."
     nodeID_metavar = "NODE-ID"
     pStartsFrom = many $ Opt.option rNodeID $ mconcat
                   [ Opt.short 's',
                     Opt.long "starts-from",
-                    Opt.help nodeID_help,
+                    Opt.help "ID of a node from which the Spider starts traversing the history graph. You can specify this option multiple times.",
                     Opt.metavar nodeID_metavar
                   ]
     pStartsFromArgs = if not $ startsFromAsArguments conf
                       then pure []
                       else many $ Opt.argument rNodeID $ mconcat
-                           [ Opt.help $ nodeID_help,
+                           [ Opt.help $ "Same as -s option.",
                              Opt.metavar $ nodeID_metavar
                            ]
     pTimeInterval = interval <$> pTimeLower <*> pTimeUpper
