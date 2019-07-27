@@ -14,7 +14,8 @@ import NetSpider.CLI.Snapshot (Config(..), parserSnapshotQuery)
 
 defConfig :: Config Int () () ()
 defConfig = Config { nodeIDReader = Opt.auto,
-                     basisSnapshotQuery = (defQuery []) { foundNodePolicy = policyAppend }
+                     basisSnapshotQuery = (defQuery []) { foundNodePolicy = policyAppend },
+                     startsFromAsArguments = False
                    }
 
 main :: IO ()
@@ -53,4 +54,13 @@ spec = describe "parserSnapshotQuery" $ do
     let (Right got) = runP (parserSnapshotQuery defConfig)
                       ["-s", "10", "-s", "12", "-s", "15"]
     startsFrom got `shouldBe` [10,12,15]
+  let argsConfig = defConfig { startsFromAsArguments = True }
+  specify "startsFromAsArguments" $ do
+    let (Right got) = runP (parserSnapshotQuery argsConfig)
+                      ["143", "200", "473","21"]
+    startsFrom got `shouldBe` [143, 200, 473, 21]
+  specify "startsFromAsArguments - -s still enabled" $ do
+    let (Right got) = runP (parserSnapshotQuery argsConfig)
+                      ["90", "-s", "181"]
+    startsFrom got `shouldBe` [181, 90]
 

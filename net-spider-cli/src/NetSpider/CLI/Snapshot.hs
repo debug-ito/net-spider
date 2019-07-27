@@ -20,8 +20,12 @@ data Config n na fla sla =
   { nodeIDReader :: Opt.ReadM n,
     -- ^ Parser that reads an command-line option to generate a node
     -- ID.
-    basisSnapshotQuery :: Q.Query n na fla sla
+    basisSnapshotQuery :: Q.Query n na fla sla,
     -- ^ Basis for queries for SnapshotGraph
+    startsFromAsArguments :: Bool
+    -- ^ If 'True', the 'Q.startsFrom' field is read from
+    -- command-line arguments. If 'False', arguments are not
+    -- parsed. Note that the \"-s\" option is always parsed.
   }
 
 -- TODO: how about an option to parse arguments for 'startsFrom'?
@@ -33,14 +37,22 @@ parserSnapshotQuery conf = fmap fromParsedElement the_parser
   where
     basis = basisSnapshotQuery conf
     fromParsedElement (sf, ti) = basis { Q.startsFrom = sf, Q.timeInterval = ti }
-    the_parser = (,) <$> pStartsFrom <*> pTimeInterval
+    the_parser = (,) <$> ((++) <$> pStartsFrom <*> pStartsFromArgs) <*> pTimeInterval
     rNodeID = nodeIDReader conf
+    nodeID_help = "ID of a node from which the Spider starts traversing the history graph. You can specify this option multiple times."
+    nodeID_metavar = "NODE-ID"
     pStartsFrom = many $ Opt.option rNodeID $ mconcat
                   [ Opt.short 's',
                     Opt.long "starts-from",
-                    Opt.help "ID of a node from which the Spider starts traversing the history graph. You can specify this option multiple times.",
-                    Opt.metavar "NODE-ID"
+                    Opt.help nodeID_help,
+                    Opt.metavar nodeID_metavar
                   ]
+    pStartsFromArgs = if not $ startsFromAsArguments conf
+                      then pure []
+                      else many $ Opt.argument rNodeID $ mconcat
+                           [ Opt.help $ nodeID_help,
+                             Opt.metavar $ nodeID_metavar
+                           ]
     pTimeInterval = interval <$> pTimeLower <*> pTimeUpper
     pTimeLower = Opt.option (Opt.eitherReader parseTimeIntervalEnd) $ mconcat
                  [ Opt.short 'f',
