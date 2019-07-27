@@ -68,11 +68,15 @@ optionParser = (,) <$> parserSpiderConfig <*> parserCommands
                  Opt.command "snapshot" $
                  Opt.info parserSnapshot (Opt.progDesc "Get a snapshot graph from the database.")
                ]
-    parserInput = fmap CmdInput $ many $ Opt.strArgument $ mconcat [Opt.metavar "FILE"]
+    parserInput = fmap CmdInput $ many $ Opt.strArgument $ mconcat
+                  [ Opt.metavar "FILE",
+                    Opt.help "Input file. You can specify multiple times."
+                  ]
     ipv6Reader = (maybe (fail "Invalid IPv6") return  . ipv6FromText) =<< Opt.auto
     parserSnapshot = fmap CmdSnapshot $ CLIS.parserSnapshotQuery $
                      CLIS.Config { CLIS.nodeIDReader = ipv6Reader,
-                                   CLIS.basisSnapshotQuery = defQuery []
+                                   CLIS.basisSnapshotQuery = defQuery [],
+                                   CLIS.startsFromAsArguments = True
                                  }
 
 main :: IO ()
