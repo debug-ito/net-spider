@@ -70,7 +70,7 @@ optionParser = (,) <$> parserSpiderConfig <*> parserCommands
                  Opt.info parserSnapshot (Opt.progDesc "Get a snapshot graph from the database."),
                  Opt.command "cis" $
                  Opt.info (CmdCIS <$> parserInputFiles <*> parserSnapshotQuery)
-                 (Opt.progDesc "Clear + Input + Snapshot at once.")
+                 (Opt.progDesc "Clear + Input + Snapshot at once. `startsFrom` of the query is set by FoundNodes loaded from the files.")
                ]
     parserInput = fmap CmdInput $ parserInputFiles
     parserInputFiles = many $ Opt.strArgument $ mconcat
