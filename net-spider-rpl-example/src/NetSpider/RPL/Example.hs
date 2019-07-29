@@ -12,7 +12,7 @@ import qualified Data.Text.Lazy.IO as TLIO
 import qualified Data.Text.IO as TIO
 import Control.Applicative (many, (<$>), (<*>))
 import Control.Exception (bracket)
-import Control.Monad (forM_, when)
+import Control.Monad (forM_, when, void)
 import Data.Greskell (Key(..))
 import Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HM
@@ -39,7 +39,7 @@ import NetSpider.Output
   )
 import NetSpider.RPL.FindingID
   ( FindingID(..), idToText, FindingType(..),
-    IPv6ID(..), ipv6FromText
+    IPv6ID(..), ipv6FromText, ipv6Only
   )
 import NetSpider.RPL.DIO
   ( FoundNodeDIO, DIONode, MergedDIOLink
@@ -56,6 +56,7 @@ import System.IO (hPutStrLn, stderr)
 data Cmd = CmdClear
          | CmdInput [FilePath]
          | CmdSnapshot (Query IPv6ID () () ())
+         | CmdCIS [FilePath] (Query IPv6ID () () ()) -- ^ Clear + Input + Snapshot
 
 optionParser :: Opt.Parser (SpiderConfig n na fla, Cmd)
 optionParser = (,) <$> parserSpiderConfig <*> parserCommands
@@ -66,18 +67,23 @@ optionParser = (,) <$> parserSpiderConfig <*> parserCommands
                  Opt.command "input" $
                  Opt.info parserInput (Opt.progDesc "Input local findings into the database."),
                  Opt.command "snapshot" $
-                 Opt.info parserSnapshot (Opt.progDesc "Get a snapshot graph from the database.")
+                 Opt.info parserSnapshot (Opt.progDesc "Get a snapshot graph from the database."),
+                 Opt.command "cis" $
+                 Opt.info (CmdCIS <$> parserInputFiles <*> parserSnapshotQuery)
+                 (Opt.progDesc "Clear + Input + Snapshot at once.")
                ]
-    parserInput = fmap CmdInput $ many $ Opt.strArgument $ mconcat
-                  [ Opt.metavar "FILE",
-                    Opt.help "Input file. You can specify multiple times."
-                  ]
+    parserInput = fmap CmdInput $ parserInputFiles
+    parserInputFiles = many $ Opt.strArgument $ mconcat
+                       [ Opt.metavar "FILE",
+                         Opt.help "Input file. You can specify multiple times."
+                       ]
     ipv6Reader = (maybe (fail "Invalid IPv6") return  . ipv6FromText) =<< Opt.auto
-    parserSnapshot = fmap CmdSnapshot $ CLIS.parserSnapshotQuery $
-                     CLIS.Config { CLIS.nodeIDReader = ipv6Reader,
-                                   CLIS.basisSnapshotQuery = defQuery [],
-                                   CLIS.startsFromAsArguments = True
-                                 }
+    parserSnapshot = fmap CmdSnapshot $ parserSnapshotQuery
+    parserSnapshotQuery = CLIS.parserSnapshotQuery $
+                          CLIS.Config { CLIS.nodeIDReader = ipv6Reader,
+                                        CLIS.basisSnapshotQuery = defQuery [],
+                                        CLIS.startsFromAsArguments = True
+                                      }
 
 main :: IO ()
 main = do
@@ -86,8 +92,9 @@ main = do
                   ]
   case cmd of
     CmdClear -> doClear sconf
-    CmdInput fs -> doInput sconf fs
+    CmdInput fs -> void $ doInput sconf fs
     CmdSnapshot q -> doSnapshot sconf q
+    CmdCIS fs q -> doCIS sconf fs q
   where
     doClear sconf = do
       hPutStrLn stderr "---- Clear graph database"
@@ -109,6 +116,7 @@ main = do
       putNodes (castSpiderConfig sconf) dio_nodes
       forM_ dao_nodes printDAONode
       putNodes (castSpiderConfig sconf) dao_nodes
+      return (dio_nodes, dao_nodes)
 
     doSnapshot sconf query = do
       hPutStrLn stderr ("---- Query starts from " ++ (show $ length $ startsFrom query) ++ " nodes")
@@ -128,11 +136,15 @@ main = do
       hPutStrLn stderr ("---- Format DIO+DAO SnapshotGraph into GraphML")
       TLIO.putStr $ writeGraphML com_graph
 
--- TODO: now the user has to explicitly specify the startsFrom of
--- the query. That is a little annoying. Add a new command that
--- combines 'input' and 'snapshot'.
-
-
+    doCIS sconf filenames query_base = do
+      doClear sconf
+      (dio_nodes, dao_nodes) <- doInput sconf filenames
+      let starts = (map (ipv6Only . subjectNode) $ sortDAONodes dao_nodes)
+                   ++
+                   (map (ipv6Only . subjectNode) dio_nodes)
+          q = query_base { startsFrom = starts }
+      doSnapshot sconf q
+      
 ----------
 
 castSpiderConfig :: SpiderConfig n1 na1 fla1 -> SpiderConfig n2 na2 fla2
@@ -239,6 +251,6 @@ getLatestForEachNode = getLatestNodes . collectNodes
 
 
 -- ---- FoundNode utility
--- 
--- sortDAONodes :: [FoundNodeDAO] -> [FoundNodeDAO]
--- sortDAONodes = reverse . sortOn (DAO.daoRouteNum . nodeAttributes)
+
+sortDAONodes :: [FoundNodeDAO] -> [FoundNodeDAO]
+sortDAONodes = reverse . sortOn (DAO.daoRouteNum . nodeAttributes)
