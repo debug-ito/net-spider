@@ -10,13 +10,15 @@ import qualified Options.Applicative as Opt
 import Test.Hspec
 
 import NetSpider.CLI.TestCommon (runP)
-import NetSpider.CLI.Snapshot (Config(..), parserSnapshotQuery)
+import NetSpider.CLI.Snapshot (SnapshotConfig(..), parserSnapshotQuery)
 
-defConfig :: Config Int () () ()
-defConfig = Config { nodeIDReader = Opt.auto,
-                     basisSnapshotQuery = (defQuery []) { foundNodePolicy = policyAppend },
-                     startsFromAsArguments = False
-                   }
+defConfig :: SnapshotConfig Int () () ()
+defConfig =
+  SnapshotConfig
+  { nodeIDReader = Opt.auto,
+    basisSnapshotQuery = (defQuery []) { foundNodePolicy = policyAppend },
+    startsFromAsArguments = False
+  }
 
 main :: IO ()
 main = hspec spec

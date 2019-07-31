@@ -5,7 +5,7 @@
 --
 -- 
 module NetSpider.CLI.Snapshot
-  ( Config(..),
+  ( SnapshotConfig(..),
     parserSnapshotQuery
   ) where
 
@@ -15,8 +15,8 @@ import qualified Options.Applicative as Opt
 import NetSpider.Interval (interval, parseTimeIntervalEnd)
 
 -- | Configuration for making Snapshot queries.
-data Config n na fla sla =
-  Config
+data SnapshotConfig n na fla sla =
+  SnapshotConfig
   { nodeIDReader :: Opt.ReadM n,
     -- ^ Parser that reads an command-line option to generate a node
     -- ID.
@@ -29,7 +29,7 @@ data Config n na fla sla =
   }
 
 -- | Command-line option parser for 'Q.Query'.
-parserSnapshotQuery :: Config n na fla sla
+parserSnapshotQuery :: SnapshotConfig n na fla sla
                     -> Opt.Parser (Q.Query n na fla sla)
 parserSnapshotQuery conf = fmap fromParsedElement the_parser
   where
