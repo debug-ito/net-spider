@@ -28,8 +28,6 @@ data Config n na fla sla =
     -- parsed. Note that the \"-s\" option is always parsed.
   }
 
--- TODO: how about an option to parse arguments for 'startsFrom'?
-
 -- | Command-line option parser for 'Q.Query'.
 parserSnapshotQuery :: Config n na fla sla
                     -> Opt.Parser (Q.Query n na fla sla)
