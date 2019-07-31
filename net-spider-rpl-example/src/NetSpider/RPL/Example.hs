@@ -80,10 +80,11 @@ optionParser = (,) <$> parserSpiderConfig <*> parserCommands
     ipv6Reader = (maybe (fail "Invalid IPv6") return  . ipv6FromText) =<< Opt.auto
     parserSnapshot = fmap CmdSnapshot $ parserSnapshotQuery
     parserSnapshotQuery = CLIS.parserSnapshotQuery $
-                          CLIS.Config { CLIS.nodeIDReader = ipv6Reader,
-                                        CLIS.basisSnapshotQuery = defQuery [],
-                                        CLIS.startsFromAsArguments = True
-                                      }
+                          CLIS.SnapshotConfig
+                          { CLIS.nodeIDReader = ipv6Reader,
+                            CLIS.basisSnapshotQuery = defQuery [],
+                            CLIS.startsFromAsArguments = True
+                          }
 
 main :: IO ()
 main = do
