@@ -1,14 +1,13 @@
 {-# LANGUAGE OverloadedStrings, StrictData #-}
 -- |
 -- Module: NetSpider.CLI.Spider
--- Description: Types and routines about Spider
+-- Description: CLI option parser for Spider's Config
 -- Maintainer: Toshio Ito <toshio9.ito@toshiba.co.jp>
 --
--- 
+-- This module define CLI option parser for 'SpiderConfig'.
 module NetSpider.CLI.Spider
-  ( -- * Parsers
-    SpiderConfig,
-    parserSpiderConfig
+  ( parserSpiderConfig,
+    SpiderConfig
   ) where
 
 import Control.Applicative ((<$>), (<*>), many, pure)

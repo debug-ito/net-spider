@@ -1,12 +1,13 @@
 -- |
 -- Module: NetSpider.CLI.Snapshot
--- Description: Command to get a snapshot graph
+-- Description: CLI option parser for Query for snapshot graphs
 -- Maintainer: Toshio Ito <toshio9.ito@toshiba.co.jp>
 --
--- 
+-- This module defines CLI option parser for 'Q.Query' for snapshot
+-- graphs.
 module NetSpider.CLI.Snapshot
-  ( SnapshotConfig(..),
-    parserSnapshotQuery
+  ( parserSnapshotQuery,
+    SnapshotConfig(..)
   ) where
 
 import Control.Applicative ((<$>), (<*>), many)
@@ -14,21 +15,22 @@ import qualified NetSpider.Query as Q
 import qualified Options.Applicative as Opt
 import NetSpider.Interval (interval, parseTimeIntervalEnd)
 
--- | Configuration for making Snapshot queries.
+-- | Configuration for option parser for Snapshot 'Q.Query'.
 data SnapshotConfig n na fla sla =
   SnapshotConfig
   { nodeIDReader :: Opt.ReadM n,
-    -- ^ Parser that reads an command-line option to generate a node
-    -- ID.
+    -- ^ Parser that reads a CLI option to generate a node ID.
     basisSnapshotQuery :: Q.Query n na fla sla,
-    -- ^ Basis for queries for SnapshotGraph
+    -- ^ Basis for queries for snapshot graphs. Fields in this basis
+    -- are overwritten by CLI options.
     startsFromAsArguments :: Bool
-    -- ^ If 'True', the 'Q.startsFrom' field is read from
-    -- command-line arguments. If 'False', arguments are not
-    -- parsed. Note that the \"-s\" option is always parsed.
+    -- ^ If 'True', the 'Q.startsFrom' field is read from CLI
+    -- arguments. If 'False', arguments are not parsed. In either
+    -- case, \"-s\" option is always parsed to generate
+    -- 'Q.startsFrom'.
   }
 
--- | Command-line option parser for 'Q.Query'.
+-- | CLI option parser for 'Q.Query'.
 parserSnapshotQuery :: SnapshotConfig n na fla sla
                     -> Opt.Parser (Q.Query n na fla sla)
 parserSnapshotQuery conf = fmap fromParsedElement the_parser
