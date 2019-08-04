@@ -1,5 +1,17 @@
 # Revision history for net-spider
 
+## 0.3.2.0  -- 2019-08-04
+
+* Add `Interval` module.
+
+### Query module
+
+* Add `Eq` instance to `FoundNodePolicy`.
+
+### Spider module
+
+* Add `withSpider` function.
+
 ## 0.3.1.1  -- 2019-07-19
 
 * Add documentation about `GraphML.Writer` module.
