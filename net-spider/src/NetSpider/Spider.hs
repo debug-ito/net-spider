@@ -95,6 +95,8 @@ close sp = Gr.close $ spiderClient sp
 
 -- | Connect the spider, run the given action and close the
 -- connection.
+--
+-- @since 0.3.2.0
 withSpider :: Config n na fla -> (Spider n na fla -> IO a) -> IO a
 withSpider conf = bracket (connectWith conf) close
 

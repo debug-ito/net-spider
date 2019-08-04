@@ -3,7 +3,9 @@
 -- Description: Interval type and Interval of Timestamps
 -- Maintainer: Toshio Ito <toshio9.ito@toshiba.co.jp>
 --
--- 
+-- Re-exports of 'Interval' type and additional utility.
+--
+-- @since 0.3.2.0
 module NetSpider.Interval
   ( -- * Re-exports
     Interval,
@@ -27,6 +29,8 @@ import NetSpider.Timestamp (Timestamp, addSec, parseTimestamp)
 
 -- | Upper or lower end of 'Interval'. The 'Bool' field is 'True' if
 -- the end is inclusive.
+--
+-- @since 0.3.2.0
 type IntervalEnd a = (Extended a, Bool)
 
 -- | Error message type.
@@ -35,6 +39,8 @@ type ErrorMsg = String
 -- | Parse the 'String' into 'IntervalEnd' @a@, with the
 -- user-supplied parser for @a@. See 'parseTimeIntervalEnd' for
 -- example.
+--
+-- @since 0.3.2.0
 parseIntervalEnd :: (String -> Either ErrorMsg a) -- ^ parser for the type variable @a@
                  -> String -- ^ input to be parsed
                  -> Either ErrorMsg (IntervalEnd a)
@@ -82,6 +88,8 @@ parseIntervalEnd parseFinite input = do
 -- Right (NegInf,True)
 -- >>> parseTimeIntervalEnd "x-inf"
 -- Right (NegInf,False)
+--
+-- @since 0.3.2.0
 parseTimeIntervalEnd :: String -> Either ErrorMsg (IntervalEnd Timestamp)
 parseTimeIntervalEnd = parseIntervalEnd parseTimestampE
   where
