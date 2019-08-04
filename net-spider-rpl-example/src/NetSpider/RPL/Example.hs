@@ -53,39 +53,6 @@ import qualified Options.Applicative as Opt
 import System.Environment (getArgs)
 import System.IO (hPutStrLn, stderr)
 
-data Cmd = CmdClear
-         | CmdInput [FilePath]
-         | CmdSnapshot (Query IPv6ID () () ())
-         | CmdCIS [FilePath] (Query IPv6ID () () ()) -- ^ Clear + Input + Snapshot
-
-optionParser :: Opt.Parser (SpiderConfig n na fla, Cmd)
-optionParser = (,) <$> parserSpiderConfig <*> parserCommands
-  where
-    parserCommands = Opt.hsubparser $ mconcat commands
-    commands = [ Opt.command "clear" $
-                 Opt.info (pure CmdClear) (Opt.progDesc "Clear the entire database."),
-                 Opt.command "input" $
-                 Opt.info parserInput (Opt.progDesc "Input local findings into the database."),
-                 Opt.command "snapshot" $
-                 Opt.info parserSnapshot (Opt.progDesc "Get a snapshot graph from the database."),
-                 Opt.command "cis" $
-                 Opt.info (CmdCIS <$> parserInputFiles <*> parserSnapshotQuery)
-                 (Opt.progDesc "Clear + Input + Snapshot at once. `startsFrom` of the query is set by FoundNodes loaded from the files.")
-               ]
-    parserInput = fmap CmdInput $ parserInputFiles
-    parserInputFiles = many $ Opt.strArgument $ mconcat
-                       [ Opt.metavar "FILE",
-                         Opt.help "Input file. You can specify multiple times."
-                       ]
-    ipv6Reader = (maybe (fail "Invalid IPv6") return  . ipv6FromText) =<< Opt.auto
-    parserSnapshot = fmap CmdSnapshot $ parserSnapshotQuery
-    parserSnapshotQuery = CLIS.parserSnapshotQuery $
-                          CLIS.SnapshotConfig
-                          { CLIS.nodeIDReader = ipv6Reader,
-                            CLIS.basisSnapshotQuery = defQuery [],
-                            CLIS.startsFromAsArguments = True
-                          }
-
 main :: IO ()
 main = do
   (sconf, cmd) <- Opt.execParser $ Opt.info (Opt.helper <*> optionParser) $ mconcat $
@@ -140,14 +107,53 @@ main = do
     doCIS sconf filenames query_base = do
       doClear sconf
       (dio_nodes, dao_nodes) <- doInput sconf filenames
+      -- Make a query from the FoundNodes just loaded.
       let starts = (map (ipv6Only . subjectNode) $ sortDAONodes dao_nodes)
                    ++
                    (map (ipv6Only . subjectNode) dio_nodes)
           q = query_base { startsFrom = starts }
       doSnapshot sconf q
-      
-----------
 
+---- CLI parsers.
+
+-- | CLI subcommands and their arguments.
+data Cmd = CmdClear -- ^ Clear the entire database.
+         | CmdInput [FilePath] -- ^ Input FoundNodes.
+         | CmdSnapshot (Query IPv6ID () () ()) -- ^ Get a snapshot graph.
+         | CmdCIS [FilePath] (Query IPv6ID () () ()) -- ^ Clear + Input + Snapshot
+
+optionParser :: Opt.Parser (SpiderConfig n na fla, Cmd)
+optionParser = (,) <$> parserSpiderConfig <*> parserCommands
+  where
+    parserCommands = Opt.hsubparser $ mconcat commands
+    commands = [ Opt.command "clear" $
+                 Opt.info (pure CmdClear) (Opt.progDesc "Clear the entire database."),
+                 Opt.command "input" $
+                 Opt.info parserInput (Opt.progDesc "Input local findings into the database."),
+                 Opt.command "snapshot" $
+                 Opt.info parserSnapshot (Opt.progDesc "Get a snapshot graph from the database."),
+                 Opt.command "cis" $
+                 Opt.info (CmdCIS <$> parserInputFiles <*> parserSnapshotQuery)
+                 (Opt.progDesc "Clear + Input + Snapshot at once. `startsFrom` of the query is set by FoundNodes loaded from the files.")
+               ]
+    parserInput = fmap CmdInput $ parserInputFiles
+    parserInputFiles = many $ Opt.strArgument $ mconcat
+                       [ Opt.metavar "FILE",
+                         Opt.help "Input file. You can specify multiple times."
+                       ]
+    ipv6Reader = (maybe (fail "Invalid IPv6") return  . ipv6FromText) =<< Opt.auto
+    parserSnapshot = fmap CmdSnapshot $ parserSnapshotQuery
+    parserSnapshotQuery = CLIS.parserSnapshotQuery $
+                          CLIS.SnapshotConfig
+                          { CLIS.nodeIDReader = ipv6Reader,
+                            CLIS.basisSnapshotQuery = defQuery [],
+                            CLIS.startsFromAsArguments = True
+                          }
+
+---- Type adaptation of Config and Query
+
+-- | Cast type variables of 'SpiderConfig'. The type variables are
+-- basically phantom types for now.
 castSpiderConfig :: SpiderConfig n1 na1 fla1 -> SpiderConfig n2 na2 fla2
 castSpiderConfig sc = sc { nodeIdKey = Key $ unKey $ nodeIdKey sc }
 
@@ -161,6 +167,8 @@ rebaseQuery orig ftype base = base { startsFrom = map liftToFindingID $ startsFr
                                    }
   where
     liftToFindingID (IPv6ID ip) = FindingID ftype ip
+
+---- I/O of FoundNodes
 
 -- | Read a Contiki-NG log file, parse it with
 -- 'NetSpider.RPL.ContikiNG.parseFile' to get 'FoundNodeDIO' and
@@ -251,7 +259,7 @@ getLatestForEachNode :: [FoundNode FindingID na la] -> [FoundNode FindingID na l
 getLatestForEachNode = getLatestNodes . collectNodes
 
 
--- ---- FoundNode utility
+---- FoundNode utility
 
 sortDAONodes :: [FoundNodeDAO] -> [FoundNodeDAO]
 sortDAONodes = reverse . sortOn (DAO.daoRouteNum . nodeAttributes)
