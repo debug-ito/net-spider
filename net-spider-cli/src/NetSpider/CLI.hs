@@ -8,7 +8,7 @@
 -- as configuration for Spider object and a query for a snapshot
 -- graph. The option parsers are based on 'Parser' from
 -- "Options.Applicative" (optparse-applicative package), so you can
--- easily integrade those parser into the CLI option parser of your
+-- easily integrade those parsers into the CLI option parser of your
 -- own executable program.
 module NetSpider.CLI
        ( module NetSpider.CLI.Spider,
