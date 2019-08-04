@@ -1,5 +1,5 @@
 # Revision history for net-spider-cli
 
-## 0.1.0.0  -- YYYY-mm-dd
+## 0.1.0.0  -- 2019-08-04
 
 * First version. Released on an unsuspecting world.
