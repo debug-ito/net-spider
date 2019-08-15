@@ -4,15 +4,20 @@ RUN stack update
 RUN mkdir /work
 WORKDIR /work
 
-COPY stack.yaml net-spider net-spider-rpl net-spider-cli ./
-RUN mkdir /work/net-spider-rpl-example
-WORKDIR /work/net-spider-rpl-example
-COPY net-spider-rpl-example/net-spider-rpl-example.cabal ./
-
-RUN stack --system-ghc install --only-dependencies
+COPY stack.yaml ./
+COPY net-spider/ ./net-spider/
+COPY net-spider-rpl/ ./net-spider-rpl/
+COPY net-spider-cli/ ./net-spider-cli/
+RUN mkdir ./test-readme
+COPY test-readme/test-readme.cabal ./test-readme/
+RUN mkdir ./net-spider-pangraph
+COPY net-spider-pangraph/net-spider-pangraph.cabal ./net-spider-pangraph/
+RUN mkdir ./net-spider-rpl-example
+COPY net-spider-rpl-example/net-spider-rpl-example.cabal ./net-spider-rpl-example/
+RUN stack --system-ghc install --only-dependencies net-spider-rpl-example
 
 COPY ./ ./
-RUN stack --system-ghc install
+RUN stack --system-ghc install net-spider-rpl-example
 
 ## temporary
 ENTRYPOINT ["ghci"]
