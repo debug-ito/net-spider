@@ -1,0 +1,18 @@
+FROM haskell:8.4.4
+
+RUN stack update
+RUN mkdir /work
+WORKDIR /work
+
+COPY stack.yaml net-spider net-spider-rpl net-spider-cli ./
+RUN mkdir /work/net-spider-rpl-example
+WORKDIR /work/net-spider-rpl-example
+COPY net-spider-rpl-example/net-spider-rpl-example.cabal ./
+
+RUN stack --system-ghc install --only-dependencies
+
+COPY ./ ./
+RUN stack --system-ghc install
+
+## temporary
+ENTRYPOINT ["ghci"]
