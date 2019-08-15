@@ -16,7 +16,7 @@ RUN mkdir ./net-spider-rpl-example
 COPY net-spider-rpl-example/net-spider-rpl-example.cabal ./net-spider-rpl-example/
 RUN stack --system-ghc install --only-dependencies net-spider-rpl-example
 
-COPY ./ ./
+COPY net-spider-rpl-example/ net-spider-rpl-example/
 RUN stack --system-ghc install net-spider-rpl-example
 
 ## temporary
