@@ -1,4 +1,4 @@
-FROM haskell:8.4.4
+FROM haskell:8.4.4 AS build
 
 RUN stack update
 RUN mkdir /work
@@ -17,6 +17,9 @@ COPY net-spider-rpl-example/net-spider-rpl-example.cabal ./net-spider-rpl-exampl
 RUN stack --system-ghc install --only-dependencies net-spider-rpl-example
 
 COPY net-spider-rpl-example/ net-spider-rpl-example/
-RUN stack --system-ghc install net-spider-rpl-example
+RUN stack --system-ghc install --flag net-spider-rpl-example:static net-spider-rpl-example
 
-ENTRYPOINT ["/root/.local/bin/net-spider-rpl-example"]
+
+FROM alpine:latest
+COPY --from=build /root/.local/bin/net-spider-rpl-example /
+ENTRYPOINT ["/net-spider-rpl-example"]
