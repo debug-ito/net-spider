@@ -7,9 +7,10 @@ license-file:           LICENSE
 synopsis:               CLI executable of NetSpider.RPL.
 description:            CLI executable of "NetSpider.RPL". It's also an example of "NetSpider.CLI" module.
                         .
-                        __This package is a preliminary release. CLI interface and functionality may change drastically in future.__
+                        __This package is an alpha release. CLI interface and functionality may change drastically in future.__
                         .
                         For detail, run with @--help@ option.
+stability:              alpha
 category:               Database
 cabal-version:          >= 1.10
 build-type:             Simple
