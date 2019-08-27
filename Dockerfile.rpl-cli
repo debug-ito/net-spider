@@ -1,0 +1,25 @@
+FROM haskell:8.4.4 AS build
+
+RUN stack update
+RUN mkdir /work
+WORKDIR /work
+
+COPY stack.yaml ./
+COPY net-spider/ ./net-spider/
+COPY net-spider-rpl/ ./net-spider-rpl/
+COPY net-spider-cli/ ./net-spider-cli/
+RUN mkdir ./test-readme
+COPY test-readme/test-readme.cabal ./test-readme/
+RUN mkdir ./net-spider-pangraph
+COPY net-spider-pangraph/net-spider-pangraph.cabal ./net-spider-pangraph/
+RUN mkdir ./net-spider-rpl-cli
+COPY net-spider-rpl-cli/net-spider-rpl-cli.cabal ./net-spider-rpl-cli/
+RUN stack --system-ghc install --only-dependencies net-spider-rpl-cli
+
+COPY net-spider-rpl-cli/ net-spider-rpl-cli/
+RUN stack --system-ghc install --flag net-spider-rpl-cli:static net-spider-rpl-cli
+
+
+FROM alpine:latest
+COPY --from=build /root/.local/bin/net-spider-rpl-cli /
+ENTRYPOINT ["/net-spider-rpl-cli"]
