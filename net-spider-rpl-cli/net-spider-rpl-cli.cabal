@@ -1,11 +1,11 @@
-name:                   net-spider-rpl-example
+name:                   net-spider-rpl-cli
 version:                0.1.0.0
 author:                 Toshio Ito <debug.ito@gmail.com>
 maintainer:             Toshio Ito <debug.ito@gmail.com>
 license:                BSD3
 license-file:           LICENSE
-synopsis:               Example of NetSpider.RPL.
-description:            Example of NetSpider.RPL. See source files for the executables.
+synopsis:               CLI executable of NetSpider.RPL.
+description:            CLI executable of NetSpider.RPL. It's also an example of NetSpider.CLI module.
 category:               Database
 cabal-version:          >= 1.10
 build-type:             Simple
@@ -19,7 +19,7 @@ library
   ghc-options:          -Wall -fno-warn-unused-imports
   -- default-extensions:   
   other-extensions:     RankNTypes
-  exposed-modules:      NetSpider.RPL.Example
+  exposed-modules:      NetSpider.RPL.CLI
   -- other-modules:        
   build-depends:        base >=4.11.1.0 && <4.13,
                         net-spider,
@@ -34,7 +34,7 @@ flag static
   description: Static link
   default: False
 
-executable net-spider-rpl-example
+executable net-spider-rpl-cli
   default-language:     Haskell2010
   hs-source-dirs:       app
   main-is:              Main.hs
@@ -42,7 +42,7 @@ executable net-spider-rpl-example
   -- other-modules:        
   -- default-extensions:   
   -- other-extensions:     
-  build-depends:        base, net-spider-rpl-example
+  build-depends:        base, net-spider-rpl-cli
   if flag(static)
     ld-options:         -static
 
@@ -55,7 +55,7 @@ executable net-spider-rpl-example
 --   -- default-extensions:   
 --   -- other-extensions:     
 --   other-modules:        NetSpider.RPL.ExampleSpec
---   build-depends:        base, net-spider-rpl-example,
+--   build-depends:        base, net-spider-rpl-cli,
 --                         hspec
 
 source-repository head

@@ -1,10 +1,10 @@
 {-# LANGUAGE OverloadedStrings, RankNTypes #-}
 -- |
--- Module: NetSpider.RPL.Example
--- Description: Example executable of NetSpider.RPL
+-- Module: NetSpider.RPL.CLI
+-- Description: CLI executable of NetSpider.RPL
 -- Maintainer: Toshio Ito <debug.ito@gmail.com>
 -- 
-module NetSpider.RPL.Example
+module NetSpider.RPL.CLI
        ( main
        ) where
 

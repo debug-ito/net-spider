@@ -1,4 +1,4 @@
-# Revision history for net-spider-rpl-example
+# Revision history for net-spider-rpl-cli
 
 ## 0.1.0.0  -- YYYY-mm-dd
 

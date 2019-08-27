@@ -1,3 +1,3 @@
 module Main (main) where
 
-import NetSpider.RPL.Example (main)
+import NetSpider.RPL.CLI (main)

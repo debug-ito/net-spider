@@ -1,4 +1,4 @@
-# net-spider-rpl-example
+# net-spider-rpl-cli
 
 
 ## Author
