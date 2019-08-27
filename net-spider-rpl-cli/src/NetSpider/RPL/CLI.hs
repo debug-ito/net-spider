@@ -56,7 +56,7 @@ import System.IO (hPutStrLn, stderr)
 main :: IO ()
 main = do
   (sconf, cmd) <- Opt.execParser $ Opt.info (Opt.helper <*> optionParser) $ mconcat $
-                  [ Opt.progDesc "Example net-spider front-end for RPL data model."
+                  [ Opt.progDesc "net-spider front-end for RPL data model."
                   ]
   case cmd of
     CmdClear -> doClear sconf
@@ -71,9 +71,9 @@ main = do
     doInput sconf filenames = do
       -- filenames is a list of syslog filenames
       
-      -- Read DIO and DAO FoundNodes. It might take a long time to insert
-      -- a lot of FoundNodes, so this example inserts only the latest
-      -- FoundNode per node into the net-spider database.
+      -- Read DIO and DAO FoundNodes. It might take a long time to
+      -- insert a lot of FoundNodes, so this executable inserts only
+      -- the latest FoundNode per node into the net-spider database.
       (dio_nodes, dao_nodes) <- fmap (concatPairs . map (filterPairs getLatestForEachNode))
                                 $ mapM loadFile filenames
       hPutStrLn stderr ("---- Load done")
