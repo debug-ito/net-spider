@@ -20,6 +20,6 @@ COPY net-spider-rpl-cli/ net-spider-rpl-cli/
 RUN stack --system-ghc install --flag net-spider-rpl-cli:static net-spider-rpl-cli
 
 
-FROM alpine:latest
+FROM debian:stretch
 COPY --from=build /root/.local/bin/net-spider-rpl-cli /
 ENTRYPOINT ["/net-spider-rpl-cli"]
