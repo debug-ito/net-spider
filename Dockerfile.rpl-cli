@@ -20,6 +20,11 @@ COPY net-spider-rpl-cli/ net-spider-rpl-cli/
 RUN stack --system-ghc install --flag net-spider-rpl-cli:static net-spider-rpl-cli
 
 
-FROM debian:stretch
+## "haskell" image is a little big for a image for
+## executable. However, an executable made by GHC is not fully static
+## or self-contained, so we'd better prepare the same environment as
+## the image for build.
+
+FROM haskell:8.4.4
 COPY --from=build /root/.local/bin/net-spider-rpl-cli /
 ENTRYPOINT ["/net-spider-rpl-cli"]
