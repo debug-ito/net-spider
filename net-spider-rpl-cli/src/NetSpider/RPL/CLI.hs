@@ -131,9 +131,9 @@ optionParser = (,) <$> parserSpiderConfig <*> parserCommands
                  Opt.command "input" $
                  Opt.info parserInput (Opt.progDesc "Input local findings into the database."),
                  Opt.command "snapshot" $
-                 Opt.info parserSnapshot (Opt.progDesc "Get a snapshot graph from the database."),
+                 Opt.info (parserSnapshot True) (Opt.progDesc "Get a snapshot graph from the database."),
                  Opt.command "cis" $
-                 Opt.info (CmdCIS <$> parserInputFiles <*> parserSnapshotQuery)
+                 Opt.info (CmdCIS <$> parserInputFiles <*> parserSnapshotQuery False)
                  (Opt.progDesc "Clear + Input + Snapshot at once. `startsFrom` of the query is set by FoundNodes loaded from the files.")
                ]
     parserInput = fmap CmdInput $ parserInputFiles
@@ -142,13 +142,14 @@ optionParser = (,) <$> parserSpiderConfig <*> parserCommands
                          Opt.help "Input file. You can specify multiple times."
                        ]
     ipv6Reader = (maybe (fail "Invalid IPv6") return  . ipv6FromText) =<< Opt.auto
-    parserSnapshot = fmap CmdSnapshot $ parserSnapshotQuery
-    parserSnapshotQuery = CLIS.parserSnapshotQuery $
-                          CLIS.SnapshotConfig
-                          { CLIS.nodeIDReader = ipv6Reader,
-                            CLIS.basisSnapshotQuery = defQuery [],
-                            CLIS.startsFromAsArguments = True
-                          }
+    parserSnapshot parse_arg = fmap CmdSnapshot $ parserSnapshotQuery parse_arg
+    parserSnapshotQuery parse_arg =
+      CLIS.parserSnapshotQuery $
+      CLIS.SnapshotConfig
+      { CLIS.nodeIDReader = ipv6Reader,
+        CLIS.basisSnapshotQuery = defQuery [],
+        CLIS.startsFromAsArguments = parse_arg
+      }
 
 ---- Type adaptation of Config and Query
 
