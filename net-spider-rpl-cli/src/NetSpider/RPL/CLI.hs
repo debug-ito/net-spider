@@ -51,10 +51,10 @@ import qualified NetSpider.RPL.DIO as DIO
 import NetSpider.RPL.DAO (FoundNodeDAO)
 import qualified NetSpider.RPL.DAO as DAO
 import qualified NetSpider.RPL.Combined as RPL
-import NetSpider.RPL.ContikiNG (parseFile, pSyslogHead)
+import NetSpider.RPL.ContikiNG (parseFile, parseFileHandle, pSyslogHead)
 import qualified Options.Applicative as Opt
 import System.Environment (getArgs)
-import System.IO (hPutStrLn, stderr)
+import System.IO (hPutStrLn, stderr, stdin)
 
 main :: IO ()
 main = do
@@ -142,7 +142,7 @@ optionParser = (,) <$> parserSpiderConfig <*> parserCommands
     parserInput = fmap CmdInput $ parserInputFiles
     parserInputFiles = many $ Opt.strArgument $ mconcat
                        [ Opt.metavar "FILE",
-                         Opt.help "Input file. You can specify multiple times."
+                         Opt.help "Input file. You can specify multiple times. If '-' is specified, it reads STDIN."
                        ]
     ipv6Reader = (maybe (fail "Invalid IPv6") return  . ipv6FromText . pack) =<< Opt.str
     parserSnapshot parse_arg = fmap CmdSnapshot $ parserSnapshotQuery parse_arg
@@ -180,13 +180,21 @@ rebaseQuery orig ftype base = base { startsFrom = map liftToFindingID $ startsFr
 loadFile :: FilePath
          -> IO ([FoundNodeDIO], [FoundNodeDAO])
 loadFile file = do
-  hPutStrLn stderr ("---- Loading " <> file)
-  (dio_nodes, dao_nodes) <- parseFile phead file
+  (dio_nodes, dao_nodes) <- loadNodes
   hPutStrLn stderr ((show $ length dio_nodes) <> " DIO Nodes")
   hPutStrLn stderr ((show $ length dao_nodes) <> " DAO Nodes")
   return (dio_nodes, dao_nodes)
   where
     phead = pSyslogHead 2019 Nothing
+    loadNodes = do
+      if file == "-"
+        then do
+        hPutStrLn stderr ("---- Loading from stdin")
+        parseFileHandle phead stdin
+        else do
+        hPutStrLn stderr ("---- Loading " <> file)
+        parseFile phead file
+
 
 -- | Put (insert) the given 'FoundNode's into the net-spider
 -- database
