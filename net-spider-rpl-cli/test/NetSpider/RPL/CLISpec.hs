@@ -29,6 +29,8 @@ spec = do
       case parse_result of
         Right (_, CmdSnapshot got_q) ->
           startsFrom got_q `shouldBe` [IPv6ID $ ipv6 0xfd00 0 0 0 0x0212 0x4b00 0x13a4 0xc554]
+        Right (_, _) ->
+          expectationFailure ("Unexpected Cmd option.")
         Left err ->
           expectationFailure (err)
       
