@@ -144,7 +144,7 @@ optionParser = (,) <$> parserSpiderConfig <*> parserCommands
                        [ Opt.metavar "FILE",
                          Opt.help "Input file. You can specify multiple times."
                        ]
-    ipv6Reader = (maybe (fail "Invalid IPv6") return  . ipv6FromText) =<< Opt.auto
+    ipv6Reader = (maybe (fail "Invalid IPv6") return  . ipv6FromText . pack) =<< Opt.str
     parserSnapshot parse_arg = fmap CmdSnapshot $ parserSnapshotQuery parse_arg
     parserSnapshotQuery parse_arg =
       CLIS.parserSnapshotQuery $
