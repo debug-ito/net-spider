@@ -11,6 +11,7 @@
 module NetSpider.RPL.ContikiNG
   ( -- * Parser functions
     parseFile,
+    parseFileHandle,
     -- * Parser components
     Parser,
     pCoojaLogHead,
@@ -35,7 +36,7 @@ import Net.IPv6 (IPv6)
 import qualified Net.IPv6 as IPv6
 import NetSpider.Found (FoundNode(..), FoundLink(..), LinkState(LinkToTarget))
 import NetSpider.Timestamp (Timestamp, fromEpochMillisecond, fromLocalTime, fromZonedTime)
-import System.IO (withFile, IOMode(ReadMode), hGetLine, hIsEOF)
+import System.IO (withFile, IOMode(ReadMode), hGetLine, hIsEOF, Handle)
 import qualified Text.ParserCombinators.ReadP as P
 import Text.Read (readEither)
 
@@ -88,17 +89,21 @@ runParser' p err input =
 parseFile :: Parser Timestamp -- ^ Parser for log prefix
           -> FilePath -- ^ File to read
           -> IO ([FoundNodeDIO], [FoundNodeDAO])
-parseFile pTimestamp input_file = withFile input_file ReadMode $ onHandle
+parseFile pt file = withFile file ReadMode $ parseFileHandle pt
+
+-- | Same as 'parseFile' but for a 'Handle'.
+parseFileHandle :: Parser Timestamp -- ^ Parser for log prefix
+                -> Handle -- ^ File handle to read
+                -> IO ([FoundNodeDIO], [FoundNodeDAO])
+parseFileHandle pTimestamp handle = go ([], [])
   where
-    onHandle h = go ([], [])
-      where
-        go (acc_dio, acc_dao) = do
-          mentry <- parseOneEntry pTimestamp $ tryGetLine h
-          case mentry of
-            Nothing -> return (reverse acc_dio, reverse acc_dao)
-            Just (PEDIO fl) -> go (fl : acc_dio, acc_dao)
-            Just (PEDAO srs) -> go (acc_dio, srs ++ acc_dao)
-            Just PEMisc -> go (acc_dio, acc_dao)
+    go (acc_dio, acc_dao) = do
+      mentry <- parseOneEntry pTimestamp $ tryGetLine handle
+      case mentry of
+        Nothing -> return (reverse acc_dio, reverse acc_dao)
+        Just (PEDIO fl) -> go (fl : acc_dio, acc_dao)
+        Just (PEDAO srs) -> go (acc_dio, srs ++ acc_dao)
+        Just PEMisc -> go (acc_dio, acc_dao)
     tryGetLine h = do
       eof <- hIsEOF h
       if eof
