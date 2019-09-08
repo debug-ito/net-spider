@@ -5,7 +5,10 @@
 -- Maintainer: Toshio Ito <debug.ito@gmail.com>
 -- 
 module NetSpider.RPL.CLI
-       ( main
+       ( main,
+         -- * Symbols only for testing
+         optionParser,
+         Cmd(..)
        ) where
 
 import qualified Data.Text.Lazy.IO as TLIO
