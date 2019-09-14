@@ -1,0 +1,24 @@
+version: "3.3"
+services:
+  db:
+    image: janusgraph/janusgraph:0.2.3
+    ports:
+      - 8182
+    volumes:
+      - ../janusgraph-conf:/etc/opt/janusgraph:ro
+    networks:
+      - db-net
+
+  spider:
+    ## build:
+    ##   context: .
+    ##   dockerfile: Dockerfile.rpl-cli
+    image: 1a1475122240
+    networks:
+      - db-net
+
+networks:
+  db-net:
+
+volumes:
+  janusgraph-conf:
