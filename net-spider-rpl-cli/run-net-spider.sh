@@ -5,5 +5,15 @@ cd "$this_dir"
 
 image_name="1a1475122240"
 
-docker-compose up -d && \
-    docker run --rm --name net-spider --network netspiderrplcli_db-net -a stdin -a stdout -a stderr -i "$image_name" --host db $@
+if ! ( which docker-compose > /dev/null ); then
+    echo "docker-compose is not installed."
+    exit 1
+fi
+
+db_service=`docker-compose ps -q db`
+if [ "x$db_service" = "x" ]; then
+    echo "JanusGraph DB service is not running. Run docker-compose up -d, and wait for the DB to open the port."
+    exit 1
+fi
+
+docker run --rm --name net-spider --network netspiderrplcli_db-net -a stdin -a stdout -a stderr -i "$image_name" --host db $@
