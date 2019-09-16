@@ -6,6 +6,7 @@ services:
       - 8182
     volumes:
       - ../janusgraph-conf:/etc/opt/janusgraph:ro
+      - ./db:/var/lib/janusgraph
     networks:
       - db-net
 
@@ -24,3 +25,4 @@ networks:
 
 volumes:
   janusgraph-conf:
+  db:
