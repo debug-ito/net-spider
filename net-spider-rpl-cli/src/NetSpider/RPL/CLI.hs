@@ -58,9 +58,11 @@ import System.IO (hPutStrLn, stderr, stdin)
 
 main :: IO ()
 main = do
-  (sconf, cmd) <- Opt.execParser $ Opt.info (Opt.helper <*> optionParser) $ mconcat $
-                  [ Opt.progDesc "net-spider front-end for RPL data model."
-                  ]
+  cli_conf <- Opt.execParser $ Opt.info (Opt.helper <*> optionParser) $ mconcat $
+              [ Opt.progDesc "net-spider front-end for RPL data model."
+              ]
+  let sconf = cliSpiderConfig cli_conf
+      cmd = cliCmd cli_conf
   case cmd of
     CmdClear -> doClear sconf
     CmdInput fs -> void $ doInput sconf fs
@@ -119,14 +121,27 @@ main = do
 
 ---- CLI parsers.
 
+-- | Filter function of 'FoundNode', agnostic of node and link
+-- attributes.
+type FoundNodeFilter = forall na la . [FoundNode FindingID na la] -> [FoundNode FindingID na la]
+
+data CLIConfig n na fla =
+  CLIConfig
+  { cliSpiderConfig :: SpiderConfig n na fla,
+    cliCmd :: Cmd,
+    cliFoundNodeFilter :: FoundNodeFilter
+  }
+
 -- | CLI subcommands and their arguments.
 data Cmd = CmdClear -- ^ Clear the entire database.
          | CmdInput [FilePath] -- ^ Input FoundNodes.
          | CmdSnapshot (Query IPv6ID () () ()) -- ^ Get a snapshot graph.
          | CmdCIS [FilePath] (Query IPv6ID () () ()) -- ^ Clear + Input + Snapshot
 
-optionParser :: Opt.Parser (SpiderConfig n na fla, Cmd)
-optionParser = (,) <$> parserSpiderConfig <*> parserCommands
+optionParser :: Opt.Parser (CLIConfig n na fla)
+-- optionParser = CLIConfig <$> parserSpiderConfig <*> parserCommands <*> pure getLatestForEachNode
+-- optionParser = CLIConfig <$> parserSpiderConfig <*> parserCommands <*> pure id
+optionParser = CLIConfig <$> parserSpiderConfig <*> parserCommands <*> undefined
   where
     parserCommands = Opt.hsubparser $ mconcat commands
     commands = [ Opt.command "clear" $
@@ -237,7 +252,7 @@ printDAONode fn = do
 
 ---- General utility functions.
 
-filterPairs :: (forall na la . [FoundNode FindingID na la] -> [FoundNode FindingID na la])
+filterPairs :: FoundNodeFilter
             -> ([FoundNode FindingID na1 la1], [FoundNode FindingID na2 la2])
             -> ([FoundNode FindingID na1 la1], [FoundNode FindingID na2 la2])
 filterPairs f (ns1, ns2) = (f ns1, f ns2)
@@ -267,7 +282,7 @@ getLatestNodes nm = concat $ HM.elems $ fmap filterLatest nm
     getHead [] = []
     getHead (a : _) = [a]
 
-getLatestForEachNode :: [FoundNode FindingID na la] -> [FoundNode FindingID na la]
+getLatestForEachNode :: FoundNodeFilter
 getLatestForEachNode = getLatestNodes . collectNodes
 
 
