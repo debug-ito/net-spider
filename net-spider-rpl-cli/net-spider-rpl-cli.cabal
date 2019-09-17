@@ -23,7 +23,7 @@ library
   hs-source-dirs:       src
   ghc-options:          -Wall -fno-warn-unused-imports
   -- default-extensions:   
-  other-extensions:     RankNTypes
+  other-extensions:     OverloadedStrings, RankNTypes
   exposed-modules:      NetSpider.RPL.CLI
   -- other-modules:        
   build-depends:        base >=4.11.1.0 && <4.13,
