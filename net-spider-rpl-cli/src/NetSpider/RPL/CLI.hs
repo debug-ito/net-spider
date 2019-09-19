@@ -86,10 +86,10 @@ main = do
       -- Input DIO and DAO FoundNodes. Note that we have to cast
       -- SpiderConfig's type to match DIO and DAO FoundNode.
       hPutStrLn stderr ("---- Put " <> (show $ length dio_nodes) <> " DIONodes")
-      forM_ dio_nodes printDIONode
+      -- forM_ dio_nodes printDIONode
       putNodes (castSpiderConfig sconf) dio_nodes
       hPutStrLn stderr ("---- Put " <> (show $ length dao_nodes) <> " DAONodes")
-      forM_ dao_nodes printDAONode
+      -- forM_ dao_nodes printDAONode
       putNodes (castSpiderConfig sconf) dao_nodes
       return (dio_nodes, dao_nodes)
 
