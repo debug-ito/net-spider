@@ -16,6 +16,7 @@ import qualified Data.Text.IO as TIO
 import Control.Applicative (many, (<$>), (<*>))
 import Control.Exception (bracket)
 import Control.Monad (forM_, when, void)
+import Control.Monad.Logger (LogLevel(LevelInfo))
 import Data.Greskell (Key(..))
 import Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HM
@@ -26,7 +27,7 @@ import NetSpider.GraphML.Writer (writeGraphML)
 import qualified NetSpider.CLI.Snapshot as CLIS
 import NetSpider.CLI.Spider (SpiderConfig, parserSpiderConfig)
 import NetSpider.Input
-  ( defConfig,
+  ( defConfig, logThreshold,
     addFoundNode, clearAll,
     FoundNode(subjectNode, foundAt, neighborLinks, nodeAttributes),
     FoundLink(targetNode, linkAttributes),
@@ -86,10 +87,10 @@ main = do
       -- Input DIO and DAO FoundNodes. Note that we have to cast
       -- SpiderConfig's type to match DIO and DAO FoundNode.
       hPutStrLn stderr ("---- Put " <> (show $ length dio_nodes) <> " DIONodes")
-      -- forM_ dio_nodes printDIONode
+      when (isVerbose sconf) $ forM_ dio_nodes printDIONode
       putNodes (castSpiderConfig sconf) dio_nodes
       hPutStrLn stderr ("---- Put " <> (show $ length dao_nodes) <> " DAONodes")
-      -- forM_ dao_nodes printDAONode
+      when (isVerbose sconf) $ forM_ dao_nodes printDAONode
       putNodes (castSpiderConfig sconf) dao_nodes
       return (dio_nodes, dao_nodes)
 
@@ -120,6 +121,8 @@ main = do
                    (map (ipv6Only . subjectNode) dio_nodes)
           q = query_base { startsFrom = starts }
       doSnapshot sconf q
+    isVerbose sconf = logThreshold sconf <= LevelInfo
+
 
 ---- CLI parsers.
 
@@ -208,8 +211,6 @@ optionParser = CLIConfig <$> parserSpiderConfig <*> parserCommands
           fnfDesc = "Input only the latest local finding for each node."
         }
       ]
-
-
 
 ---- Type adaptation of Config and Query
 

@@ -33,7 +33,8 @@ library
                         text >=1.2.2.2 && <1.3,
                         unordered-containers >=0.2.8 && <0.3,
                         greskell >=0.2.3 && <0.3,
-                        optparse-applicative >=0.14.3.0 && <0.16
+                        optparse-applicative >=0.14.3.0 && <0.16,
+                        monad-logger >=0.3.28.1 && <0.4
 
 flag static
   description: Static link
