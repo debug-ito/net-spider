@@ -19,9 +19,9 @@ import Control.Monad (forM_, when, void)
 import Data.Greskell (Key(..))
 import Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HM
-import Data.List (sortOn, reverse)
+import Data.List (sortOn, reverse, intercalate)
 import Data.Monoid ((<>), mconcat)
-import Data.Text (pack)
+import Data.Text (Text, pack, unpack)
 import NetSpider.GraphML.Writer (writeGraphML)
 import qualified NetSpider.CLI.Snapshot as CLIS
 import NetSpider.CLI.Spider (SpiderConfig, parserSpiderConfig)
@@ -65,22 +65,22 @@ main = do
       cmd = cliCmd cli_conf
   case cmd of
     CmdClear -> doClear sconf
-    CmdInput fs -> void $ doInput sconf fs
+    CmdInput fs fnf -> void $ doInput sconf fs fnf
     CmdSnapshot q -> doSnapshot sconf q
-    CmdCIS fs q -> doCIS sconf fs q
+    CmdCIS fs fnf q -> doCIS sconf fs fnf q
   where
     doClear sconf = do
       hPutStrLn stderr "---- Clear graph database"
       withSpider sconf $ clearAll
 
-    doInput sconf filenames = do
+    doInput sconf filenames fnfilter = do
       -- filenames is a list of syslog filenames
       
       -- Read DIO and DAO FoundNodes. It might take a long time to
       -- insert a lot of FoundNodes, so this executable inserts only
       -- the latest FoundNode per node into the net-spider database.
-      (dio_nodes, dao_nodes) <- fmap (concatPairs . map (filterPairs getLatestForEachNode))
-                                $ mapM loadFile filenames
+      (dio_nodes, dao_nodes) <- applyFoundNodeFilter fnfilter
+                                =<< (fmap concatPairs $ mapM loadFile filenames)
       hPutStrLn stderr ("---- Load done")
       
       -- Input DIO and DAO FoundNodes. Note that we have to cast
@@ -109,9 +109,9 @@ main = do
       hPutStrLn stderr ("---- Format DIO+DAO SnapshotGraph into GraphML")
       TLIO.putStr $ writeGraphML com_graph
 
-    doCIS sconf filenames query_base = do
+    doCIS sconf filenames fnfilter query_base = do
       doClear sconf
-      (dio_nodes, dao_nodes) <- doInput sconf filenames
+      (dio_nodes, dao_nodes) <- doInput sconf filenames fnfilter
       -- Make a query from the FoundNodes just loaded.
       let starts = (map (ipv6Only . subjectNode) $ sortDAONodes dao_nodes)
                    ++
@@ -123,38 +123,47 @@ main = do
 
 -- | Filter function of 'FoundNode', agnostic of node and link
 -- attributes.
-type FoundNodeFilter = forall na la . [FoundNode FindingID na la] -> [FoundNode FindingID na la]
+data FoundNodeFilter =
+  FoundNodeFilter
+  { fnfRun :: forall na la . [FoundNode FindingID na la] -> [FoundNode FindingID na la],
+    fnfSymbol :: String,
+    fnfDesc :: Text
+  }
+
+applyFoundNodeFilter :: FoundNodeFilter
+                     -> ([FoundNode FindingID na1 la1], [FoundNode FindingID na2 la2])
+                     -> IO ([FoundNode FindingID na1 la1], [FoundNode FindingID na2 la2])
+applyFoundNodeFilter fnf input = do
+  hPutStrLn stderr ("---- Apply filter '" ++ fnfSymbol fnf ++ "' to local findings.")
+  return $ filterPairs (fnfRun fnf) input
 
 data CLIConfig n na fla =
   CLIConfig
   { cliSpiderConfig :: SpiderConfig n na fla,
-    cliCmd :: Cmd,
-    cliFoundNodeFilter :: FoundNodeFilter
+    cliCmd :: Cmd
   }
 
 -- | CLI subcommands and their arguments.
 data Cmd = CmdClear -- ^ Clear the entire database.
-         | CmdInput [FilePath] -- ^ Input FoundNodes.
+         | CmdInput [FilePath] FoundNodeFilter -- ^ Input FoundNodes and filter for them
          | CmdSnapshot (Query IPv6ID () () ()) -- ^ Get a snapshot graph.
-         | CmdCIS [FilePath] (Query IPv6ID () () ()) -- ^ Clear + Input + Snapshot
+         | CmdCIS [FilePath] FoundNodeFilter (Query IPv6ID () () ()) -- ^ Clear + Input + Snapshot
 
 optionParser :: Opt.Parser (CLIConfig n na fla)
--- optionParser = CLIConfig <$> parserSpiderConfig <*> parserCommands <*> pure getLatestForEachNode
--- optionParser = CLIConfig <$> parserSpiderConfig <*> parserCommands <*> pure id
-optionParser = CLIConfig <$> parserSpiderConfig <*> parserCommands <*> undefined
+optionParser = CLIConfig <$> parserSpiderConfig <*> parserCommands
   where
     parserCommands = Opt.hsubparser $ mconcat commands
     commands = [ Opt.command "clear" $
                  Opt.info (pure CmdClear) (Opt.progDesc "Clear the entire database."),
                  Opt.command "input" $
-                 Opt.info parserInput (Opt.progDesc "Input local findings into the database."),
+                 Opt.info (CmdInput <$> parserInputFiles <*> parserFilter)
+                 (Opt.progDesc "Input local findings into the database."),
                  Opt.command "snapshot" $
                  Opt.info (parserSnapshot True) (Opt.progDesc "Get a snapshot graph from the database."),
                  Opt.command "cis" $
-                 Opt.info (CmdCIS <$> parserInputFiles <*> parserSnapshotQuery False)
+                 Opt.info (CmdCIS <$> parserInputFiles <*> parserFilter <*> parserSnapshotQuery False)
                  (Opt.progDesc "Clear + Input + Snapshot at once. `startsFrom` of the query is set by FoundNodes loaded from the files.")
                ]
-    parserInput = fmap CmdInput $ parserInputFiles
     parserInputFiles = many $ Opt.strArgument $ mconcat
                        [ Opt.metavar "FILE",
                          Opt.help "Input file. You can specify multiple times. If '-' is specified, it reads STDIN."
@@ -168,6 +177,37 @@ optionParser = CLIConfig <$> parserSpiderConfig <*> parserCommands <*> undefined
         CLIS.basisSnapshotQuery = defQuery [],
         CLIS.startsFromAsArguments = parse_arg
       }
+    parserFilter = Opt.option readerFilter $ mconcat
+                   [ Opt.metavar "FILTER",
+                     Opt.help ( "Filter for local findings. Out of the local findings loaded from the input files, "
+                                <> "only those that pass the filter are input to the database. "
+                                <> "Possible values are: " <> filterDescs
+                              ),
+                     Opt.short 'F',
+                     Opt.long "filter",
+                     Opt.value (allFilters !! 0)
+                   ]
+    filterDescs = intercalate ", " $ map descFor allFilters
+    descFor fnf = "'" <> fnfSymbol fnf <> "': " <> (unpack $ fnfDesc fnf)
+    readerFilter = selectFoundNodeFilter =<< Opt.str
+    selectFoundNodeFilter symbol =
+      case filter (\fnf -> fnfSymbol fnf == symbol) allFilters of
+        [] -> fail ("FoundNodeFilter not found: " <> symbol)
+        (x : _) -> return x
+    allFilters =
+      [ FoundNodeFilter
+        { fnfRun = id,
+          fnfSymbol = "id",
+          fnfDesc = "Identity. Not filter anything. This is the default."
+        },
+        FoundNodeFilter
+        { fnfRun = getLatestForEachNode,
+          fnfSymbol = "latest",
+          fnfDesc = "Input only the latest local finding for each node."
+        }
+      ]
+
+
 
 ---- Type adaptation of Config and Query
 
@@ -252,7 +292,7 @@ printDAONode fn = do
 
 ---- General utility functions.
 
-filterPairs :: FoundNodeFilter
+filterPairs :: (forall na la . [FoundNode FindingID na la] -> [FoundNode FindingID na la])
             -> ([FoundNode FindingID na1 la1], [FoundNode FindingID na2 la2])
             -> ([FoundNode FindingID na1 la1], [FoundNode FindingID na2 la2])
 filterPairs f (ns1, ns2) = (f ns1, f ns2)
@@ -282,7 +322,7 @@ getLatestNodes nm = concat $ HM.elems $ fmap filterLatest nm
     getHead [] = []
     getHead (a : _) = [a]
 
-getLatestForEachNode :: FoundNodeFilter
+getLatestForEachNode :: [FoundNode FindingID na la] -> [FoundNode FindingID na la]
 getLatestForEachNode = getLatestNodes . collectNodes
 
 
