@@ -23,6 +23,7 @@ import qualified Data.HashMap.Strict as HM
 import Data.List (sortOn, reverse, intercalate)
 import Data.Monoid ((<>), mconcat)
 import Data.Text (Text, pack, unpack)
+import Data.Time (getZonedTime, ZonedTime(zonedTimeToLocalTime), LocalTime(localDay), toGregorian)
 import NetSpider.GraphML.Writer (writeGraphML)
 import qualified NetSpider.CLI.Snapshot as CLIS
 import NetSpider.CLI.Spider (SpiderConfig, parserSpiderConfig)
@@ -66,22 +67,24 @@ main = do
       cmd = cliCmd cli_conf
   case cmd of
     CmdClear -> doClear sconf
-    CmdInput fs fnf -> void $ doInput sconf fs fnf
+    CmdInput inp -> void $ doInput sconf inp
     CmdSnapshot q -> doSnapshot sconf q
-    CmdCIS fs fnf q -> doCIS sconf fs fnf q
+    CmdCIS inp q -> doCIS sconf inp q
   where
     doClear sconf = do
       hPutStrLn stderr "---- Clear graph database"
       withSpider sconf $ clearAll
 
-    doInput sconf filenames fnfilter = do
+    doInput sconf (InputParams filenames fnfilter myear) = do
       -- filenames is a list of syslog filenames
+
+      year <- getYear myear
       
       -- Read DIO and DAO FoundNodes. It might take a long time to
       -- insert a lot of FoundNodes, so this executable inserts only
       -- the latest FoundNode per node into the net-spider database.
       (dio_nodes, dao_nodes) <- applyFoundNodeFilter fnfilter
-                                =<< (fmap concatPairs $ mapM loadFile filenames)
+                                =<< (fmap concatPairs $ mapM (loadFile year) filenames)
       hPutStrLn stderr ("---- Load done")
       
       -- Input DIO and DAO FoundNodes. Note that we have to cast
@@ -112,9 +115,9 @@ main = do
       hPutStrLn stderr ("---- Format DIO+DAO SnapshotGraph into GraphML")
       TLIO.putStr $ writeGraphML com_graph
 
-    doCIS sconf filenames fnfilter query_base = do
+    doCIS sconf input_params query_base = do
       doClear sconf
-      (dio_nodes, dao_nodes) <- doInput sconf filenames fnfilter
+      (dio_nodes, dao_nodes) <- doInput sconf input_params
       -- Make a query from the FoundNodes just loaded.
       let starts = (map (ipv6Only . subjectNode) $ sortDAONodes dao_nodes)
                    ++
@@ -148,11 +151,16 @@ data CLIConfig n na fla =
     cliCmd :: Cmd
   }
 
+-- | Parameters for input command. Filenames to input, filter for
+-- FoundNodes, and the year that the parser use to parse the input
+-- files.
+data InputParams = InputParams [FilePath] FoundNodeFilter (Maybe Year)
+
 -- | CLI subcommands and their arguments.
 data Cmd = CmdClear -- ^ Clear the entire database.
-         | CmdInput [FilePath] FoundNodeFilter -- ^ Input FoundNodes and filter for them
+         | CmdInput InputParams -- ^ Input FoundNodes to the database
          | CmdSnapshot (Query IPv6ID () () ()) -- ^ Get a snapshot graph.
-         | CmdCIS [FilePath] FoundNodeFilter (Query IPv6ID () () ()) -- ^ Clear + Input + Snapshot
+         | CmdCIS InputParams (Query IPv6ID () () ()) -- ^ Clear + Input + Snapshot
 
 optionParser :: Opt.Parser (CLIConfig n na fla)
 optionParser = CLIConfig <$> parserSpiderConfig <*> parserCommands
@@ -161,14 +169,15 @@ optionParser = CLIConfig <$> parserSpiderConfig <*> parserCommands
     commands = [ Opt.command "clear" $
                  Opt.info (pure CmdClear) (Opt.progDesc "Clear the entire database."),
                  Opt.command "input" $
-                 Opt.info (CmdInput <$> parserInputFiles <*> parserFilter)
+                 Opt.info (CmdInput <$> parserInputParams)
                  (Opt.progDesc "Input local findings into the database."),
                  Opt.command "snapshot" $
                  Opt.info (parserSnapshot True) (Opt.progDesc "Get a snapshot graph from the database."),
                  Opt.command "cis" $
-                 Opt.info (CmdCIS <$> parserInputFiles <*> parserFilter <*> parserSnapshotQuery False)
+                 Opt.info (CmdCIS <$> parserInputParams <*> parserSnapshotQuery False)
                  (Opt.progDesc "Clear + Input + Snapshot at once. `startsFrom` of the query is set by FoundNodes loaded from the files.")
                ]
+    parserInputParams = InputParams <$> parserInputFiles <*> parserFilter <*> pure Nothing -- TODO: set year from params
     parserInputFiles = many $ Opt.strArgument $ mconcat
                        [ Opt.metavar "FILE",
                          Opt.help "Input file. You can specify multiple times. If '-' is specified, it reads STDIN."
@@ -232,18 +241,30 @@ rebaseQuery orig ftype base = base { startsFrom = map liftToFindingID $ startsFr
 
 ---- I/O of FoundNodes
 
+type Year = Integer
+
+-- | If input is 'Just', it returns that year. If 'Nothing', it gets
+-- the local year from the system and returns it.
+getYear :: Maybe Year -> IO Year
+getYear (Just y) = return y
+getYear Nothing = do
+  zt <- getZonedTime
+  let (y, _, _) = toGregorian $ localDay $ zonedTimeToLocalTime zt
+  return y
+
 -- | Read a Contiki-NG log file, parse it with
 -- 'NetSpider.RPL.ContikiNG.parseFile' to get 'FoundNodeDIO' and
 -- 'FoundNodeDAO'.
-loadFile :: FilePath
+loadFile :: Year
+         -> FilePath
          -> IO ([FoundNodeDIO], [FoundNodeDAO])
-loadFile file = do
+loadFile year file = do
   (dio_nodes, dao_nodes) <- loadNodes
   hPutStrLn stderr ((show $ length dio_nodes) <> " DIO Nodes loaded")
   hPutStrLn stderr ((show $ length dao_nodes) <> " DAO Nodes loaded")
   return (dio_nodes, dao_nodes)
   where
-    phead = pSyslogHead 2019 Nothing
+    phead = pSyslogHead year Nothing
     loadNodes = do
       if file == "-"
         then do
