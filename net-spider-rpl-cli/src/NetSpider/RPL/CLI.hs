@@ -13,7 +13,7 @@ module NetSpider.RPL.CLI
 
 import qualified Data.Text.Lazy.IO as TLIO
 import qualified Data.Text.IO as TIO
-import Control.Applicative (many, (<$>), (<*>))
+import Control.Applicative (many, (<$>), (<*>), optional)
 import Control.Exception (bracket)
 import Control.Monad (forM_, when, void)
 import Control.Monad.Logger (LogLevel(LevelInfo))
@@ -177,7 +177,7 @@ optionParser = CLIConfig <$> parserSpiderConfig <*> parserCommands
                  Opt.info (CmdCIS <$> parserInputParams <*> parserSnapshotQuery False)
                  (Opt.progDesc "Clear + Input + Snapshot at once. `startsFrom` of the query is set by FoundNodes loaded from the files.")
                ]
-    parserInputParams = InputParams <$> parserInputFiles <*> parserFilter <*> pure Nothing -- TODO: set year from params
+    parserInputParams = InputParams <$> parserInputFiles <*> parserFilter <*> parserYear
     parserInputFiles = many $ Opt.strArgument $ mconcat
                        [ Opt.metavar "FILE",
                          Opt.help "Input file. You can specify multiple times. If '-' is specified, it reads STDIN."
@@ -220,6 +220,14 @@ optionParser = CLIConfig <$> parserSpiderConfig <*> parserCommands
           fnfDesc = "Input only the latest local finding for each node."
         }
       ]
+    parserYear = optional $ Opt.option Opt.auto $ mconcat
+                 [ Opt.long "year",
+                   Opt.metavar "YEAR",
+                   Opt.help ( "If specified, the year of timestamps in local findings is set to YEAR. "
+                              <> "If not specified, the year of the local system time is used. "
+                              <> "This is because the input file format does not contain the year in timestamp."
+                            )
+                 ]
 
 ---- Type adaptation of Config and Query
 
