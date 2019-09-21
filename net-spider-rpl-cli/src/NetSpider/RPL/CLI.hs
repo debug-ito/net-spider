@@ -89,10 +89,10 @@ main = do
       
       -- Input DIO and DAO FoundNodes. Note that we have to cast
       -- SpiderConfig's type to match DIO and DAO FoundNode.
-      hPutStrLn stderr ("---- Put " <> (show $ length dio_nodes) <> " DIONodes")
+      hPutStrLn stderr ("---- Put " <> (show $ length dio_nodes) <> " local findings about DIO")
       when (isVerbose sconf) $ forM_ dio_nodes printDIONode
       putNodes (castSpiderConfig sconf) dio_nodes
-      hPutStrLn stderr ("---- Put " <> (show $ length dao_nodes) <> " DAONodes")
+      hPutStrLn stderr ("---- Put " <> (show $ length dao_nodes) <> " local findings about DAO")
       when (isVerbose sconf) $ forM_ dao_nodes printDAONode
       putNodes (castSpiderConfig sconf) dao_nodes
       return (dio_nodes, dao_nodes)
@@ -175,7 +175,7 @@ optionParser = CLIConfig <$> parserSpiderConfig <*> parserCommands
                  Opt.info (parserSnapshot True) (Opt.progDesc "Get a snapshot graph from the database."),
                  Opt.command "cis" $
                  Opt.info (CmdCIS <$> parserInputParams <*> parserSnapshotQuery False)
-                 (Opt.progDesc "Clear + Input + Snapshot at once. `startsFrom` of the query is set by FoundNodes loaded from the files.")
+                 (Opt.progDesc "Clear + Input + Snapshot at once. `startsFrom` of the query is set by local findings loaded from the files.")
                ]
     parserInputParams = InputParams <$> parserInputFiles <*> parserFilter <*> parserYear
     parserInputFiles = many $ Opt.strArgument $ mconcat
@@ -206,7 +206,7 @@ optionParser = CLIConfig <$> parserSpiderConfig <*> parserCommands
     readerFilter = selectFoundNodeFilter =<< Opt.str
     selectFoundNodeFilter symbol =
       case filter (\fnf -> fnfSymbol fnf == symbol) allFilters of
-        [] -> fail ("FoundNodeFilter not found: " <> symbol)
+        [] -> fail ("Unknown filter: " <> symbol)
         (x : _) -> return x
     allFilters =
       [ FoundNodeFilter
@@ -268,8 +268,8 @@ loadFile :: Year
          -> IO ([FoundNodeDIO], [FoundNodeDAO])
 loadFile year file = do
   (dio_nodes, dao_nodes) <- loadNodes
-  hPutStrLn stderr ((show $ length dio_nodes) <> " DIO Nodes loaded")
-  hPutStrLn stderr ((show $ length dao_nodes) <> " DAO Nodes loaded")
+  hPutStrLn stderr ((show $ length dio_nodes) <> " DIO local findings loaded")
+  hPutStrLn stderr ((show $ length dao_nodes) <> " DAO local findings loaded")
   return (dio_nodes, dao_nodes)
   where
     phead = pSyslogHead year Nothing
@@ -291,9 +291,9 @@ putNodes :: (LinkAttributes fla, NodeAttributes na)
          -> IO ()
 putNodes sconf input_nodes = do
   withSpider sconf $ \sp -> do
-    hPutStrLn stderr ("---- Add " <> (show $ length $ input_nodes) <> " FoundNodes")
+    hPutStrLn stderr ("---- Add " <> (show $ length $ input_nodes) <> " local findings")
     forM_ (zip input_nodes ([0 ..] :: [Integer])) $ \(input_node, index) -> do
-      when ((index `mod` 100) == 0) $ hPutStrLn stderr ("Add node [" <> show index <> "]")
+      when ((index `mod` 100) == 0) $ hPutStrLn stderr ("Add local finding [" <> show index <> "]")
       addFoundNode sp input_node
     hPutStrLn stderr "Add done"
 
@@ -301,7 +301,7 @@ putNodes sconf input_nodes = do
 
 printDIONode :: FoundNodeDIO -> IO ()
 printDIONode fn = do
-  TIO.hPutStrLn stderr ("---- DIONode " <> (idToText $ subjectNode fn) <> ", rank " <> rank_text)
+  TIO.hPutStrLn stderr ("---- DIO finding: " <> (idToText $ subjectNode fn) <> ", rank " <> rank_text)
   forM_ plinks $ \l -> do
     TIO.hPutStrLn stderr ("  -> " <> (idToText $ targetNode l))
   where
@@ -312,7 +312,7 @@ printDIONode fn = do
 
 printDAONode :: FoundNodeDAO -> IO ()
 printDAONode fn = do
-  TIO.hPutStrLn stderr ("---- DAONode " <> (idToText $ subjectNode fn) <> route_num_text)
+  TIO.hPutStrLn stderr ("---- DAO finding: " <> (idToText $ subjectNode fn) <> route_num_text)
   forM_ (neighborLinks fn) $ \l -> do
     TIO.hPutStrLn stderr ("  -> " <> (idToText $ targetNode l) <> ", lifetime " <> lt_text l)
   where
