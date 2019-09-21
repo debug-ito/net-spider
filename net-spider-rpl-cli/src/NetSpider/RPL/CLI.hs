@@ -211,8 +211,8 @@ optionParser = CLIConfig <$> parserSpiderConfig <*> parserCommands
     allFilters =
       [ FoundNodeFilter
         { fnfRun = id,
-          fnfSymbol = "id",
-          fnfDesc = "Identity. Not filter anything. This is the default."
+          fnfSymbol = "none",
+          fnfDesc = "Not filter anything. This is the default."
         },
         FoundNodeFilter
         { fnfRun = getLatestForEachNode,
