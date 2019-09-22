@@ -56,6 +56,7 @@ import qualified NetSpider.RPL.Combined as RPL
 import NetSpider.RPL.ContikiNG (parseFile, parseFileHandle, pSyslogHead)
 import qualified Options.Applicative as Opt
 import System.Environment (getArgs)
+import System.Exit (die)
 import System.IO (hPutStrLn, stderr, stdin)
 
 main :: IO ()
@@ -98,7 +99,10 @@ main = do
       return (dio_nodes, dao_nodes)
 
     doSnapshot sconf query = do
-      hPutStrLn stderr ("---- Query starts from " ++ (show $ length $ startsFrom query) ++ " nodes")
+      let start_node_num = length $ startsFrom query
+      hPutStrLn stderr ("---- Query starts from " ++ (show start_node_num) ++ " nodes")
+      when (start_node_num == 0) $ do
+        die ("Specify the starting nodes with -s option.")
       forM_ (startsFrom query) $ \nid -> do
         hPutStrLn stderr (show nid)
       -- Get DIO and DAO snapshot graphs with the Query.
