@@ -13,7 +13,7 @@ module NetSpider.RPL.CLI
 
 import qualified Data.Text.Lazy.IO as TLIO
 import qualified Data.Text.IO as TIO
-import Control.Applicative (many, (<$>), (<*>), optional)
+import Control.Applicative (many, some, (<$>), (<*>), optional)
 import Control.Exception (bracket)
 import Control.Monad (forM_, when, void)
 import Control.Monad.Logger (LogLevel(LevelDebug))
@@ -182,7 +182,7 @@ optionParser = CLIConfig <$> parserSpiderConfig <*> parserCommands
                  (Opt.progDesc "Clear + Input + Snapshot at once. `startsFrom` of the query is set by local findings loaded from the files.")
                ]
     parserInputParams = InputParams <$> parserInputFiles <*> parserFilter <*> parserYear
-    parserInputFiles = many $ Opt.strArgument $ mconcat
+    parserInputFiles = some $ Opt.strArgument $ mconcat
                        [ Opt.metavar "FILE",
                          Opt.help "Input file. You can specify multiple times. If '-' is specified, it reads STDIN."
                        ]
