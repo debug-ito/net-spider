@@ -22,13 +22,16 @@ module NetSpider.RPL.ContikiNG
 import Control.Applicative ((<|>), (<$>), (<*>), (*>), (<*), many, optional)
 import Control.Exception (Exception, throwIO)
 import Control.Monad (void)
+import Control.Monad.Error (throwError)
 import Data.Bits (shift)
 import Data.Char (isDigit, isHexDigit, isSpace)
+import Data.Conduit.Parser (ConduitParser)
+import qualified Data.Conduit.Parser as CP
 import Data.Int (Int64)
 import Data.List (sortOn, reverse)
 import Data.Maybe (listToMaybe)
 import Data.Monoid ((<>))
-import Data.Text (pack)
+import Data.Text (Text, pack, unpack)
 import qualified Data.Time as Time
 import Data.Word (Word16)
 import GHC.Exts (groupWith)
@@ -112,6 +115,23 @@ parseFileHandle pTimestamp handle = go ([], [])
         then return Nothing
         else Just <$> hGetLine h
 
+-- | One line text.
+type Line = Text
+
+-- | Parse stream of log lines for a 'FoundNodeDIO'.
+parserFoundNodeDIO :: Monad m
+                   => Parser Timestamp -- ^ Text parser for log head.
+                   -> ConduitParser Line m FoundNodeDIO
+parserFoundNodeDIO = do
+  line <- CP.await
+  case runParser pDIOHead $ unpack line of
+    Nothing -> throwError $ CP.Unexpected ("Not a log line head of local findings about DIO.")
+    Just (ts, (self_addr, dio_node)) -> proceedDIO
+  where
+    pDIOHead = (,) <*> pTimestamp <*> (pLogHead *> pDIONode)
+    proceedDIO = undefined -- TODO: implement with readUntilCP.
+
+
 data ParseEntry = PEDIO FoundNodeDIO
                 | PEDAO [FoundNodeDAO]
                 | PEMisc
@@ -167,6 +187,27 @@ parseOneEntry pTimestamp getL = impl
         modified_addr = if isLinkLocal neighbor_addr
                         then setPrefix (getPrefix self_addr) neighbor_addr
                         else neighbor_addr
+
+awaitM :: Monad m => ConduitParser i m (Maybe i)
+awaitM = do
+  mnext <- CP.peek
+  case mnext of
+    Nothing -> return Nothing
+    Just _ -> fmap Just $ CP.await
+
+readUntilCP :: Monad m => Parser a -> Parser end -> ConduitParser Line m (Maybe [a])
+readUntilCP pBody pEnd = go []
+  where
+    go acc = do
+      mline <- awaitM
+      case mline of
+        Nothing -> return Nothing
+        Just line ->
+          case runParser ((Left <$> pEnd) <|> (Right <$> pBody)) line of
+            Nothing -> throwError $ CP.unexpected ("Parse error at line: " <> line)
+            Just (Left _) -> return $ Just $ reverse acc
+            Just (Right body) -> go (body : acc)
+  
 
 readUntil :: IO (Maybe String) -> Parser a -> Parser end -> IO (Maybe [a])
 readUntil getL pBody pEnd = go []
