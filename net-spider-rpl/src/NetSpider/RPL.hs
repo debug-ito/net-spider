@@ -6,7 +6,7 @@
 --
 -- This module defines NetSpider data model and utility for RPL
 -- networks.
--- For usage example, see [net-spider-rpl-cli](https://hackage.haskell.org/package/net-spider-rpl-cli) pacakge.
+-- For usage example, see [net-spider-rpl-cli](https://hackage.haskell.org/package/net-spider-rpl-cli) package.
 --
 -- RPL ( [IPv6 Routing Protocol for Low-Power and Lossy Networks, RFC 6550](https://tools.ietf.org/html/rfc6550) )
 -- is a routing protocol for small wireless devices. Each node

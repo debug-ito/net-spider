@@ -92,6 +92,8 @@ parseFile :: Parser Timestamp -- ^ Parser for log prefix
 parseFile pt file = withFile file ReadMode $ parseFileHandle pt
 
 -- | Same as 'parseFile' but for a 'Handle'.
+--
+-- @since 0.2.2.0
 parseFileHandle :: Parser Timestamp -- ^ Parser for log prefix
                 -> Handle -- ^ File handle to read
                 -> IO ([FoundNodeDIO], [FoundNodeDAO])

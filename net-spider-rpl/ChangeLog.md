@@ -1,5 +1,17 @@
 # Revision history for net-spider-rpl
 
+## 0.2.2.0  -- 2019-09-23
+
+### RPL module
+
+* document: change the link to net-spider-rpl-example into
+  net-spider-rpl-cli.
+
+### ContikiNG module
+
+* Add `parseFileHandle` function.
+
+
 ## 0.2.1.0  -- 2019-07-19
 
 ### DIO module
