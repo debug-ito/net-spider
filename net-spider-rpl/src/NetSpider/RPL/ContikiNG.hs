@@ -23,7 +23,7 @@ import Control.Applicative ((<|>), (<$>), (<*>), (*>), (<*), many, optional)
 import Control.Exception.Safe (MonadThrow)
 import Control.Monad (void)
 import Control.Monad.Except (throwError)
-import Control.Monad.IO.Class (liftIO)
+import Control.Monad.IO.Class (liftIO, MonadIO)
 import Data.Bifunctor (Bifunctor(first))
 import Data.Bits (shift)
 import Data.Char (isDigit, isHexDigit, isSpace)
@@ -46,7 +46,7 @@ import Net.IPv6 (IPv6)
 import qualified Net.IPv6 as IPv6
 import NetSpider.Found (FoundNode(..), FoundLink(..), LinkState(LinkToTarget))
 import NetSpider.Timestamp (Timestamp, fromEpochMillisecond, fromLocalTime, fromZonedTime)
-import System.IO (withFile, IOMode(ReadMode), hGetLine, hIsEOF, Handle)
+import System.IO (withFile, IOMode(ReadMode), hGetLine, hIsEOF, Handle, stderr)
 import qualified Text.ParserCombinators.ReadP as P
 import Text.Read (readEither)
 
@@ -105,7 +105,13 @@ parseFileHandle :: Parser Timestamp -- ^ Parser for log prefix
 parseFileHandle pTimestamp handle =
   fmap partitionEithers $ runConduit (the_source .| parseStream pTimestamp .| CL.consume)
   where
-    the_source = yield =<< (liftIO $ TIO.hGetLine handle)
+    the_source = do
+      eof <- liftIO $ hIsEOF handle
+      if eof
+        then return ()
+        else do
+        yield =<< (liftIO $ TIO.hGetLine handle)
+        the_source
 
 -- go ([], [])
 --   where
@@ -128,7 +134,7 @@ data ParseEntry = PEDIO FoundNodeDIO
                 deriving (Show,Eq)
 
 -- | Same as 'parseFile' but as an conduit.
-parseStream :: MonadThrow m
+parseStream :: (MonadThrow m)
             => Parser Timestamp -- ^ Parser for log prefix
             -> ConduitT Line (Either FoundNodeDIO FoundNodeDAO) m ()
 parseStream pTimestamp = go
