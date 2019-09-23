@@ -7,7 +7,7 @@ import NetSpider.Query (startsFrom)
 import NetSpider.RPL.FindingID (IPv6ID(..))
 import Test.Hspec
 
-import NetSpider.RPL.CLI (optionParser, Cmd(..))
+import NetSpider.RPL.CLI (optionParser, Cmd(..), CLIConfig(..))
 
 main :: IO ()
 main = hspec spec
@@ -27,10 +27,10 @@ spec = do
     specify "--starts-from" $ do
       let parse_result = runParser optionParser ["snapshot", "-s", "fd00::212:4b00:13a4:c554"]
       case parse_result of
-        Right (_, CmdSnapshot got_q) ->
+        Right (CLIConfig _ (CmdSnapshot got_q)) ->
           startsFrom got_q `shouldBe` [IPv6ID $ ipv6 0xfd00 0 0 0 0x0212 0x4b00 0x13a4 0xc554]
-        Right (_, _) ->
-          expectationFailure ("Unexpected Cmd option.")
+        Right _ ->
+          expectationFailure ("Unexpected CLIConfig obtained.")
         Left err ->
           expectationFailure (err)
       

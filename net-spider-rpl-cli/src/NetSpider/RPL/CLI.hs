@@ -8,7 +8,9 @@ module NetSpider.RPL.CLI
        ( main,
          -- * Symbols only for testing
          optionParser,
-         Cmd(..)
+         CLIConfig(..),
+         Cmd(..),
+         InputParams(..)
        ) where
 
 import qualified Data.Text.Lazy.IO as TLIO
@@ -149,6 +151,7 @@ applyFoundNodeFilter fnf input = do
   hPutStrLn stderr ("---- Apply filter '" ++ fnfSymbol fnf ++ "' to local findings.")
   return $ filterPairs (fnfRun fnf) input
 
+-- | Top-level configuration obtained from command-line arguments.
 data CLIConfig n na fla =
   CLIConfig
   { cliSpiderConfig :: SpiderConfig n na fla,
