@@ -20,19 +20,26 @@ module NetSpider.RPL.ContikiNG
   ) where
 
 import Control.Applicative ((<|>), (<$>), (<*>), (*>), (<*), many, optional)
-import Control.Exception (Exception, throwIO)
+import Control.Exception.Safe (MonadThrow)
 import Control.Monad (void)
-import Control.Monad.Error (throwError)
+import Control.Monad.Except (throwError)
+import Control.Monad.IO.Class (liftIO)
+import Data.Bifunctor (Bifunctor(first))
 import Data.Bits (shift)
 import Data.Char (isDigit, isHexDigit, isSpace)
+import Data.Conduit (ConduitT, mapOutput, yield, runConduit, (.|))
+import qualified Data.Conduit.List as CL
 import Data.Conduit.Parser (ConduitParser)
 import qualified Data.Conduit.Parser as CP
+import Data.Either (partitionEithers)
 import Data.Int (Int64)
 import Data.List (sortOn, reverse)
 import Data.Maybe (listToMaybe)
 import Data.Monoid ((<>))
 import Data.Text (Text, pack, unpack)
+import qualified Data.Text.IO as TIO
 import qualified Data.Time as Time
+import Data.Void (absurd)
 import Data.Word (Word16)
 import GHC.Exts (groupWith)
 import Net.IPv6 (IPv6)
@@ -51,11 +58,6 @@ import qualified NetSpider.RPL.DAO as DAO
 import NetSpider.RPL.DAO (FoundNodeDAO)
 
 type Parser = P.ReadP
-
-data ParseError = ParseError String
-                deriving (Show,Eq,Ord)
-
-instance Exception ParseError
 
 runParser :: Parser a -> String -> Maybe a
 runParser p input = extract $ sortPairs $ P.readP_to_S p input
@@ -100,20 +102,47 @@ parseFile pt file = withFile file ReadMode $ parseFileHandle pt
 parseFileHandle :: Parser Timestamp -- ^ Parser for log prefix
                 -> Handle -- ^ File handle to read
                 -> IO ([FoundNodeDIO], [FoundNodeDAO])
-parseFileHandle pTimestamp handle = go ([], [])
+parseFileHandle pTimestamp handle =
+  fmap partitionEithers $ runConduit (the_source .| parseStream pTimestamp .| CL.consume)
   where
-    go (acc_dio, acc_dao) = do
-      mentry <- parseOneEntry pTimestamp $ tryGetLine handle
-      case mentry of
-        Nothing -> return (reverse acc_dio, reverse acc_dao)
-        Just (PEDIO fl) -> go (fl : acc_dio, acc_dao)
-        Just (PEDAO srs) -> go (acc_dio, srs ++ acc_dao)
-        Just PEMisc -> go (acc_dio, acc_dao)
-    tryGetLine h = do
-      eof <- hIsEOF h
-      if eof
-        then return Nothing
-        else Just <$> hGetLine h
+    the_source = yield =<< (liftIO $ TIO.hGetLine handle)
+
+-- go ([], [])
+--   where
+--     go (acc_dio, acc_dao) = do
+--       mentry <- parseOneEntry pTimestamp $ tryGetLine handle
+--       case mentry of
+--         Nothing -> return (reverse acc_dio, reverse acc_dao)
+--         Just (PEDIO fl) -> go (fl : acc_dio, acc_dao)
+--         Just (PEDAO srs) -> go (acc_dio, srs ++ acc_dao)
+--         Just PEMisc -> go (acc_dio, acc_dao)
+--     tryGetLine h = do
+--       eof <- hIsEOF h
+--       if eof
+--         then return Nothing
+--         else Just <$> hGetLine h
+
+data ParseEntry = PEDIO FoundNodeDIO
+                | PEDAO [FoundNodeDAO]
+                | PELine (Maybe Line)
+                deriving (Show,Eq)
+
+-- | Same as 'parseFile' but as an conduit.
+parseStream :: MonadThrow m
+            => Parser Timestamp -- ^ Parser for log prefix
+            -> ConduitT Line (Either FoundNodeDIO FoundNodeDAO) m ()
+parseStream pTimestamp = go
+  where
+    go = do
+      got <- mapOutput absurd $ CP.runConduitParser merged_parser
+      case got of
+        PEDIO dio -> yield (Left dio) >> go
+        PEDAO daos -> mapM_ (yield . Right) daos >> go
+        PELine Nothing -> return ()
+        PELine (Just _) -> go
+    merged_parser = (PEDIO <$> parserFoundNodeDIO pTimestamp)
+                    <|> (PEDAO <$> parserFoundNodeDAO pTimestamp)
+                    <|> (PELine <$> awaitM)
 
 -- | One line text.
 type Line = Text
@@ -122,48 +151,35 @@ type Line = Text
 parserFoundNodeDIO :: Monad m
                    => Parser Timestamp -- ^ Text parser for log head.
                    -> ConduitParser Line m FoundNodeDIO
-parserFoundNodeDIO = do
+parserFoundNodeDIO pTimestamp = do
   line <- CP.await
   case runParser pDIOHead $ unpack line of
     Nothing -> throwError $ CP.Unexpected ("Not a log line head of local findings about DIO.")
-    Just (ts, (self_addr, dio_node)) -> proceedDIO
+    Just (ts, (self_addr, dio_node)) -> proceedDIO ts self_addr dio_node
   where
-    pDIOHead = (,) <*> pTimestamp <*> (pLogHead *> pDIONode)
-    proceedDIO = undefined -- TODO: implement with readUntilCP.
-
-
-data ParseEntry = PEDIO FoundNodeDIO
-                | PEDAO [FoundNodeDAO]
-                | PEMisc
-                deriving (Show,Eq)
-
--- | Return 'Nothing' when it finishes reading.
-parseOneEntry :: Parser Timestamp -> IO (Maybe String) -> IO (Maybe ParseEntry)
-parseOneEntry pTimestamp getL = impl
-  where
-    impl = do
-      mline <- getL
-      case mline of
-        Nothing -> return Nothing
-        Just line ->
-          case runParser ((,) <$> pTimestamp <*> (pLogHead *> pHeading)) line of
-            Nothing -> return $ Just PEMisc
-            Just (ts, HDIO addr node) -> proceedDIO ts addr node
-            Just (ts, HDAO route_num) -> proceedDAO ts route_num
+    pDIOHead = (,) <$> pTimestamp <*> (pLogHead *> pDIONode)
     withPrefix p = pTimestamp *> pLogHead *> p
     proceedDIO ts addr node = do
-      mlinks <- readUntil getL (withPrefix pDIONeighbor) (withPrefix pDIONeighborEnd)
-      case mlinks of
-        Nothing -> return Nothing
-        Just links -> return $ Just $ PEDIO $ makeFoundNodeDIO ts addr node $ map (setAddressPrefix addr) links
+      links <- readUntilCP (withPrefix pDIONeighbor) (withPrefix pDIONeighborEnd)
+      return $ makeFoundNodeDIO ts addr node $ map (first $ setNonLocalPrefix addr) links
+
+-- | Parse stream of log lines for a 'FoundNodeDAO'.
+parserFoundNodeDAO :: Monad m
+                   => Parser Timestamp -- ^ Text parser for log head.
+                   -> ConduitParser Line m [FoundNodeDAO]
+parserFoundNodeDAO pTimestamp = do
+  line <- CP.await
+  case runParser pDAOHead $ unpack line of
+    Nothing -> throwError $ CP.Unexpected ("Not a log line head of local findings about DAO.")
+    Just (ts, r) -> proceedDAO ts r
+  where
+    withPrefix p = pTimestamp *> pLogHead *> p
+    pDAOHead = (,) <$> pTimestamp <*> (pLogHead *> pDAOLogHeader)
     proceedDAO ts route_num = do
-      mlinks <- readUntil getL (withPrefix pDAOLink) (withPrefix pDAOLinkEnd)
-      case mlinks of
-        Nothing -> return Nothing
-        Just links -> do
-          root_address <- maybe (throwIO $ ParseError "No root address found in SR log") return
-                          $ getRootAddress links
-          return $ Just $ PEDAO $ map (makeDAONodeFromTuple root_address route_num ts) $ groupDAOLinks links
+      links <- readUntilCP (withPrefix pDAOLink) (withPrefix pDAOLinkEnd)
+      root_address <- maybe (throwError $ CP.Unexpected "No root address found in SR log") return
+                      $ getRootAddress links
+      return $ map (makeDAONodeFromTuple root_address route_num ts) $ groupDAOLinks links
     getRootAddress :: [(IPv6, Maybe (IPv6, Word))] -> Maybe IPv6
     getRootAddress links = fmap fst $ listToMaybe $ filter isRootEntry links
       where
@@ -182,11 +198,53 @@ parseOneEntry pTimestamp getL = impl
       makeFoundNodeDAO
       ts (if parent_addr == root_addr then Just route_num else Nothing)
       parent_addr children
-    setAddressPrefix self_addr (neighbor_addr, ll) = (modified_addr, ll)
-      where
-        modified_addr = if isLinkLocal neighbor_addr
-                        then setPrefix (getPrefix self_addr) neighbor_addr
-                        else neighbor_addr
+
+-- -- | Return 'Nothing' when it finishes reading.
+-- parseOneEntry :: Parser Timestamp -> IO (Maybe String) -> IO (Maybe ParseEntry)
+-- parseOneEntry pTimestamp getL = impl
+--   where
+--     impl = do
+--       mline <- getL
+--       case mline of
+--         Nothing -> return Nothing
+--         Just line ->
+--           case runParser ((,) <$> pTimestamp <*> (pLogHead *> pHeading)) line of
+--             Nothing -> return $ Just PEMisc
+--             Just (ts, HDIO addr node) -> proceedDIO ts addr node
+--             Just (ts, HDAO route_num) -> proceedDAO ts route_num
+--     withPrefix p = pTimestamp *> pLogHead *> p
+--     proceedDIO ts addr node = do
+--       mlinks <- readUntil getL (withPrefix pDIONeighbor) (withPrefix pDIONeighborEnd)
+--       case mlinks of
+--         Nothing -> return Nothing
+--         Just links -> return $ Just $ PEDIO $ makeFoundNodeDIO ts addr node $ map (setAddressPrefix addr) links
+--     proceedDAO ts route_num = do
+--       mlinks <- readUntil getL (withPrefix pDAOLink) (withPrefix pDAOLinkEnd)
+--       case mlinks of
+--         Nothing -> return Nothing
+--         Just links -> do
+--           root_address <- maybe (throwIO $ ParseError "No root address found in SR log") return
+--                           $ getRootAddress links
+--           return $ Just $ PEDAO $ map (makeDAONodeFromTuple root_address route_num ts) $ groupDAOLinks links
+--     groupDAOLinks :: [(IPv6, Maybe (IPv6, Word))] -> [(IPv6, [(IPv6, Word)])]
+--     groupDAOLinks links = map toTuple $ groupWith byParentAddr $ (filterOutRoot =<< links)
+--       where
+--         filterOutRoot (_, Nothing) = []
+--         filterOutRoot (c, Just (p, lt)) = [(c, p, lt)]
+--         byParentAddr (_, p, _) = p
+--         toTuple [] = error "groupDAOLinks: this should not happen"
+--         toTuple entries@((_, p, _) : _) = (p, map extractChildAndLifetime entries)
+--         extractChildAndLifetime (c, _, lt) = (c, lt)
+--     makeDAONodeFromTuple root_addr route_num ts (parent_addr, children) =
+--       makeFoundNodeDAO
+--       ts (if parent_addr == root_addr then Just route_num else Nothing)
+--       parent_addr children
+
+setNonLocalPrefix :: IPv6 -> IPv6 -> IPv6
+setNonLocalPrefix prefix_addr orig_addr =
+  if isLinkLocal orig_addr
+  then setPrefix (getPrefix prefix_addr) orig_addr
+  else orig_addr
 
 awaitM :: Monad m => ConduitParser i m (Maybe i)
 awaitM = do
@@ -195,32 +253,28 @@ awaitM = do
     Nothing -> return Nothing
     Just _ -> fmap Just $ CP.await
 
-readUntilCP :: Monad m => Parser a -> Parser end -> ConduitParser Line m (Maybe [a])
+readUntilCP :: Monad m => Parser a -> Parser end -> ConduitParser Line m [a]
 readUntilCP pBody pEnd = go []
   where
     go acc = do
-      mline <- awaitM
-      case mline of
-        Nothing -> return Nothing
-        Just line ->
-          case runParser ((Left <$> pEnd) <|> (Right <$> pBody)) line of
-            Nothing -> throwError $ CP.unexpected ("Parse error at line: " <> line)
-            Just (Left _) -> return $ Just $ reverse acc
-            Just (Right body) -> go (body : acc)
-  
+      line <- CP.await
+      case runParser ((Left <$> pEnd) <|> (Right <$> pBody)) $ unpack line of
+        Nothing -> throwError $ CP.Unexpected ("Parse error at line: " <> line)
+        Just (Left _) -> return $ reverse acc
+        Just (Right body) -> go (body : acc)
 
-readUntil :: IO (Maybe String) -> Parser a -> Parser end -> IO (Maybe [a])
-readUntil getL pBody pEnd = go []
-  where
-    go acc = do
-      mline <- getL
-      case mline of
-        Nothing -> return Nothing
-        Just line ->
-          case runParser ((Left <$> pEnd) <|> (Right <$> pBody)) line of
-            Nothing -> throwIO $ ParseError ("Parse error at line: " <> line)
-            Just (Left _) -> return $ Just $ reverse acc
-            Just (Right body) -> go (body : acc)
+-- readUntil :: IO (Maybe String) -> Parser a -> Parser end -> IO (Maybe [a])
+-- readUntil getL pBody pEnd = go []
+--   where
+--     go acc = do
+--       mline <- getL
+--       case mline of
+--         Nothing -> return Nothing
+--         Just line ->
+--           case runParser ((Left <$> pEnd) <|> (Right <$> pBody)) line of
+--             Nothing -> throwIO $ ParseError ("Parse error at line: " <> line)
+--             Just (Left _) -> return $ Just $ reverse acc
+--             Just (Right body) -> go (body : acc)
 
 makeFoundNodeDIO :: Timestamp -> IPv6 -> DIO.DIONode -> [(IPv6, DIO.DIOLink)] -> FoundNodeDIO
 makeFoundNodeDIO ts self_addr node_attr neighbors =
@@ -251,13 +305,13 @@ makeFoundNodeDAO ts mroute_num parent_addr children =
                 }
 
 
-data Heading = HDIO IPv6 DIO.DIONode
-             | HDAO Word
-             deriving (Show,Eq,Ord)
-
-pHeading :: Parser Heading
-pHeading = (fmap (uncurry HDIO) $ pDIONode)
-           <|> (HDAO <$> pDAOLogHeader)
+-- data Heading = HDIO IPv6 DIO.DIONode
+--              | HDAO Word
+--              deriving (Show,Eq,Ord)
+-- 
+-- pHeading :: Parser Heading
+-- pHeading = (fmap (uncurry HDIO) $ pDIONode)
+--            <|> (HDAO <$> pDAOLogHeader)
 
 isAddressChar :: Char -> Bool
 isAddressChar c = isHexDigit c || c == ':'
