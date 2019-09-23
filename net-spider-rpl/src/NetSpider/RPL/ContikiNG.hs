@@ -12,7 +12,13 @@ module NetSpider.RPL.ContikiNG
   ( -- * Parser functions
     parseFile,
     parseFileHandle,
+    parseStream,
     -- * Parser components
+    -- ** Parsers for line stream
+    parserFoundNodeDIO,
+    parserFoundNodeDAO,
+    Line,
+    -- ** Parser for text
     Parser,
     pCoojaLogHead,
     pCoojaLogHead',
