@@ -113,21 +113,6 @@ parseFileHandle pTimestamp handle =
         yield =<< (liftIO $ TIO.hGetLine handle)
         the_source
 
--- go ([], [])
---   where
---     go (acc_dio, acc_dao) = do
---       mentry <- parseOneEntry pTimestamp $ tryGetLine handle
---       case mentry of
---         Nothing -> return (reverse acc_dio, reverse acc_dao)
---         Just (PEDIO fl) -> go (fl : acc_dio, acc_dao)
---         Just (PEDAO srs) -> go (acc_dio, srs ++ acc_dao)
---         Just PEMisc -> go (acc_dio, acc_dao)
---     tryGetLine h = do
---       eof <- hIsEOF h
---       if eof
---         then return Nothing
---         else Just <$> hGetLine h
-
 data ParseEntry = PEDIO FoundNodeDIO
                 | PEDAO [FoundNodeDAO]
                 | PELine (Maybe Line)
@@ -205,47 +190,6 @@ parserFoundNodeDAO pTimestamp = do
       ts (if parent_addr == root_addr then Just route_num else Nothing)
       parent_addr children
 
--- -- | Return 'Nothing' when it finishes reading.
--- parseOneEntry :: Parser Timestamp -> IO (Maybe String) -> IO (Maybe ParseEntry)
--- parseOneEntry pTimestamp getL = impl
---   where
---     impl = do
---       mline <- getL
---       case mline of
---         Nothing -> return Nothing
---         Just line ->
---           case runParser ((,) <$> pTimestamp <*> (pLogHead *> pHeading)) line of
---             Nothing -> return $ Just PEMisc
---             Just (ts, HDIO addr node) -> proceedDIO ts addr node
---             Just (ts, HDAO route_num) -> proceedDAO ts route_num
---     withPrefix p = pTimestamp *> pLogHead *> p
---     proceedDIO ts addr node = do
---       mlinks <- readUntil getL (withPrefix pDIONeighbor) (withPrefix pDIONeighborEnd)
---       case mlinks of
---         Nothing -> return Nothing
---         Just links -> return $ Just $ PEDIO $ makeFoundNodeDIO ts addr node $ map (setAddressPrefix addr) links
---     proceedDAO ts route_num = do
---       mlinks <- readUntil getL (withPrefix pDAOLink) (withPrefix pDAOLinkEnd)
---       case mlinks of
---         Nothing -> return Nothing
---         Just links -> do
---           root_address <- maybe (throwIO $ ParseError "No root address found in SR log") return
---                           $ getRootAddress links
---           return $ Just $ PEDAO $ map (makeDAONodeFromTuple root_address route_num ts) $ groupDAOLinks links
---     groupDAOLinks :: [(IPv6, Maybe (IPv6, Word))] -> [(IPv6, [(IPv6, Word)])]
---     groupDAOLinks links = map toTuple $ groupWith byParentAddr $ (filterOutRoot =<< links)
---       where
---         filterOutRoot (_, Nothing) = []
---         filterOutRoot (c, Just (p, lt)) = [(c, p, lt)]
---         byParentAddr (_, p, _) = p
---         toTuple [] = error "groupDAOLinks: this should not happen"
---         toTuple entries@((_, p, _) : _) = (p, map extractChildAndLifetime entries)
---         extractChildAndLifetime (c, _, lt) = (c, lt)
---     makeDAONodeFromTuple root_addr route_num ts (parent_addr, children) =
---       makeFoundNodeDAO
---       ts (if parent_addr == root_addr then Just route_num else Nothing)
---       parent_addr children
-
 setNonLocalPrefix :: IPv6 -> IPv6 -> IPv6
 setNonLocalPrefix prefix_addr orig_addr =
   if isLinkLocal orig_addr
@@ -268,19 +212,6 @@ readUntilCP pBody pEnd = go []
         Nothing -> throwError $ CP.Unexpected ("Parse error at line: " <> line)
         Just (Left _) -> return $ reverse acc
         Just (Right body) -> go (body : acc)
-
--- readUntil :: IO (Maybe String) -> Parser a -> Parser end -> IO (Maybe [a])
--- readUntil getL pBody pEnd = go []
---   where
---     go acc = do
---       mline <- getL
---       case mline of
---         Nothing -> return Nothing
---         Just line ->
---           case runParser ((Left <$> pEnd) <|> (Right <$> pBody)) line of
---             Nothing -> throwIO $ ParseError ("Parse error at line: " <> line)
---             Just (Left _) -> return $ Just $ reverse acc
---             Just (Right body) -> go (body : acc)
 
 makeFoundNodeDIO :: Timestamp -> IPv6 -> DIO.DIONode -> [(IPv6, DIO.DIOLink)] -> FoundNodeDIO
 makeFoundNodeDIO ts self_addr node_attr neighbors =
@@ -309,15 +240,6 @@ makeFoundNodeDAO ts mroute_num parent_addr children =
                   linkState = LinkToTarget,
                   linkAttributes = DAO.DAOLink lifetime
                 }
-
-
--- data Heading = HDIO IPv6 DIO.DIONode
---              | HDAO Word
---              deriving (Show,Eq,Ord)
--- 
--- pHeading :: Parser Heading
--- pHeading = (fmap (uncurry HDIO) $ pDIONode)
---            <|> (HDAO <$> pDAOLogHeader)
 
 isAddressChar :: Char -> Bool
 isAddressChar c = isHexDigit c || c == ':'
