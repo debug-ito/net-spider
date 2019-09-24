@@ -1,5 +1,12 @@
 # Revision history for net-spider-rpl
 
+## 0.2.3.0  -- 2019-09-24
+
+### ContikiNG module
+
+* Add `parseStream`, `parserFoundNodeDIO`, `parserFoundNodeDAO` functions.
+
+
 ## 0.2.2.0  -- 2019-09-23
 
 ### RPL module
