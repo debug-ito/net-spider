@@ -125,6 +125,8 @@ data ParseEntry = PEDIO FoundNodeDIO
                 deriving (Show,Eq)
 
 -- | Same as 'parseFile' but as an conduit.
+--
+-- @since 0.2.3.0
 parseStream :: (MonadThrow m)
             => Parser Timestamp -- ^ Parser for log prefix
             -> ConduitT Line (Either FoundNodeDIO FoundNodeDAO) m ()
@@ -142,9 +144,13 @@ parseStream pTimestamp = go
                     <|> (PELine <$> awaitM)
 
 -- | One line text.
+--
+-- @since 0.2.3.0
 type Line = Text
 
 -- | Parse stream of log lines for a 'FoundNodeDIO'.
+--
+-- @since 0.2.3.0
 parserFoundNodeDIO :: Monad m
                    => Parser Timestamp -- ^ Text parser for log head.
                    -> ConduitParser Line m FoundNodeDIO
@@ -161,6 +167,8 @@ parserFoundNodeDIO pTimestamp = do
       return $ makeFoundNodeDIO ts addr node $ map (first $ setNonLocalPrefix addr) links
 
 -- | Parse stream of log lines for a 'FoundNodeDAO'.
+--
+-- @since 0.2.3.0
 parserFoundNodeDAO :: Monad m
                    => Parser Timestamp -- ^ Text parser for log head.
                    -> ConduitParser Line m [FoundNodeDAO]
