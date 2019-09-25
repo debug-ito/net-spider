@@ -12,6 +12,7 @@ module NetSpider.RPL.ContikiNG
   ( -- * Parser functions
     parseFile,
     parseFileHandle,
+    parseFileHandleM,
     parseStream,
     -- * Parser components
     -- ** Parsers for line stream
@@ -29,6 +30,7 @@ import Control.Applicative ((<|>), (<$>), (<*>), (*>), (<*), many, optional)
 import Control.Exception.Safe (MonadThrow)
 import Control.Monad (void)
 import Control.Monad.Except (throwError)
+import Control.Monad.Logger (MonadLogger, runStderrLoggingT, filterLogger, LogLevel(LevelWarn))
 import Control.Monad.IO.Class (liftIO, MonadIO)
 import Data.Bifunctor (Bifunctor(first))
 import Data.Bits (shift)
@@ -82,7 +84,8 @@ runParser' p err input =
     Just a -> return a
 
 -- | Read and parse a log file from a Contiki-NG application to make
--- 'FoundNodeDIO' and 'FoundNodeDAO'.
+-- 'FoundNodeDIO' and 'FoundNodeDAO'. This function may output warning
+-- and error messages to STDERR.
 --
 -- Currently this parser function supports logs from \"rpl-lite\"
 -- module only.
@@ -108,7 +111,16 @@ parseFile pt file = withFile file ReadMode $ parseFileHandle pt
 parseFileHandle :: Parser Timestamp -- ^ Parser for log prefix
                 -> Handle -- ^ File handle to read
                 -> IO ([FoundNodeDIO], [FoundNodeDAO])
-parseFileHandle pTimestamp handle =
+parseFileHandle p h = runStderrLoggingT $ filterLogger f $ parseFileHandleM p h
+  where
+    f _ level = level >= LevelWarn
+
+-- | Same as 'parseFileHandle', but in a generic monad.
+parseFileHandleM :: (MonadIO m, MonadThrow m, MonadLogger m)
+                 => Parser Timestamp -- ^ Parser for log prefix
+                 -> Handle -- ^ File handle to read
+                 -> m ([FoundNodeDIO], [FoundNodeDAO])
+parseFileHandleM pTimestamp handle =
   fmap partitionEithers $ runConduit (the_source .| parseStream pTimestamp .| CL.consume)
   where
     the_source = do
@@ -127,7 +139,7 @@ data ParseEntry = PEDIO FoundNodeDIO
 -- | Same as 'parseFile' but as an conduit.
 --
 -- @since 0.2.3.0
-parseStream :: (MonadThrow m)
+parseStream :: (MonadThrow m, MonadLogger m)
             => Parser Timestamp -- ^ Parser for log prefix
             -> ConduitT Line (Either FoundNodeDIO FoundNodeDAO) m ()
 parseStream pTimestamp = go
@@ -151,7 +163,7 @@ type Line = Text
 -- | Parse stream of log lines for a 'FoundNodeDIO'.
 --
 -- @since 0.2.3.0
-parserFoundNodeDIO :: Monad m
+parserFoundNodeDIO :: MonadLogger m
                    => Parser Timestamp -- ^ Text parser for log head.
                    -> ConduitParser Line m FoundNodeDIO
 parserFoundNodeDIO pTimestamp = do
@@ -169,7 +181,7 @@ parserFoundNodeDIO pTimestamp = do
 -- | Parse stream of log lines for a 'FoundNodeDAO'.
 --
 -- @since 0.2.3.0
-parserFoundNodeDAO :: Monad m
+parserFoundNodeDAO :: MonadLogger m
                    => Parser Timestamp -- ^ Text parser for log head.
                    -> ConduitParser Line m [FoundNodeDAO]
 parserFoundNodeDAO pTimestamp = do

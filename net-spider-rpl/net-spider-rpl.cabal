@@ -42,7 +42,8 @@ library
                         conduit-parse >=0.2.1.0 && <0.3,
                         conduit >=1.3.1 && <1.4,
                         mtl >=2.2.2 && <2.3,
-                        safe-exceptions >=0.1.7.0 && <0.2
+                        safe-exceptions >=0.1.7.0 && <0.2,
+                        monad-logger
 
 -- executable net-spider-rpl
 --   default-language:     Haskell2010
