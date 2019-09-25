@@ -14,7 +14,8 @@ extra-source-files:     README.md, ChangeLog.md,
                         test/data/syslog_root.log,
                         test/data/syslog_nonroot.log,
                         test/data/syslog_sr_tables.log,
-                        test/data/syslog_inf_rank.log
+                        test/data/syslog_inf_rank.log,
+                        test/data/syslog_interleaving.log
 homepage:               https://github.com/debug-ito/net-spider
 bug-reports:            https://github.com/debug-ito/net-spider/issues
 
@@ -64,8 +65,10 @@ test-suite spec
   -- default-extensions:   
   other-extensions:     OverloadedStrings
   other-modules:        NetSpider.RPL.ContikiNGSpec
-  build-depends:        base, net-spider-rpl, net-spider, text,
-                        hspec >=2.5.5
+  build-depends:        base, net-spider-rpl, net-spider, text, monad-logger,
+                        hspec >=2.5.5,
+                        bytestring,
+                        fast-logger
 
 source-repository head
   type:                 git

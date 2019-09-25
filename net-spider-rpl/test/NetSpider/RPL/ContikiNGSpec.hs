@@ -1,13 +1,19 @@
 {-# LANGUAGE OverloadedStrings #-}
 module NetSpider.RPL.ContikiNGSpec (main,spec) where
 
+import Control.Monad.Logger (runWriterLoggingT, LogLevel(LevelWarn))
+import qualified Control.Monad.Logger as L
+import Data.ByteString (ByteString)
+import qualified Data.ByteString as BS
 import Data.Maybe (fromJust)
 import Data.Text (Text)
 import NetSpider.Found (FoundNode(..), FoundLink(..), LinkState(..))
 import NetSpider.Timestamp (Timestamp, fromEpochMillisecond)
+import System.IO (withFile, IOMode(ReadMode))
+import System.Log.FastLogger (fromLogStr)
 import Test.Hspec
 
-import NetSpider.RPL.ContikiNG (parseFile, pCoojaLogHead', pSyslogHead)
+import NetSpider.RPL.ContikiNG (parseFile, pCoojaLogHead', pSyslogHead, parseFileHandleM)
 import NetSpider.RPL.FindingID (idFromText)
 import qualified NetSpider.RPL.DIO as DIO
 import qualified NetSpider.RPL.DAO as DAO
@@ -294,3 +300,46 @@ spec = do
       (got_dios, got_daos) <- parseFile pHead "test/data/syslog_inf_rank.log"
       got_dios `shouldBe` [exp_dio]
       got_daos `shouldMatchList` []
+    specify "syslog_interleaving" $ do
+      let exp_dio =
+            FoundNode
+            { subjectNode = fromJust $ idFromText "dio://[fd00::212:eeaa:0077:2f9c]",
+              foundAt = fromEpochMillisecond 1547558152000,
+              nodeAttributes = DIO.DIONode { DIO.rank = 332, DIO.dioInterval = 14 },
+              neighborLinks = exp_links
+            }
+          exp_links =
+            [ FoundLink
+              { targetNode = fromJust $ idFromText "dio://[fd00::212:eeaa:33cc:63d0]",
+                linkState = LinkToTarget,
+                linkAttributes = DIO.DIOLink { DIO.neighborType = DIO.PreferredParent,
+                                               DIO.neighborRank = 188,
+                                               DIO.metric = Just 144
+                                             }
+              },
+              FoundLink
+              { targetNode = fromJust $ idFromText "dio://[fd00::212:eeaa:9977:13ba]",
+                linkState = LinkUnused,
+                linkAttributes = DIO.DIOLink { DIO.neighborType = DIO.ParentCandidate,
+                                               DIO.neighborRank = 263,
+                                               DIO.metric = Just 152
+                                             }
+              }
+            ]
+          pHead = pSyslogHead 2019 Nothing
+      ((got_dios, got_daos), got_logs) <- withFile "test/data/syslog_interleaving.log" ReadMode
+                                          (runWriterLoggingT . parseFileHandleM pHead)
+      got_dios `shouldBe` [exp_dio]
+      got_daos `shouldBe` []
+      -- Because the log file contains interleaving lines inside DIO
+      -- block, it should emit a warning message.
+      length got_logs `shouldBe` 1
+      let exp_msg = "Jan 15 13:15:49 hostname label[15738]: [WARN: RPL       ] nbr: own state, addr fd00::212:eeaa:0077:2f9c"
+      matchLogLine LevelWarn exp_msg (got_logs !! 0)
+      
+type LogLine = (L.Loc, L.LogSource, L.LogLevel, L.LogStr)
+
+matchLogLine :: L.LogLevel -> ByteString -> LogLine -> IO ()
+matchLogLine exp_level exp_msg (_, _, got_level, got_msg) = do
+  exp_level `shouldBe` got_level
+  fromLogStr got_msg `shouldSatisfy` BS.isInfixOf exp_msg
