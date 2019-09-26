@@ -253,7 +253,7 @@ readUntilCP pBody pEnd = go []
     go acc = do
       line <- CP.await
       case runParser ((Left <$> pEnd) <|> (Right <$> pBody)) $ unpack line of
-        Nothing -> throwError $ CP.Unexpected ("Parse error at line: " <> line)
+        Nothing -> throwError $ CP.Unexpected line
         Just (Left _) -> return $ reverse acc
         Just (Right body) -> go (body : acc)
 
