@@ -2,7 +2,6 @@
 module NetSpider.RPL.ContikiNGSpec (main,spec) where
 
 import Control.Monad.Logger (runWriterLoggingT, LogLevel(LevelWarn))
-import qualified Control.Monad.Logger as L
 import Data.ByteString (ByteString)
 import qualified Data.ByteString as BS
 import Data.Maybe (fromJust)
@@ -334,12 +333,9 @@ spec = do
       -- Because the log file contains interleaving lines inside DIO
       -- block, it should emit a warning message.
       length got_logs `shouldBe` 1
-      let exp_msg = "Jan 15 13:15:49 hostname label[15738]: [WARN: RPL       ] nbr: own state, addr fd00::212:eeaa:0077:2f9c"
-      matchLogLine LevelWarn exp_msg (got_logs !! 0)
-      
-type LogLine = (L.Loc, L.LogSource, L.LogLevel, L.LogStr)
-
-matchLogLine :: L.LogLevel -> ByteString -> LogLine -> IO ()
-matchLogLine exp_level exp_msg (_, _, got_level, got_msg) = do
-  exp_level `shouldBe` got_level
-  fromLogStr got_msg `shouldSatisfy` BS.isInfixOf exp_msg
+      let exp_msg = "Jan 15 13:15:49 hostname hoge[3392]: this is a log not related to ContikiNG."
+          (_, _, got_level, got_msg_str) = got_logs !! 0
+          got_msg = fromLogStr got_msg_str
+      got_level `shouldBe` LevelWarn
+      got_msg `shouldSatisfy` BS.isInfixOf exp_msg
+      got_msg `shouldSatisfy` BS.isInfixOf "DIO"

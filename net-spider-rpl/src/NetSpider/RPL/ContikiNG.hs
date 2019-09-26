@@ -29,9 +29,13 @@ module NetSpider.RPL.ContikiNG
 import Control.Applicative ((<|>), (<$>), (<*>), (*>), (<*), many, optional)
 import Control.Exception.Safe (MonadThrow)
 import Control.Monad (void)
-import Control.Monad.Except (throwError)
-import Control.Monad.Logger (MonadLogger, runStderrLoggingT, filterLogger, LogLevel(LevelWarn))
+import Control.Monad.Except (throwError, catchError)
+import Control.Monad.Logger
+  ( MonadLogger, runStderrLoggingT, filterLogger, LogLevel(LevelWarn),
+    logInfoN, logWarnN
+  )
 import Control.Monad.IO.Class (liftIO, MonadIO)
+import Control.Monad.Trans (lift)
 import Data.Bifunctor (Bifunctor(first))
 import Data.Bits (shift)
 import Data.Char (isDigit, isHexDigit, isSpace)
@@ -175,8 +179,18 @@ parserFoundNodeDIO pTimestamp = do
     pDIOHead = (,) <$> pTimestamp <*> (pLogHead *> pDIONode)
     withPrefix p = pTimestamp *> pLogHead *> p
     proceedDIO ts addr node = do
-      links <- readUntilCP (withPrefix pDIONeighbor) (withPrefix pDIONeighborEnd)
+      links <- handleBlockError "DIO" $ readUntilCP (withPrefix pDIONeighbor) (withPrefix pDIONeighborEnd)
       return $ makeFoundNodeDIO ts addr node $ map (first $ setNonLocalPrefix addr) links
+
+handleBlockError :: MonadLogger m => Text -> ConduitParser Line m r -> ConduitParser Line m r
+handleBlockError target p = p `catchError` (\e -> (lift $ doLog e) >> throwError e)
+  where
+    doLog CP.UnexpectedEndOfInput = do
+      logInfoN ("EOF while parsing a block of " <> target <> ". The block is discarded.")
+    doLog (CP.Unexpected msg) = do
+      logWarnN ("Unexpected input while parsing a block of " <> target <> ": " <> msg)
+    doLog e = do
+      logWarnN ("Error while parsing a block of " <> target <> ": " <> (pack $ show e))
 
 -- | Parse stream of log lines for a 'FoundNodeDAO'.
 --
@@ -188,15 +202,19 @@ parserFoundNodeDAO pTimestamp = do
   line <- CP.await
   case runParser pDAOHead $ unpack line of
     Nothing -> throwError $ CP.Unexpected ("Not a log line head of local findings about DAO.")
-    Just (ts, r) -> proceedDAO ts r
+    Just (ts, r) -> proceedDAO line ts r
   where
     withPrefix p = pTimestamp *> pLogHead *> p
     pDAOHead = (,) <$> pTimestamp <*> (pLogHead *> pDAOLogHeader)
-    proceedDAO ts route_num = do
-      links <- readUntilCP (withPrefix pDAOLink) (withPrefix pDAOLinkEnd)
-      root_address <- maybe (throwError $ CP.Unexpected "No root address found in SR log") return
-                      $ getRootAddress links
+    proceedDAO line ts route_num = do
+      links <- handleBlockError "DAO" $ readUntilCP (withPrefix pDAOLink) (withPrefix pDAOLinkEnd)
+      root_address <- maybe (rootAddressFailure line) return $ getRootAddress links
       return $ map (makeDAONodeFromTuple root_address route_num ts) $ groupDAOLinks links
+    rootAddressFailure :: MonadLogger m => Text -> ConduitParser Line m IPv6
+    rootAddressFailure line = do
+      let msg = ("No root address found in DAO log: " <> line)
+      lift $ logWarnN msg
+      throwError $ CP.Unexpected msg
     getRootAddress :: [(IPv6, Maybe (IPv6, Word))] -> Maybe IPv6
     getRootAddress links = fmap fst $ listToMaybe $ filter isRootEntry links
       where
