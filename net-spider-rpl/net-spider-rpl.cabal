@@ -44,7 +44,7 @@ library
                         conduit >=1.3.1 && <1.4,
                         mtl >=2.2.2 && <2.3,
                         safe-exceptions >=0.1.7.0 && <0.2,
-                        monad-logger
+                        monad-logger >=0.3.28.1 && <0.4
 
 -- executable net-spider-rpl
 --   default-language:     Haskell2010
@@ -67,8 +67,8 @@ test-suite spec
   other-modules:        NetSpider.RPL.ContikiNGSpec
   build-depends:        base, net-spider-rpl, net-spider, text, monad-logger,
                         hspec >=2.5.5,
-                        bytestring,
-                        fast-logger
+                        bytestring >=0.10.8.2 && <0.11,
+                        fast-logger >=2.4.11 && <2.5
 
 source-repository head
   type:                 git
