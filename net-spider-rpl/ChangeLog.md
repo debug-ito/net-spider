@@ -1,5 +1,16 @@
 # Revision history for net-spider-rpl
 
+## 0.3.0.0  -- 2019-09-30
+
+### ContikiNG module
+
+* [BREAKING CHANGE] `parseStream`, `parserFoundNodeDIO` and
+  `parserFoundNodeDAO` functions now require `MonadLogger` context.
+* Add `parseFileHandleM` function.
+* Now the parser functions can emit Warning logs when the parser fails
+  in an unexpected context.
+
+
 ## 0.2.3.0  -- 2019-09-24
 
 ### ContikiNG module
