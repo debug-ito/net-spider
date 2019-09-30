@@ -120,6 +120,8 @@ parseFileHandle p h = runStderrLoggingT $ filterLogger f $ parseFileHandleM p h
     f _ level = level >= LevelWarn
 
 -- | Same as 'parseFileHandle', but in a generic monad.
+--
+-- @since 0.3.0.0
 parseFileHandleM :: (MonadIO m, MonadThrow m, MonadLogger m)
                  => Parser Timestamp -- ^ Parser for log prefix
                  -> Handle -- ^ File handle to read
@@ -142,7 +144,7 @@ data ParseEntry = PEDIO FoundNodeDIO
 
 -- | Same as 'parseFile' but as an conduit.
 --
--- @since 0.2.3.0
+-- @since 0.3.0.0
 parseStream :: (MonadThrow m, MonadLogger m)
             => Parser Timestamp -- ^ Parser for log prefix
             -> ConduitT Line (Either FoundNodeDIO FoundNodeDAO) m ()
@@ -166,7 +168,7 @@ type Line = Text
 
 -- | Parse stream of log lines for a 'FoundNodeDIO'.
 --
--- @since 0.2.3.0
+-- @since 0.3.0.0
 parserFoundNodeDIO :: MonadLogger m
                    => Parser Timestamp -- ^ Text parser for log head.
                    -> ConduitParser Line m FoundNodeDIO
@@ -194,7 +196,7 @@ handleBlockError target p = p `catchError` (\e -> (lift $ doLog e) >> throwError
 
 -- | Parse stream of log lines for a 'FoundNodeDAO'.
 --
--- @since 0.2.3.0
+-- @since 0.3.0.0
 parserFoundNodeDAO :: MonadLogger m
                    => Parser Timestamp -- ^ Text parser for log head.
                    -> ConduitParser Line m [FoundNodeDAO]
