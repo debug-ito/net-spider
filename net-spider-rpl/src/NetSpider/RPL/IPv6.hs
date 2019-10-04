@@ -9,12 +9,13 @@ module NetSpider.RPL.IPv6
     InterfaceID,
     isLinkLocal,
     getPrefix,
-    setPrefix
+    setPrefix,
+    getInterfaceID
   ) where
 
-import Data.Bits ((.&.), shift)
-import Data.Word (Word64)
-import Net.IPv6 (IPv6(..), toWord16s)
+import Data.Bits ((.&.), shift, shiftL, (.|.), shiftR)
+import Data.Word (Word64, Word32)
+import Net.IPv6 (IPv6, toWord16s, toWord32s, fromWord32s)
 
 type Prefix = Word64
 
@@ -27,7 +28,22 @@ isLinkLocal addr = (== 0xfe80) $ (.&. bit_mask) $ top_word
     bit_mask = (2 ^ (10 :: Int) - 1) `shift` 6
 
 getPrefix :: IPv6 -> Prefix
-getPrefix = ipv6A
+getPrefix addr = to64 u l
+  where
+    (u, l, _, _) = toWord32s addr
 
 setPrefix :: Prefix -> IPv6 -> IPv6
-setPrefix p orig = orig { ipv6A = p }
+setPrefix p orig = fromWord32s u1 u2 l1 l2
+  where
+    (_, _, l1, l2) = toWord32s orig
+    u1 = fromIntegral ((p `shiftR` 32) .&. 0xFFFFFFFF)
+    u2 = fromIntegral (p .&. 0xFFFFFFFF)
+
+    getInterfaceID :: IPv6 -> InterfaceID
+getInterfaceID addr = to64 u l
+  where
+    (_, _, u, l) = toWord32s addr
+
+to64 :: Word32 -> Word32 -> Word64
+to64 u l = (fromIntegral u `shiftL` 32) .|. fromIntegral l
+

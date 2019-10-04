@@ -23,17 +23,21 @@ module NetSpider.RPL.FindingID
 
 import Control.Applicative ((<$>), (<*>))
 import Control.Monad.Fail (MonadFail)
+import Data.Bits (shiftL, (.|.))
 import Data.Monoid ((<>))
 import Data.Aeson (FromJSON(..), ToJSON(..))
 import qualified Data.Aeson as Aeson
 import Data.Greskell (FromGraphSON(..))
 import Data.Hashable (Hashable(..))
 import Data.Text (Text)
+import Data.Word (Word64, Word32)
 import qualified Data.Text as T
 import GHC.Generics (Generic)
-import Net.IPv6 (IPv6(..))
+import Net.IPv6 (IPv6)
 import qualified Net.IPv6 as IPv6
 import NetSpider.GraphML.Writer (ToNodeID(..))
+
+import NetSpider.RPL.IPv6 (getPrefix, getInterfaceID)
 
 -- | Type of local finding.
 data FindingType = FindingDIO
@@ -116,7 +120,7 @@ newtype IPv6ID = IPv6ID { unIPv6ID :: IPv6 }
 
 instance Hashable IPv6ID where
   hashWithSalt s (IPv6ID a) =
-    s `hashWithSalt` (ipv6A a) `hashWithSalt` (ipv6B a)
+    s `hashWithSalt` getPrefix a `hashWithSalt` getInterfaceID a
 
 ipv6ToText :: IPv6ID -> Text
 ipv6ToText (IPv6ID a) = IPv6.encode a
