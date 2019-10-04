@@ -1,5 +1,10 @@
 # Revision history for net-spider-rpl
 
+## 0.3.1.0  -- 2019-10-04
+
+* Expose an internal module `NetSpider.RPL.IPv6`.
+* Confirm test with `ip-1.5.1`, `ip-1.6.0`, `hashable-1.3.0.0`, `time-1.9.3`.
+
 ## 0.3.0.0  -- 2019-09-30
 
 ### ContikiNG module

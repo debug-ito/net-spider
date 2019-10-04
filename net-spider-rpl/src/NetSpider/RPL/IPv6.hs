@@ -1,9 +1,11 @@
 -- |
 -- Module: NetSpider.RPL.IPv6
--- Description: 
+-- Description: (INTERNAL) Basic routines for IPv6 type
 -- Maintainer: Toshio Ito <debug.ito@gmail.com>
 --
 -- __This module is for internal use.__
+--
+-- @since 0.3.1.0
 module NetSpider.RPL.IPv6
   ( Prefix,
     InterfaceID,
