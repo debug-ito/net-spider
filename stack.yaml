@@ -18,7 +18,8 @@
 #
 # resolver: ./custom-snapshot.yaml
 # resolver: https://example.com/snapshots/2018-01-01.yaml
-resolver: lts-12.26
+## resolver: lts-12.26
+resolver: lts-14.7
 
 # User packages to be built.
 # Various formats can be used as shown in the example below.
@@ -47,12 +48,29 @@ packages:
 # extra-deps: []
 extra-deps:
 - hspec-need-env-0.1.0.2
-- data-interval-1.3.0
+- data-interval-1.3.1
 - extended-reals-0.2.3.0
-- pangraph-0.2.1
-- greskell-core-0.1.2.4
+- greskell-core-0.1.2.7
 - greskell-websocket-0.1.1.2
 - greskell-0.2.3.0
+
+- pangraph-0.2.1
+- algebraic-graphs-0.2
+
+## - time-1.9.3
+## - directory-1.3.4.0
+## - unix-2.7.2.2
+## - process-1.6.6.0
+
+## - hashable-1.3.0.0
+## - hashtables-1.2.3.4
+## - unordered-containers-0.2.10.0@rev:1
+## - uuid-types-1.0.3@rev:2
+## - async-2.2.1@rev:2
+
+## - ip-1.5.1
+## - primitive-0.7.0.0
+## - wide-word-0.1.0.9
 
 ## - greskell-websocket-0.1.0.0
 ## - greskell-core-0.1.2.2

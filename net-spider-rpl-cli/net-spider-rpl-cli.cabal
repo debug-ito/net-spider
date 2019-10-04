@@ -28,7 +28,7 @@ library
   -- other-modules:        
   build-depends:        base >=4.11.1.0 && <4.13,
                         net-spider >=0.3.2.0 && <0.4,
-                        net-spider-rpl >=0.2.2.0 && <0.3,
+                        net-spider-rpl >=0.2.2.0 && <0.4,
                         net-spider-cli >=0.1.0.1 && <0.2,
                         text >=1.2.2.2 && <1.3,
                         unordered-containers >=0.2.8 && <0.3,
@@ -64,7 +64,7 @@ test-suite spec
   other-modules:        NetSpider.RPL.CLISpec
   build-depends:        base, net-spider-rpl-cli, net-spider, net-spider-rpl, optparse-applicative, 
                         hspec >=2.5.5,
-                        ip >=1.3.0 && <1.5
+                        ip >=1.3.0 && <1.7
 
 source-repository head
   type:                 git
