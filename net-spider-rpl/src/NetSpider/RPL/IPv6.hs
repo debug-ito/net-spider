@@ -39,7 +39,7 @@ setPrefix p orig = fromWord32s u1 u2 l1 l2
     u1 = fromIntegral ((p `shiftR` 32) .&. 0xFFFFFFFF)
     u2 = fromIntegral (p .&. 0xFFFFFFFF)
 
-    getInterfaceID :: IPv6 -> InterfaceID
+getInterfaceID :: IPv6 -> InterfaceID
 getInterfaceID addr = to64 u l
   where
     (_, _, u, l) = toWord32s addr
