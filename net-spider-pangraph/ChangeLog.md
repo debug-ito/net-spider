@@ -1,5 +1,9 @@
 # Revision history for net-spider-pangraph
 
+## 0.1.1.1  -- 2019-10-04
+
+* Confirm test with `hashable-1.3.0.0`.
+
 ## 0.1.1.0  -- 2019-07-15
 
 * Add `attributesFromGraphML` function.
