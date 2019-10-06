@@ -10,10 +10,11 @@ module NetSpider.CLI.Snapshot
     SnapshotConfig(..)
   ) where
 
-import Control.Applicative ((<$>), (<*>), many)
+import Control.Applicative ((<$>), (<*>), many, optional, empty)
 import Data.Int (Int64)
 import qualified NetSpider.Query as Q
 import qualified Options.Applicative as Opt
+import qualified Options.Applicative.Types as OptT
 import NetSpider.Interval
   ( interval, parseTimeIntervalEnd, secSince, secUntil,
     IntervalEnd, Interval
@@ -57,8 +58,8 @@ parserSnapshotQuery conf = fmap fromParsedElement the_parser
                            [ Opt.help $ "Same as -s option.",
                              Opt.metavar $ nodeID_metavar
                            ]
-    pTimeInterval = interval <$> pTimeLower <*> pTimeUpper
-    pTimeLower = Opt.option (Opt.eitherReader parseTimeIntervalEnd) $ mconcat
+    pTimeInterval = toParserError $ makeInterval <$> pTimeLower <*> pTimeUpper <*> pDuration
+    pTimeLower = optional $ Opt.option (Opt.eitherReader parseTimeIntervalEnd) $ mconcat
                  [ Opt.short 'f',
                    Opt.long "time-from",
                    Opt.help ( "Lower bound of query timestamp. "
@@ -70,10 +71,9 @@ parserSnapshotQuery conf = fmap fromParsedElement the_parser
                               ++ "Prefix of 'i' explicitly mark the lower bound is inclusive. "
                               ++ "Special value `x-inf` indicates there is no lower bound. " 
                               ++ "Default: x-inf"),
-                   Opt.metavar "TIMESTAMP",
-                   Opt.value (Q.NegInf, False)
+                   Opt.metavar "TIMESTAMP"
                  ]
-    pTimeUpper = Opt.option (Opt.eitherReader parseTimeIntervalEnd) $ mconcat
+    pTimeUpper = optional $ Opt.option (Opt.eitherReader parseTimeIntervalEnd) $ mconcat
                  [ Opt.short 't',
                    Opt.long "time-to",
                    Opt.help ( "Upper bound of query timestamp. "
@@ -81,9 +81,16 @@ parserSnapshotQuery conf = fmap fromParsedElement the_parser
                               ++ "See --time-from for format of timestamps. "
                               ++ "Special value `x+inf` indicates there is no upper bound. " 
                               ++ "Default: x+inf"),
-                   Opt.metavar "TIMESTAMP",
-                   Opt.value (Q.PosInf, False)
+                   Opt.metavar "TIMESTAMP"
                  ]
+    pDuration = optional $ Opt.option Opt.auto $ mconcat
+                [ Opt.short 'd',
+                  Opt.long "duration",
+                  Opt.help ( "Duration of the query time interval in seconds. "
+                             ++ " Use with either --time-to or --time-from option."
+                           ),
+                  Opt.metavar "SECONDS"
+                ]
 
 makeInterval :: Maybe (IntervalEnd Timestamp) -- ^ start
              -> Maybe (IntervalEnd Timestamp) -- ^ end
@@ -97,3 +104,10 @@ makeInterval (Just s) Nothing (Just d) = Right $ secSince d s
 makeInterval Nothing (Just e) (Just d) = Right $ secUntil d e
 makeInterval (Just _) (Just _) (Just _) = Left ("Specifying all --time-to, --time-from and --duration is not allowed.")
 makeInterval Nothing Nothing (Just _) = Left ("Specifying --duration only is not allowed. Specify --time-to or --time-from, too.")
+
+toParserError :: Opt.Parser (Either e a) -> Opt.Parser a
+toParserError p = OptT.fromM $ do
+  ea <- OptT.oneM p
+  case ea of
+    Left _ -> OptT.oneM empty
+    Right a -> return a
