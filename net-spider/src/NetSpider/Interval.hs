@@ -121,6 +121,8 @@ secUpTo len end = Finite start <=..<= Finite end
 -- empty
 -- >>> 60 `secSince` (NegInf, False)
 -- empty
+--
+-- @since 0.3.3.0
 secSince :: Int64 -- ^ duration in seconds
          -> IntervalEnd Timestamp -- ^ the start of the interval
          -> Interval Timestamp
@@ -139,6 +141,8 @@ secSince _ _ = Interval.empty
 -- empty
 -- >>> 60 `secUntil` (NegInf, False)
 -- empty
+--
+-- @since 0.3.3.0
 secUntil :: Int64 -- ^ duration in seconds
          -> IntervalEnd Timestamp -- ^ the end of the interval
          -> Interval Timestamp

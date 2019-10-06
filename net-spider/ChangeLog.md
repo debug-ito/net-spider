@@ -1,5 +1,11 @@
 # Revision history for net-spider
 
+## 0.3.3.0  -- 
+
+### Interval module
+
+* Add `secSince` and `secUntil` functions.
+
 ## 0.3.2.1  -- 2019-10-04
 
 * Confirm test with `hashable-1.3.0.0`.
