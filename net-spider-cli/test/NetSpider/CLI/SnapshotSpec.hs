@@ -1,5 +1,6 @@
 module NetSpider.CLI.SnapshotSpec (main,spec) where
 
+import Data.List (isInfixOf)
 import NetSpider.Interval (interval, Extended(..))
 import NetSpider.Query
   ( startsFrom, defQuery, timeInterval,
@@ -65,4 +66,20 @@ spec = describe "parserSnapshotQuery" $ do
     let (Right got) = runP (parserSnapshotQuery argsConfig)
                       ["90", "-s", "181"]
     startsFrom got `shouldBe` [181, 90]
+  specify "duration + time-from" $ do
+    let (Right got) = runP (parserSnapshotQuery defConfig)
+                      ["--duration", "3600", "--time-from", "i2019-04-30T19:03:33"]
+    timeInterval got `shouldBe`
+      interval (Finite $ fromEpochMillisecond 1556651013000, True)
+               (Finite $ fromEpochMillisecond (1556651013000 + 3600000), False)
+  specify "duration + time-to" $ do
+    let (Right got) = runP (parserSnapshotQuery defConfig)
+                      ["-d", "600", "--time-to", "x2019-04-30T19:03:33"]
+    timeInterval got `shouldBe`
+      interval (Finite $ fromEpochMillisecond (1556651013000 - 600000), True)
+               (Finite $ fromEpochMillisecond 1556651013000, False)
+  specify "duration + time-to + time-from expects error" $ do
+    let (Left err) = runP (parserSnapshotQuery defConfig)
+                     ["-d", "600", "--time-to", "x2019-04-30T19:03:33", "--time-from", "x2019-04-30T17:00:52"]
+    err `shouldSatisfy` (isInfixOf "duration")
 
