@@ -81,5 +81,9 @@ spec = describe "parserSnapshotQuery" $ do
   specify "duration + time-to + time-from expects error" $ do
     let (Left err) = runP (parserSnapshotQuery defConfig)
                      ["-d", "600", "--time-to", "x2019-04-30T19:03:33", "--time-from", "x2019-04-30T17:00:52"]
-    err `shouldSatisfy` (isInfixOf "duration")
+    err `shouldSatisfy` (isInfixOf "all --time-to, --time-from and --duration is not allowed")
+  specify "duration without time-to or time-from" $ do
+    let (Left err) = runP (parserSnapshotQuery defConfig)
+                     ["-d", "600"]
+    err `shouldSatisfy` (isInfixOf "--duration only is not allowed")
 
