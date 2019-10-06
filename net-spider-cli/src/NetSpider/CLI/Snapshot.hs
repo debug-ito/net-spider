@@ -11,9 +11,14 @@ module NetSpider.CLI.Snapshot
   ) where
 
 import Control.Applicative ((<$>), (<*>), many)
+import Data.Int (Int64)
 import qualified NetSpider.Query as Q
 import qualified Options.Applicative as Opt
-import NetSpider.Interval (interval, parseTimeIntervalEnd)
+import NetSpider.Interval
+  ( interval, parseTimeIntervalEnd, secSince, secUntil,
+    IntervalEnd, Interval
+  )
+import NetSpider.Timestamp (Timestamp)
 
 -- | Configuration for option parser for Snapshot 'Q.Query'.
 data SnapshotConfig n na fla sla =
@@ -79,3 +84,16 @@ parserSnapshotQuery conf = fmap fromParsedElement the_parser
                    Opt.metavar "TIMESTAMP",
                    Opt.value (Q.PosInf, False)
                  ]
+
+makeInterval :: Maybe (IntervalEnd Timestamp) -- ^ start
+             -> Maybe (IntervalEnd Timestamp) -- ^ end
+             -> Maybe Int64 -- ^ duration
+             -> Either String (Interval Timestamp)
+makeInterval ms me Nothing = Right $ interval s e
+  where
+    s = maybe (Q.NegInf, False) id ms
+    e = maybe (Q.PosInf, False) id me
+makeInterval (Just s) Nothing (Just d) = Right $ secSince d s
+makeInterval Nothing (Just e) (Just d) = Right $ secUntil d e
+makeInterval (Just _) (Just _) (Just _) = Left ("Specifying all --time-to, --time-from and --duration is not allowed.")
+makeInterval Nothing Nothing (Just _) = Left ("Specifying --duration only is not allowed. Specify --time-to or --time-from, too.")
