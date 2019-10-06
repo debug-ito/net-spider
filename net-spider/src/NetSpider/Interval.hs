@@ -18,14 +18,17 @@ module NetSpider.Interval
     parseTimeIntervalEnd,
     parseIntervalEnd,
     -- * Utility
-    secUpTo
+    secUpTo,
+    secSince,
+    secUntil
   ) where
 
 import Data.ExtendedReal (Extended(..))
 import Data.Int (Int64)
 import Data.Interval (Interval, interval, (<=..<=), (<..<=), (<=..<), (<..<))
+import qualified Data.Interval as Interval
 
-import NetSpider.Timestamp (Timestamp, addSec, parseTimestamp)
+import NetSpider.Timestamp (Timestamp, addSec, parseTimestamp, fromEpochMillisecond)
 
 -- | Upper or lower end of 'Interval'. The 'Bool' field is 'True' if
 -- the end is inclusive.
@@ -106,3 +109,38 @@ secUpTo len end = Finite start <=..<= Finite end
   where
     start = addSec (-len) end
 
+-- | @d `secSince` ts@ returns the time interval of length @d@ seconds
+-- from the timestamp @ts@. If @ts@ is inclusive (exclusive), the end
+-- of the interval is exclusive (inclusive), respectively.
+--
+-- >>> 60 `secSince` (Finite $ fromEpochMillisecond 1000, True)
+-- Finite (Timestamp {epochTime = 1000, timeZone = Nothing}) <=..< Finite (Timestamp {epochTime = 61000, timeZone = Nothing})
+-- >>> 60 `secSince` (Finite $ fromEpochMillisecond 1000, False)
+-- Finite (Timestamp {epochTime = 1000, timeZone = Nothing}) <..<= Finite (Timestamp {epochTime = 61000, timeZone = Nothing})
+-- >>> 60 `secSince` (PosInf, False)
+-- empty
+-- >>> 60 `secSince` (NegInf, False)
+-- empty
+secSince :: Int64 -- ^ duration in seconds
+         -> IntervalEnd Timestamp -- ^ the start of the interval
+         -> Interval Timestamp
+secSince len start@(Finite start_ts, inc) = interval start (Finite $ addSec len start_ts, not inc)
+secSince _ _ = Interval.empty
+
+-- | @d `secUntil` ts@ returns the time interval of length @d@ seconds
+-- up to the timestamp @ts@. If @ts@ is inclusive (exclusive), the
+-- start of the interval is exclusive (inclusive), respectively.
+-- 
+-- >>> 60 `secUntil` (Finite $ fromEpochMillisecond 150000, True)
+-- Finite (Timestamp {epochTime = 90000, timeZone = Nothing}) <..<= Finite (Timestamp {epochTime = 150000, timeZone = Nothing})
+-- >>> 60 `secUntil` (Finite $ fromEpochMillisecond 150000, False)
+-- Finite (Timestamp {epochTime = 90000, timeZone = Nothing}) <=..< Finite (Timestamp {epochTime = 150000, timeZone = Nothing})
+-- >>> 60 `secUntil` (PosInf, False)
+-- empty
+-- >>> 60 `secUntil` (NegInf, False)
+-- empty
+secUntil :: Int64 -- ^ duration in seconds
+         -> IntervalEnd Timestamp -- ^ the end of the interval
+         -> Interval Timestamp
+secUntil len end@(Finite end_ts, inc) = interval (Finite $ addSec (-len) end_ts, not inc) end
+secUntil _ _ = Interval.empty
