@@ -10,7 +10,7 @@ module NetSpider.CLI.Snapshot
     SnapshotConfig(..)
   ) where
 
-import Control.Applicative ((<$>), (<*>), many, optional, empty)
+import Control.Applicative ((<$>), (<*>), (<|>), many, optional, empty)
 import Data.Int (Int64)
 import qualified NetSpider.Query as Q
 import qualified Options.Applicative as Opt
@@ -58,32 +58,45 @@ parserSnapshotQuery conf = fmap fromParsedElement the_parser
                            [ Opt.help $ "Same as -s option.",
                              Opt.metavar $ nodeID_metavar
                            ]
-    pTimeInterval = toParserError $ makeInterval <$> pTimeLower <*> pTimeUpper <*> pDuration
-    pTimeLower = optional $ Opt.option (Opt.eitherReader parseTimeIntervalEnd) $ mconcat
-                 [ Opt.short 'f',
-                   Opt.long "time-from",
-                   Opt.help ( "Lower bound of query timestamp. "
-                              ++ "Local findings with timestamp newer than this value are used to create the snapshot graph. "
-                              ++ "ISO 8601 format is used for timestamps (e.g. `2019-03-22T10:20:12+09:00`). "
-                              ++ "The timezone is optional. "
-                              ++ "By default, the lower bound is inclusive. "
-                              ++ "Add prefix 'x' to make it exclusive (e.g. `x2019-03-22T10:20:12+09:00`). "
-                              ++ "Prefix of 'i' explicitly mark the lower bound is inclusive. "
-                              ++ "Special value `x-inf` indicates there is no lower bound. " 
-                              ++ "Default: x-inf"),
-                   Opt.metavar "TIMESTAMP"
-                 ]
-    pTimeUpper = optional $ Opt.option (Opt.eitherReader parseTimeIntervalEnd) $ mconcat
-                 [ Opt.short 't',
-                   Opt.long "time-to",
-                   Opt.help ( "Upper bound of query timestamp. "
-                              ++ "Local findings with timestamp older than this value are used to create the snapshot graph. "
-                              ++ "See --time-from for format of timestamps. "
-                              ++ "Special value `x+inf` indicates there is no upper bound. " 
-                              ++ "Default: x+inf"),
-                   Opt.metavar "TIMESTAMP"
-                 ]
-    pDuration = optional $ Opt.option Opt.auto $ mconcat
+    pTimeInterval = ( makeIntervalFromDuration
+                      <$> pDuration
+                      <*> ((Left <$> pTimeLower False) <|> (Right <$> pTimeUpper False))
+                    ) <|>
+                    ( interval <$> pTimeLower True <*> pTimeUpper True )
+    makeIntervalFromDuration :: Int64 -> Either (IntervalEnd Timestamp) (IntervalEnd Timestamp) -> Interval Timestamp
+    makeIntervalFromDuration dur (Left start) = dur `secSince` start
+    makeIntervalFromDuration dur (Right end) = dur `secUntil` end
+    pTimeLower with_default =
+      Opt.option (Opt.eitherReader parseTimeIntervalEnd) $ mconcat
+      ( [ Opt.short 'f',
+          Opt.long "time-from",
+          Opt.help ( "Lower bound of query timestamp. "
+                     ++ "Local findings with timestamp newer than this value are used to create the snapshot graph. "
+                     ++ "ISO 8601 format is used for timestamps (e.g. `2019-03-22T10:20:12+09:00`). "
+                     ++ "The timezone is optional. "
+                     ++ "By default, the lower bound is inclusive. "
+                     ++ "Add prefix 'x' to make it exclusive (e.g. `x2019-03-22T10:20:12+09:00`). "
+                     ++ "Prefix of 'i' explicitly mark the lower bound is inclusive. "
+                     ++ "Special value `x-inf` indicates there is no lower bound."
+                     ++ (if with_default then " Default: x-inf" else "")),
+          Opt.metavar "TIMESTAMP"
+        ]
+        ++ (if with_default then [Opt.value (Q.NegInf, False)] else [])
+      )
+    pTimeUpper with_default =
+      Opt.option (Opt.eitherReader parseTimeIntervalEnd) $ mconcat
+      ( [ Opt.short 't',
+          Opt.long "time-to",
+          Opt.help ( "Upper bound of query timestamp. "
+                     ++ "Local findings with timestamp older than this value are used to create the snapshot graph. "
+                     ++ "See --time-from for format of timestamps. "
+                     ++ "Special value `x+inf` indicates there is no upper bound."
+                     ++ (if with_default then " Default: x+inf" else "")),
+          Opt.metavar "TIMESTAMP"
+        ]
+        ++ (if with_default then [Opt.value (Q.PosInf, False)] else [])
+      )
+    pDuration = Opt.option Opt.auto $ mconcat
                 [ Opt.short 'd',
                   Opt.long "duration",
                   Opt.help ( "Duration of the query time interval in seconds. "
@@ -91,23 +104,3 @@ parserSnapshotQuery conf = fmap fromParsedElement the_parser
                            ),
                   Opt.metavar "SECONDS"
                 ]
-
-makeInterval :: Maybe (IntervalEnd Timestamp) -- ^ start
-             -> Maybe (IntervalEnd Timestamp) -- ^ end
-             -> Maybe Int64 -- ^ duration
-             -> Either String (Interval Timestamp)
-makeInterval ms me Nothing = Right $ interval s e
-  where
-    s = maybe (Q.NegInf, False) id ms
-    e = maybe (Q.PosInf, False) id me
-makeInterval (Just s) Nothing (Just d) = Right $ secSince d s
-makeInterval Nothing (Just e) (Just d) = Right $ secUntil d e
-makeInterval (Just _) (Just _) (Just _) = Left ("Specifying all --time-to, --time-from and --duration is not allowed.")
-makeInterval Nothing Nothing (Just _) = Left ("Specifying --duration only is not allowed. Specify --time-to or --time-from, too.")
-
-toParserError :: Opt.Parser (Either e a) -> Opt.Parser a
-toParserError p = OptT.fromM $ do
-  ea <- OptT.oneM p
-  case ea of
-    Left _ -> OptT.oneM empty
-    Right a -> return a
