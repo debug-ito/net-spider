@@ -7,28 +7,29 @@
 -- graphs.
 module NetSpider.CLI.Snapshot
   ( parserSnapshotQuery,
-    SnapshotConfig(..)
+    makeSnapshotQuery,
+    SnapshotConfig(..),
+    CLISnapshotQuery
   ) where
 
 import Control.Applicative ((<$>), (<*>), (<|>), many, optional, empty)
 import Data.Int (Int64)
-import qualified NetSpider.Query as Q
-import qualified Options.Applicative as Opt
-import qualified Options.Applicative.Types as OptT
 import NetSpider.Interval
   ( interval, parseTimeIntervalEnd, secSince, secUntil,
     IntervalEnd, Interval
   )
+import qualified NetSpider.Query as Q
 import NetSpider.Timestamp (Timestamp)
+import qualified Options.Applicative as Opt
+import qualified Options.Applicative.Types as OptT
 
 -- | Configuration for option parser for Snapshot 'Q.Query'.
-data SnapshotConfig n na fla sla =
+--
+-- @since 0.2.0.0
+data SnapshotConfig n =
   SnapshotConfig
   { nodeIDReader :: Opt.ReadM n,
     -- ^ Parser that reads a CLI option to generate a node ID.
-    basisSnapshotQuery :: Q.Query n na fla sla,
-    -- ^ Basis for queries for snapshot graphs. Fields in this basis
-    -- are overwritten by CLI options.
     startsFromAsArguments :: Bool
     -- ^ If 'True', the 'Q.startsFrom' field is read from CLI
     -- arguments. If 'False', arguments are not parsed. In either
@@ -36,14 +37,60 @@ data SnapshotConfig n na fla sla =
     -- 'Q.startsFrom'.
   }
 
--- | CLI option parser for 'Q.Query'.
-parserSnapshotQuery :: SnapshotConfig n na fla sla
-                    -> Opt.Parser (Q.Query n na fla sla)
-parserSnapshotQuery conf = fmap fromParsedElement the_parser
+-- | Settings for Snapshot 'Q.Query' parsed from the command-line
+-- options. You can make 'Q.Query' by 'makeSnapshotQuery' function.
+--
+-- @since 0.2.0.0
+data CLISnapshotQuery n =
+  CLISnapshotQuery
+  { startsFrom :: [n],
+    timeDurationSec :: Maybe Int64,
+    timeFrom :: Maybe (IntervalEnd Timestamp),
+    timeTo :: Maybe (IntervalEnd Timestamp)
+  }
+  deriving (Show,Eq,Ord)
+
+-- | Make a 'Q.Query' by applying 'CLISnapshotQuery' to the base
+-- query. The 'CLISnapshotQuery' overwrites 'Q.startsFrom' and
+-- 'Q.timeInterval' fields.
+--
+-- It can fail to convert 'CLISnapshotQuery' to 'Q.Query' fields. In
+-- that case, the result is 'Left' with a human-readable error
+-- message.
+--
+-- @since 0.2.0.0
+makeSnapshotQuery :: CLISnapshotQuery n
+                  -> Q.Query n na fla sla -- ^ base query
+                  -> Either String (Q.Query n na fla sla)
+                  -- ^ Left: human-readable error message. Right: updated query
+makeSnapshotQuery cliq q = do
+  ivl <- makeTimeInterval cliq
+  return $ q { Q.startsFrom = startsFrom cliq,
+               Q.timeInterval = ivl
+             }
+
+makeTimeInterval :: CLISnapshotQuery n -> Either String (Interval Timestamp)
+makeTimeInterval c =
+  case (timeFrom c, timeTo c, timeDurationSec c) of
+    (ms, me, Nothing) -> Right $ interval s e
+      where
+        s = maybe (Q.NegInf, False) id ms
+        e = maybe (Q.PosInf, False) id me
+    (Just s, Nothing, Just d) -> Right $ secSince d s
+    (Nothing, Just e, Just d) -> Right $ secUntil d e
+    (Just _, Just _, Just _) -> Left ("Specifying all --time-to, --time-from and --duration is not allowed.")
+    (Nothing, Nothing, Just _) -> Left ("Specifying --duration only is not allowed. Specify --time-to or --time-from, too.")
+
+-- | CLI option parser for Snapshot 'Q.Query'. Use 'makeSnapshotQuery'
+-- to convert 'CLISnapshotQuery' to 'Q.Query'.
+--
+-- @since 0.2.0.0
+parserSnapshotQuery :: SnapshotConfig n
+                    -> Opt.Parser (CLISnapshotQuery n)
+parserSnapshotQuery conf =
+  CLISnapshotQuery <$> pStartsFromTotal <*> pDuration <*> pTimeLower <*> pTimeUpper
   where
-    basis = basisSnapshotQuery conf
-    fromParsedElement (sf, ti) = basis { Q.startsFrom = sf, Q.timeInterval = ti }
-    the_parser = (,) <$> ((++) <$> pStartsFrom <*> pStartsFromArgs) <*> pTimeInterval
+    pStartsFromTotal = (++) <$> pStartsFrom <*> pStartsFromArgs
     rNodeID = nodeIDReader conf
     nodeID_metavar = "NODE-ID"
     pStartsFrom = many $ Opt.option rNodeID $ mconcat
@@ -58,16 +105,8 @@ parserSnapshotQuery conf = fmap fromParsedElement the_parser
                            [ Opt.help $ "Same as -s option.",
                              Opt.metavar $ nodeID_metavar
                            ]
-    pTimeInterval = ( makeIntervalFromDuration
-                      <$> pDuration
-                      <*> ((Left <$> pTimeLower False) <|> (Right <$> pTimeUpper False))
-                    ) <|>
-                    ( interval <$> pTimeLower True <*> pTimeUpper True )
-    makeIntervalFromDuration :: Int64 -> Either (IntervalEnd Timestamp) (IntervalEnd Timestamp) -> Interval Timestamp
-    makeIntervalFromDuration dur (Left start) = dur `secSince` start
-    makeIntervalFromDuration dur (Right end) = dur `secUntil` end
-    pTimeLower with_default =
-      Opt.option (Opt.eitherReader parseTimeIntervalEnd) $ mconcat
+    pTimeLower =
+      optional $ Opt.option (Opt.eitherReader parseTimeIntervalEnd) $ mconcat
       ( [ Opt.short 'f',
           Opt.long "time-from",
           Opt.help ( "Lower bound of query timestamp. "
@@ -77,26 +116,26 @@ parserSnapshotQuery conf = fmap fromParsedElement the_parser
                      ++ "By default, the lower bound is inclusive. "
                      ++ "Add prefix 'x' to make it exclusive (e.g. `x2019-03-22T10:20:12+09:00`). "
                      ++ "Prefix of 'i' explicitly mark the lower bound is inclusive. "
-                     ++ "Special value `x-inf` indicates there is no lower bound."
-                     ++ (if with_default then " Default: x-inf" else "")),
+                     ++ "Special value `x-inf` indicates there is no lower bound. "
+                     ++ "Default: x-inf"
+                   ),
           Opt.metavar "TIMESTAMP"
         ]
-        ++ (if with_default then [Opt.value (Q.NegInf, False)] else [])
       )
-    pTimeUpper with_default =
-      Opt.option (Opt.eitherReader parseTimeIntervalEnd) $ mconcat
+    pTimeUpper =
+      optional $ Opt.option (Opt.eitherReader parseTimeIntervalEnd) $ mconcat
       ( [ Opt.short 't',
           Opt.long "time-to",
           Opt.help ( "Upper bound of query timestamp. "
                      ++ "Local findings with timestamp older than this value are used to create the snapshot graph. "
                      ++ "See --time-from for format of timestamps. "
-                     ++ "Special value `x+inf` indicates there is no upper bound."
-                     ++ (if with_default then " Default: x+inf" else "")),
+                     ++ "Special value `x+inf` indicates there is no upper bound. "
+                     ++ "Default: x+inf"
+                   ),
           Opt.metavar "TIMESTAMP"
         ]
-        ++ (if with_default then [Opt.value (Q.PosInf, False)] else [])
       )
-    pDuration = Opt.option Opt.auto $ mconcat
+    pDuration = optional $ Opt.option Opt.auto $ mconcat
                 [ Opt.short 'd',
                   Opt.long "duration",
                   Opt.help ( "Duration of the query time interval in seconds. "
