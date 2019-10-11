@@ -59,11 +59,11 @@ data CLISnapshotQuery n =
 -- message.
 --
 -- @since 0.2.0.0
-makeSnapshotQuery :: CLISnapshotQuery n
-                  -> Q.Query n na fla sla -- ^ base query
+makeSnapshotQuery :: Q.Query n na fla sla -- ^ base query
+                  -> CLISnapshotQuery n
                   -> Either String (Q.Query n na fla sla)
                   -- ^ Left: human-readable error message. Right: updated query
-makeSnapshotQuery cliq q = do
+makeSnapshotQuery q cliq = do
   ivl <- makeTimeInterval cliq
   return $ q { Q.startsFrom = startsFrom cliq,
                Q.timeInterval = ivl
