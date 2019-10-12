@@ -16,7 +16,7 @@ Here is an example of using the Docker images of this package. You have to insta
 
 3. Input logs about RPL networks.
 
-        $ ./run-net-spider.sh input < syslog
+        $ ./run-net-spider.sh input - < syslog
 
 4. Get a snapshot graph of the RPL network in GraphML format.
 
