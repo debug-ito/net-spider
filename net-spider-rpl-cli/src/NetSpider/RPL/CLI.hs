@@ -28,6 +28,7 @@ import Data.Text (Text, pack, unpack)
 import Data.Time (getZonedTime, ZonedTime(zonedTimeToLocalTime), LocalTime(localDay), toGregorian)
 import NetSpider.GraphML.Writer (writeGraphML)
 import qualified NetSpider.CLI.Snapshot as CLIS
+import NetSpider.CLI.Snapshot (CLISnapshotQuery)
 import NetSpider.CLI.Spider (SpiderConfig, parserSpiderConfig)
 import NetSpider.Input
   ( defConfig, logThreshold,
@@ -63,9 +64,7 @@ import System.IO (hPutStrLn, stderr, stdin)
 
 main :: IO ()
 main = do
-  cli_conf <- Opt.execParser $ Opt.info (Opt.helper <*> optionParser) $ mconcat $
-              [ Opt.progDesc "net-spider front-end for RPL data model."
-              ]
+  cli_conf <- Opt.execParser optionParserInfo
   let sconf = cliSpiderConfig cli_conf
       cmd = cliCmd cli_conf
   case cmd of
@@ -100,7 +99,13 @@ main = do
       putNodes (castSpiderConfig sconf) dao_nodes
       return (dio_nodes, dao_nodes)
 
-    doSnapshot sconf query = do
+    makeQuery cli_query = do
+      let base_q :: Query IPv6ID () () ()
+          base_q = defQuery []
+      returnWithHelp $ CLIS.makeSnapshotQuery base_q cli_query
+
+    doSnapshot sconf cli_query = doSnapshot' sconf =<< makeQuery cli_query
+    doSnapshot' sconf query = do
       let start_node_num = length $ startsFrom query
       hPutStrLn stderr ("---- Query starts from " ++ (show start_node_num) ++ " nodes")
       when (start_node_num == 0) $ do
@@ -121,7 +126,8 @@ main = do
       hPutStrLn stderr ("---- Format DIO+DAO SnapshotGraph into GraphML")
       TLIO.putStr $ writeGraphML com_graph
 
-    doCIS sconf input_params query_base = do
+    doCIS sconf input_params cli_query = do
+      query_base <- makeQuery cli_query
       doClear sconf
       (dio_nodes, dao_nodes) <- doInput sconf input_params
       -- Make a query from the FoundNodes just loaded.
@@ -129,7 +135,7 @@ main = do
                    ++
                    (map (ipv6Only . subjectNode) dio_nodes)
           q = query_base { startsFrom = starts }
-      doSnapshot sconf q
+      doSnapshot' sconf q
     isVerboseDebug sconf = logThreshold sconf <= LevelDebug
 
 
@@ -166,8 +172,21 @@ data InputParams = InputParams [FilePath] FoundNodeFilter (Maybe Year)
 -- | CLI subcommands and their arguments.
 data Cmd = CmdClear -- ^ Clear the entire database.
          | CmdInput InputParams -- ^ Input FoundNodes to the database
-         | CmdSnapshot (Query IPv6ID () () ()) -- ^ Get a snapshot graph.
-         | CmdCIS InputParams (Query IPv6ID () () ()) -- ^ Clear + Input + Snapshot
+         | CmdSnapshot (CLISnapshotQuery IPv6ID) -- ^ Get a snapshot graph.
+         | CmdCIS InputParams (CLISnapshotQuery IPv6ID) -- ^ Clear + Input + Snapshot
+
+returnWithHelp :: Either String a -> IO a
+returnWithHelp (Right a) = return a
+returnWithHelp (Left e) = do
+  hPutStrLn stderr ("Error: " <> e)
+  void $ Opt.handleParseResult $ Opt.execParserPure Opt.defaultPrefs optionParserInfo ["--help"]
+  error "This should not happen."
+
+optionParserInfo :: Opt.ParserInfo (CLIConfig n na fla)
+optionParserInfo =
+  Opt.info (Opt.helper <*> optionParser) $ mconcat $
+  [ Opt.progDesc "net-spider front-end for RPL data model."
+  ]
 
 optionParser :: Opt.Parser (CLIConfig n na fla)
 optionParser = CLIConfig <$> parserSpiderConfig <*> parserCommands
@@ -195,7 +214,6 @@ optionParser = CLIConfig <$> parserSpiderConfig <*> parserCommands
       CLIS.parserSnapshotQuery $
       CLIS.SnapshotConfig
       { CLIS.nodeIDReader = ipv6Reader,
-        CLIS.basisSnapshotQuery = defQuery [],
         CLIS.startsFromAsArguments = parse_arg
       }
     parserFilter = Opt.option readerFilter $ mconcat
