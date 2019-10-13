@@ -1,5 +1,10 @@
 # Revision history for net-spider-rpl-cli
 
+## 0.1.2.0  -- 2019-10-13
+
+* Add `--duration` option, thanks to `net-spider-cli-0.2.0.0`.
+* Enable `-threaded` to build the executable.
+
 ## 0.1.1.1  -- 2019-10-04
 
 * Confirm test with `net-spider-rpl-0.3.0.0`, `ip-1.5.1` and `ip-1.6.0`.
