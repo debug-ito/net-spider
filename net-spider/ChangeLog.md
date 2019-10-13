@@ -1,6 +1,6 @@
 # Revision history for net-spider
 
-## 0.3.3.0  -- 
+## 0.3.3.0  -- 2019-10-13
 
 ### Interval module
 
