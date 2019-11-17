@@ -20,16 +20,15 @@ module NetSpider.Graph.Internal
 
 import Data.Aeson (ToJSON(..), FromJSON(..), Value(..))
 import Data.Greskell
-  ( FromGraphSON(..), parseOneValue, lookupOne, lookupOneValue,
+  ( FromGraphSON(..),
     Element(..), Vertex, Edge(..),
     AVertexProperty(..), AVertex(..), AProperty, AEdge(..),
     Walk, SideEffect,
-    Binder, Parser, PropertyMapList, PropertyMapSingle, GValue,
+    Binder, Parser, GValue,
     gIdentity, gProperty,
-    newBind, allProperties, propertyKey, propertyValue
+    newBind, propertyKey, propertyValue
   )
 import qualified Data.Greskell as Greskell
-import Data.Greskell.Extra (writeAllProperties)
 import Data.Text (Text, unpack)
 import Data.Time.LocalTime (TimeZone(..))
 

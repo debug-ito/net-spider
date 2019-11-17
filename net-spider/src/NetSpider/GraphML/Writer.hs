@@ -32,9 +32,7 @@ module NetSpider.GraphML.Writer
 
 import qualified Data.Aeson as Aeson
 import Data.Foldable (foldl')
-import Data.Greskell.Graph
-  ( PropertyMap, Property(..), allProperties
-  )
+import Data.Greskell.Graph (Property(..))
 import Data.Hashable (Hashable(..))
 import Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HM
@@ -141,11 +139,6 @@ instance ToAttributes () where
 
 instance ToAttributes [(AttributeKey, AttributeValue)] where
   toAttributes = id
-
-instance (PropertyMap m, Property p) => ToAttributes (m p AttributeValue) where
-  toAttributes = toAttributes . map toPair . allProperties
-    where
-      toPair p = (propertyKey p, propertyValue p)
 
 -- | 'Nothing' is mapped to empty attributes.
 instance ToAttributes a => ToAttributes (Maybe a) where
