@@ -49,7 +49,10 @@ import Network.Greskell.WebSocket (Host, Port)
 import qualified Network.Greskell.WebSocket as Gr
 
 import NetSpider.Graph (EID, LinkAttributes, NodeAttributes)
-import NetSpider.Graph.Internal (VFoundNode(..), EFinds(..))
+import NetSpider.Graph.Internal
+  ( VFoundNode, EFinds, VNode,
+    VFoundNodeData(..), EFindsData(..)
+  )
 import NetSpider.Found (FoundNode(..), FoundLink(..), LinkState(..))
 import NetSpider.Log (runWriterLoggingM, WriterLoggingM, logDebugW, LogLine, spack)
 import NetSpider.Pair (Pair)
@@ -129,12 +132,12 @@ addFoundNode spider found_node = do
 vToMaybe :: Vector a -> Maybe a
 vToMaybe v = v V.!? 0
   
-getNode :: (ToJSON n) => Spider n na fla -> n -> IO (Maybe EID)
+getNode :: (ToJSON n) => Spider n na fla -> n -> IO (Maybe (EID VNode))
 getNode spider nid = fmap vToMaybe $ Gr.slurpResults =<< submitB spider gt
   where
     gt = gNodeEID <$.> gHasNodeID spider nid <*.> pure gAllNodes
 
-getOrMakeNode :: (ToJSON n) => Spider n na fla -> n -> IO EID
+getOrMakeNode :: (ToJSON n) => Spider n na fla -> n -> IO (EID VNode)
 getOrMakeNode spider nid = do
   mvid <- getNode spider nid
   case mvid of
@@ -193,8 +196,10 @@ recurseVisitNodesForSnapshot spider query ref_state = go
 traverseEFindsOneHop :: (FromGraphSON n, NodeAttributes na, LinkAttributes fla)
                      => Spider n na fla
                      -> Interval Timestamp
-                     -> EID
-                     -> IO (Maybe (VFoundNode na), [(VFoundNode na, EFinds fla, n)])
+                     -> EID VNode
+                     -- TODO: should we use VFoundNodeData and EFindsData ??
+                     ---- -> IO (Maybe (VFoundNode na), [(VFoundNode na, EFinds fla, n)])
+                     -> IO (Maybe VFoundNode, [(VFoundNode, EFinds, n)])
 traverseEFindsOneHop spider time_interval visit_eid = (,) <$> getLatestVFoundNode <*> getTraversedEdges
   where
     foundNodeTraversal = fmap gSelectFoundNode (gFilterFoundNodeByTime time_interval)
@@ -221,14 +226,16 @@ traverseEFindsOneHop spider time_interval visit_eid = (,) <$> getLatestVFoundNod
           <*> lookupAsM label_ef smap 
           <*> lookupAsM label_target_nid smap 
 
-makeLinkSample :: n -> VFoundNode na -> EFinds la -> n -> LinkSample n la
-makeLinkSample subject_nid vfn efinds target_nid = 
-  LinkSample { lsSubjectNode = subject_nid,
-               lsTargetNode = target_nid,
-               lsLinkState = efLinkState efinds,
-               lsTimestamp = vfnTimestamp vfn,
-               lsLinkAttributes = efLinkAttributes efinds
-             }
+-- makeLinkSample :: n -> VFoundNode na -> EFinds la -> n -> LinkSample n la
+-- makeLinkSample subject_nid vfn efinds target_nid = 
+--   LinkSample { lsSubjectNode = subject_nid,
+--                lsTargetNode = target_nid,
+--                lsLinkState = efLinkState efinds,
+--                lsTimestamp = vfnTimestamp vfn,
+--                lsLinkAttributes = efLinkAttributes efinds
+--              }
+makeLinkSample :: n -> VFoundNode -> EFinds -> n -> LinkSample n la
+makeLinkSample = undefined -- TODO.
 
 visitNodeForSnapshot :: (ToJSON n, Ord n, Hashable n, FromGraphSON n, Show n, LinkAttributes fla, NodeAttributes na)
                      => Spider n na fla
@@ -291,7 +298,9 @@ visitNodeForSnapshot spider query ref_state visit_nid = do
 data SnapshotState n na fla =
   SnapshotState
   { ssUnvisitedNodes :: Queue n,
-    ssVisitedNodes :: HashMap n (Maybe (VFoundNode na)),
+    ---- ssVisitedNodes :: HashMap n (Maybe (VFoundNode na)),
+    -- TODO: probably we should use VFoundNodeData instead.
+    ssVisitedNodes :: HashMap n (Maybe VFoundNode),
     -- ^ If the visited node has no observation yet, its node
     -- attributes 'Nothing'.
     ssVisitedLinks :: HashMap (LinkSampleID n) [LinkSample n fla]
@@ -321,7 +330,9 @@ emptySnapshotState = SnapshotState
 initSnapshotState :: (Ord n, Hashable n) => [n] -> SnapshotState n na fla
 initSnapshotState init_unvisited_nodes = emptySnapshotState { ssUnvisitedNodes = newQueue init_unvisited_nodes }
 
-addVisitedNode :: (Eq n, Hashable n) => n -> Maybe (VFoundNode na) -> SnapshotState n na fla -> SnapshotState n na fla
+-- TODO
+---- addVisitedNode :: (Eq n, Hashable n) => n -> Maybe (VFoundNode na) -> SnapshotState n na fla -> SnapshotState n na fla
+addVisitedNode :: (Eq n, Hashable n) => n -> Maybe VFoundNode -> SnapshotState n na fla -> SnapshotState n na fla
 addVisitedNode nid mv state = state { ssVisitedNodes = HM.insert nid mv $ ssVisitedNodes state }
 
 isAlreadyVisited :: (Eq n, Hashable n) => SnapshotState n na fla -> n -> Bool

@@ -61,7 +61,7 @@ import NetSpider.Spider.Internal.Spider (Spider(..))
 spiderNodeIdKey :: Spider n na fla -> Key VNode n
 spiderNodeIdKey = nodeIdKey . spiderConfig
 
-gNodeEID :: Walk Transform VNode EID
+gNodeEID :: Walk Transform VNode (EID VNode)
 gNodeEID = gId
 
 gNodeID :: Spider n na fla -> Walk Transform VNode n
@@ -75,7 +75,7 @@ gHasNodeID spider nid = do
   var_nid <- newBind nid
   return $ gHas2 (spiderNodeIdKey spider) var_nid
 
-gHasNodeEID :: (WalkType c) => EID -> Binder (Walk c VNode VNode)
+gHasNodeEID :: (WalkType c) => EID VNode -> Binder (Walk c VNode VNode)
 gHasNodeEID eid = do
   var_eid <- newBind eid
   return $ gHasId var_eid
@@ -85,25 +85,25 @@ gMakeNode spider nid = do
   var_nid <- newBind nid
   return $ gProperty (spiderNodeIdKey spider) var_nid $. sAddV "node" $ source "g"
 
-gGetNodeByEID :: EID -> Binder (Walk Transform s VNode)
+gGetNodeByEID :: EID VNode -> Binder (Walk Transform s VNode)
 gGetNodeByEID vid = do
   f <- gHasNodeEID vid
   return (f <<< gV [])
 
 
-gAllFoundNode :: GTraversal Transform () (VFoundNode na)
+gAllFoundNode :: GTraversal Transform () VFoundNode
 gAllFoundNode = gHasLabel "found_node" $. sV [] $ source "g"
 
-gHasFoundNodeEID :: WalkType c => EID -> Binder (Walk c (VFoundNode na) (VFoundNode na))
+gHasFoundNodeEID :: WalkType c => EID VFoundNode -> Binder (Walk c VFoundNode VFoundNode)
 gHasFoundNodeEID eid = do
   var_eid <- newBind eid
   return $ gHasId var_eid
 
 gMakeFoundNode :: (LinkAttributes la, NodeAttributes na)
-               => EID -- ^ subject node EID
-               -> [(FoundLink n la, EID)] -- ^ (link, target node EID)
+               => EID VNode -- ^ subject node EID
+               -> [(FoundLink n la, EID VNode)] -- ^ (link, target node EID)
                -> FoundNode n na la
-               -> Binder (GTraversal SideEffect () (VFoundNode na))
+               -> Binder (GTraversal SideEffect () VFoundNode)
 gMakeFoundNode subject_vid link_pairs fnode = 
   mAddFindsEdges
   <*.> writeNodeAttributes (nodeAttributes fnode)
@@ -111,12 +111,12 @@ gMakeFoundNode subject_vid link_pairs fnode =
   <*.> mAddObservedEdge
   <*.> pure $ sAddV "found_node" $ source "g"
   where
-    mAddObservedEdge :: Binder (Walk SideEffect (VFoundNode na) (VFoundNode na))
+    mAddObservedEdge :: Binder (Walk SideEffect VFoundNode VFoundNode)
     mAddObservedEdge = do
       v <- gGetNodeByEID subject_vid
       return $ gSideEffect $ emitsAEdge $ gAddE "is_observed_as" $ gFrom v
     mAddFindsEdges = fmap fold $ traverse mAddFindsEdgeFor link_pairs
-    mAddFindsEdgeFor :: LinkAttributes la => (FoundLink n la, EID) -> Binder (Walk SideEffect (VFoundNode na) (VFoundNode na))
+    mAddFindsEdgeFor :: LinkAttributes la => (FoundLink n la, EID VNode) -> Binder (Walk SideEffect VFoundNode VFoundNode)
     mAddFindsEdgeFor (link, target_vid) = do
       v <- gGetNodeByEID target_vid
       var_ls <- newBind $ linkStateToText $ linkState link
@@ -126,10 +126,10 @@ gMakeFoundNode subject_vid link_pairs fnode =
                              <<< gAddE "finds" (gTo v)
                            )
 
-keyTimestamp :: Key (VFoundNode na) Int64
+keyTimestamp :: Key VFoundNode Int64
 keyTimestamp = "@timestamp"
   
-gSetTimestamp :: Timestamp -> Binder (Walk SideEffect (VFoundNode na) (VFoundNode na))
+gSetTimestamp :: Timestamp -> Binder (Walk SideEffect VFoundNode VFoundNode)
 gSetTimestamp ts = do
   var_epoch <- newBind $ epochTime ts
   meta_props <- makeMetaProps $ timeZone ts
@@ -151,13 +151,13 @@ emitsAEdge = id
 gClearAll :: GTraversal SideEffect () ()
 gClearAll = void $ gDrop $. liftWalk $ sV' [] $ source "g"
 
-gSelectFoundNode :: Walk Filter (VFoundNode na) (VFoundNode na) -> Walk Transform VNode (VFoundNode na)
+gSelectFoundNode :: Walk Filter VFoundNode VFoundNode -> Walk Transform VNode VFoundNode
 gSelectFoundNode filterFoundNode = liftWalk filterFoundNode <<< gOut ["is_observed_as"]
 
-gLatestFoundNode :: Walk Transform (VFoundNode na) (VFoundNode na)
+gLatestFoundNode :: Walk Transform VFoundNode VFoundNode
 gLatestFoundNode = gLimit 1 <<< gOrder [gBy2 keyTimestamp oDecr]
 
-gFilterFoundNodeByTime :: Interval Timestamp -> Binder (Walk Filter (VFoundNode na) (VFoundNode na))
+gFilterFoundNodeByTime :: Interval Timestamp -> Binder (Walk Filter VFoundNode VFoundNode)
 gFilterFoundNodeByTime interval = do
   fl <- filterLower
   fh <- filterUpper
@@ -174,8 +174,8 @@ gFilterFoundNodeByTime interval = do
       (Finite ts, False) -> fmap (gHas2P keyTimestamp) $ fmap pLt  $ newBind $ epochTime ts
       (Finite ts, True)  -> fmap (gHas2P keyTimestamp) $ fmap pLte $ newBind $ epochTime ts
 
-gFinds :: Walk Transform (VFoundNode na) (EFinds la)
+gFinds :: Walk Transform VFoundNode EFinds
 gFinds = gOutE ["finds"]
 
-gFindsTarget :: Walk Transform (EFinds la) VNode
+gFindsTarget :: Walk Transform EFinds VNode
 gFindsTarget = gInV

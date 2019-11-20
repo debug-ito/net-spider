@@ -1,5 +1,23 @@
 # Revision history for net-spider
 
+## 0.4.0.0
+
+* Use `greskell-1.0.0.0`.
+
+### Graph module
+
+* [BREAKING CHANGE] Change signatures of `parseNodeAttributes` and
+  `parseLinkAttributes` functions, because now `PropertMapList` and
+  `PropertyMapSingle` are deprecated.
+
+* [BREAKING CHANGE] Now `EID` is alias for `ElementID`. It's kind is
+  now `* -> *`.
+
+* [BREAKING CHANGE] Kind of `VFoundNode` and `EFinds` is now `*` (was
+  `* -> *`).
+
+
+
 ## 0.3.3.0  -- 2019-10-13
 
 ### Interval module
