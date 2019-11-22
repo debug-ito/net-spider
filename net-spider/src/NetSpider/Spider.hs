@@ -22,6 +22,7 @@ module NetSpider.Spider
          clearAll
        ) where
 
+import Control.Category ((<<<))
 import Control.Exception.Safe (throwString, bracket)
 import Control.Monad (void, mapM_, mapM)
 import Data.Aeson (ToJSON)
@@ -30,8 +31,9 @@ import Data.List (intercalate)
 import Data.Greskell
   ( runBinder, ($.), (<$.>), (<*.>),
     Binder, ToGreskell(GreskellReturn), AsIterator(IteratorItem), FromGraphSON,
-    liftWalk, gLimit, gIdentity, gSelectN, gAs,
-    lookupAsM, newAsLabel
+    liftWalk, gLimit, gIdentity, gSelect1, gAs, gProject, gByL, gIdentity,
+    lookupAsM, newAsLabel,
+    Transform, Walk
   )
 import Data.Hashable (Hashable)
 import Data.HashMap.Strict (HashMap)
@@ -51,7 +53,8 @@ import qualified Network.Greskell.WebSocket as Gr
 import NetSpider.Graph (EID, LinkAttributes, NodeAttributes)
 import NetSpider.Graph.Internal
   ( VFoundNode, EFinds, VNode,
-    VFoundNodeData(..), EFindsData(..)
+    VFoundNodeData(..), EFindsData(..),
+    gVFoundNodeData, gEFindsData
   )
 import NetSpider.Found (FoundNode(..), FoundLink(..), LinkState(..))
 import NetSpider.Log (runWriterLoggingM, WriterLoggingM, logDebugW, LogLine, spack)
@@ -197,9 +200,7 @@ traverseEFindsOneHop :: (FromGraphSON n, NodeAttributes na, LinkAttributes fla)
                      => Spider n na fla
                      -> Interval Timestamp
                      -> EID VNode
-                     -- TODO: should we use VFoundNodeData and EFindsData ??
-                     ---- -> IO (Maybe (VFoundNode na), [(VFoundNode na, EFinds fla, n)])
-                     -> IO (Maybe VFoundNode, [(VFoundNode, EFinds, n)])
+                     -> IO (Maybe (VFoundNodeData na), [(VFoundNodeData na, EFindsData fla, n)])
 traverseEFindsOneHop spider time_interval visit_eid = (,) <$> getLatestVFoundNode <*> getTraversedEdges
   where
     foundNodeTraversal = fmap gSelectFoundNode (gFilterFoundNodeByTime time_interval)
@@ -208,34 +209,37 @@ traverseEFindsOneHop spider time_interval visit_eid = (,) <$> getLatestVFoundNod
     getLatestVFoundNode = fmap vToMaybe $ Gr.slurpResults =<< submitQuery
       where
         submitQuery = submitB spider binder
-        binder = gLatestFoundNode <$.> foundNodeTraversal
+        binder = gVFoundNodeData <$.> gLatestFoundNode <$.> foundNodeTraversal
     getTraversedEdges = fmap V.toList $ traverse extractFromSMap =<< Gr.slurpResults =<< submitQuery
       where
         submitQuery = Gr.submit (spiderClient spider) query (Just bindings)
         ((query, label_vfn, label_ef, label_target_nid), bindings) = runBinder $ do
           lvfn <- newAsLabel
+          lvfnd <- newAsLabel
           lef <- newAsLabel
+          lefd <- newAsLabel
           ln <- newAsLabel
-          gt <- gSelectN lvfn lef [ln]
-                <$.> gAs ln <$.> gNodeID spider <$.> gFindsTarget
+          gt <- gProject
+                ( gByL lvfnd (gVFoundNodeData <<< gSelect1 lvfn) )
+                [ gByL lefd (gEFindsData <<< gSelect1 lef),
+                  gByL ln (gIdentity :: Walk Transform n n)
+                ] <$.> gNodeID spider <$.> gFindsTarget
                 <$.> gAs lef <$.> gFinds <$.> gAs lvfn <$.> foundNodeTraversal
-          return (gt, lvfn, lef, ln)
+          return (gt, lvfnd, lefd, ln)
         extractFromSMap smap =
           (,,)
           <$> lookupAsM label_vfn smap 
           <*> lookupAsM label_ef smap 
           <*> lookupAsM label_target_nid smap 
 
--- makeLinkSample :: n -> VFoundNode na -> EFinds la -> n -> LinkSample n la
--- makeLinkSample subject_nid vfn efinds target_nid = 
---   LinkSample { lsSubjectNode = subject_nid,
---                lsTargetNode = target_nid,
---                lsLinkState = efLinkState efinds,
---                lsTimestamp = vfnTimestamp vfn,
---                lsLinkAttributes = efLinkAttributes efinds
---              }
-makeLinkSample :: n -> VFoundNode -> EFinds -> n -> LinkSample n la
-makeLinkSample = undefined -- TODO.
+makeLinkSample :: n -> VFoundNodeData na -> EFindsData la -> n -> LinkSample n la
+makeLinkSample subject_nid vfn efinds target_nid = 
+  LinkSample { lsSubjectNode = subject_nid,
+               lsTargetNode = target_nid,
+               lsLinkState = efLinkState efinds,
+               lsTimestamp = vfnTimestamp vfn,
+               lsLinkAttributes = efLinkAttributes efinds
+             }
 
 visitNodeForSnapshot :: (ToJSON n, Ord n, Hashable n, FromGraphSON n, Show n, LinkAttributes fla, NodeAttributes na)
                      => Spider n na fla
@@ -298,9 +302,7 @@ visitNodeForSnapshot spider query ref_state visit_nid = do
 data SnapshotState n na fla =
   SnapshotState
   { ssUnvisitedNodes :: Queue n,
-    ---- ssVisitedNodes :: HashMap n (Maybe (VFoundNode na)),
-    -- TODO: probably we should use VFoundNodeData instead.
-    ssVisitedNodes :: HashMap n (Maybe VFoundNode),
+    ssVisitedNodes :: HashMap n (Maybe (VFoundNodeData na)),
     -- ^ If the visited node has no observation yet, its node
     -- attributes 'Nothing'.
     ssVisitedLinks :: HashMap (LinkSampleID n) [LinkSample n fla]
@@ -330,9 +332,7 @@ emptySnapshotState = SnapshotState
 initSnapshotState :: (Ord n, Hashable n) => [n] -> SnapshotState n na fla
 initSnapshotState init_unvisited_nodes = emptySnapshotState { ssUnvisitedNodes = newQueue init_unvisited_nodes }
 
--- TODO
----- addVisitedNode :: (Eq n, Hashable n) => n -> Maybe (VFoundNode na) -> SnapshotState n na fla -> SnapshotState n na fla
-addVisitedNode :: (Eq n, Hashable n) => n -> Maybe VFoundNode -> SnapshotState n na fla -> SnapshotState n na fla
+addVisitedNode :: (Eq n, Hashable n) => n -> Maybe (VFoundNodeData na) -> SnapshotState n na fla -> SnapshotState n na fla
 addVisitedNode nid mv state = state { ssVisitedNodes = HM.insert nid mv $ ssVisitedNodes state }
 
 isAlreadyVisited :: (Eq n, Hashable n) => SnapshotState n na fla -> n -> Bool
