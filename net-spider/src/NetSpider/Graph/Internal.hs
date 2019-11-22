@@ -20,7 +20,10 @@ module NetSpider.Graph.Internal
          -- * EFinds
          EFinds,
          EFindsData(..),
-         LinkAttributes(..)
+         LinkAttributes(..),
+         gSetLinkState,
+         gFindsTarget,
+         gEFindsData
        ) where
 
 import Control.Category ((<<<))
@@ -32,9 +35,9 @@ import Data.Greskell
     AVertexProperty, AVertex, AEdge,
     Walk, SideEffect, Transform, unsafeCastEnd,
     Binder, Parser, GValue,
-    gIdentity, gProperty, gPropertyV, (=:), gProperties,
+    gIdentity, gProperty, gPropertyV, (=:), gProperties, gInV,
     newBind,
-    Key, AsLabel,
+    Key, AsLabel, unKey,
     PMap, Multi, Single, lookupAs, PMapLookupException,
     gProject, gValueMap, gByL, gId, Keys(..)
   )
@@ -44,7 +47,7 @@ import Data.Text (Text, unpack, pack)
 import Data.Time.LocalTime (TimeZone(..))
 
 import NetSpider.Timestamp (Timestamp(..))
-import NetSpider.Found (LinkState)
+import NetSpider.Found (LinkState, linkStateToText, linkStateFromText)
 
 -- | Generic element ID used in the graph DB.
 type EID = ElementID
@@ -120,7 +123,7 @@ gVFoundNodeData = unsafeCastEnd $ gProject
 instance NodeAttributes na => FromGraphSON (VFoundNodeData na) where
   parseGraphSON gv = fromPMap =<< parseGraphSON gv
     where
-      fromPMap :: NodeAttributes na => PMap Multi GValue -> Parser (VFoundNodeData na)
+      fromPMap :: NodeAttributes na => PMap Single GValue -> Parser (VFoundNodeData na)
       fromPMap pm = do
         eid <- eToP $ lookupAs labelVFoundNodeID pm
         props <- eToP $ lookupAs labelVProps pm
@@ -165,17 +168,53 @@ data EFindsData la =
   }
   deriving (Show)
 
+keyLinkState :: Key EFinds Text
+keyLinkState = "@link_state"
+
+gSetLinkState :: LinkState -> Binder (Walk SideEffect EFinds EFinds)
+gSetLinkState ls = do
+  var_ls <- newBind $ linkStateToText $ ls
+  return $ gProperty keyLinkState var_ls
+
+gFindsTarget :: Walk Transform EFinds VNode
+gFindsTarget = gInV
+
+labelEProps :: AsLabel (PMap Single GValue)
+labelEProps = "eprops"
+
+labelEFindsID :: AsLabel (ElementID EFinds)
+labelEFindsID = "eid"
+
+labelEFindsTarget :: AsLabel (ElementID VNode)
+labelEFindsTarget = "vnode"
+
+gEFindsData :: Walk Transform EFinds (EFindsData la)
+gEFindsData = unsafeCastEnd $ gProject
+              ( gByL labelEProps $ gValueMap KeysNil )
+              [ gByL labelEFindsID $ gId,
+                gByL labelEFindsTarget (gId <<< gFindsTarget)
+              ]
+
 instance LinkAttributes la => FromGraphSON (EFindsData la) where
-  parseGraphSON gv = undefined -- TODO
-  ---- parseGraphSON gv = fromAEdge =<< parseGraphSON gv
-  ----   where
-  ----     fromAEdge ae = EFinds 
-  ----                    <$> (parseGraphSON $ aeId ae)
-  ----                    <*> (parseGraphSON $ aeInV ae)
-  ----                    <*> (parseOneValue "@link_state" ps)
-  ----                    <*> (parseLinkAttributes ps)
-  ----       where
-  ----         ps = aeProperties ae
+  parseGraphSON gv = fromPMap =<< parseGraphSON gv
+    where
+      fromPMap :: LinkAttributes la => PMap Single GValue -> Parser (EFindsData la)
+      fromPMap pm = do
+        props <- eToP $ lookupAs labelEProps pm
+        eid <- eToP $ lookupAs labelEFindsID pm
+        target <- eToP $ lookupAs labelEFindsTarget pm
+        ls <- eToP $ (either (Left . show) (parseLinkState . linkStateFromText)) $ lookupAs keyLinkState props
+        attrs <- parseLinkAttributes props
+        return $
+          EFindsData
+          { efId = eid,
+            efTargetId = target,
+            efLinkState = ls,
+            efLinkAttributes = attrs
+          }
+      parseLinkState = maybe
+                       (Left ("Failed to parse " ++ (unpack $ unKey $ keyLinkState) ++ " field."))
+                       Right
 
 -- | Class of user-defined types for node attributes. Its content is
 -- stored in the NetSpider database.

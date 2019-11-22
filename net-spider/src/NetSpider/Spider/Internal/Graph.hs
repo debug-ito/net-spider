@@ -52,7 +52,10 @@ import NetSpider.Graph
   ( EID, VNode, VFoundNode, EFinds,
     LinkAttributes(..), NodeAttributes(..)
   )
-import NetSpider.Graph.Internal (keyTimestamp, gSetTimestamp)
+import NetSpider.Graph.Internal
+  ( keyTimestamp, gSetTimestamp, gSetLinkState,
+    gFindsTarget
+  )
 import NetSpider.Found (FoundLink(..), LinkState(..), FoundNode(..), linkStateToText)
 import NetSpider.Query (Interval, Extended(..))
 import NetSpider.Timestamp (Timestamp(..))
@@ -120,10 +123,10 @@ gMakeFoundNode subject_vid link_pairs fnode =
     mAddFindsEdgeFor :: LinkAttributes la => (FoundLink n la, EID VNode) -> Binder (Walk SideEffect VFoundNode VFoundNode)
     mAddFindsEdgeFor (link, target_vid) = do
       v <- gGetNodeByEID target_vid
-      var_ls <- newBind $ linkStateToText $ linkState link
+      g_set_link_state <- gSetLinkState $ linkState link
       addAttrs <- writeLinkAttributes $ linkAttributes link
       return $ gSideEffect ( addAttrs
-                             <<< gProperty "@link_state" var_ls
+                             <<< g_set_link_state
                              <<< gAddE "finds" (gTo v)
                            )
 
@@ -158,6 +161,3 @@ gFilterFoundNodeByTime interval = do
 
 gFinds :: Walk Transform VFoundNode EFinds
 gFinds = gOutE ["finds"]
-
-gFindsTarget :: Walk Transform EFinds VNode
-gFindsTarget = gInV
