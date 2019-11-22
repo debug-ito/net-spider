@@ -15,7 +15,7 @@ import Control.Applicative ((<$>))
 import Control.Category ((<<<))
 import Control.Exception.Safe (bracket, withException)
 import Data.Aeson.Types (Parser)
-import Data.Greskell (gProperty, newBind, lookupAs, Key)
+import Data.Greskell (gProperty, newBind, lookupAsF, Key)
 import Data.List (sort)
 import Data.Text (Text)
 import Data.Vector (Vector)
@@ -66,19 +66,16 @@ sortSnapshotElements (ns, ls) = (sortV ns, sortV ls)
 newtype AText = AText Text
               deriving (Show,Eq,Ord)
 
-e2p :: Show e => Either e a -> Parser a
-e2p = either (fail . show) return 
-
 keyText :: Key e Text
 keyText = "text"
 
 instance NodeAttributes AText where
   writeNodeAttributes (AText t) = gProperty keyText <$> newBind t
-  parseNodeAttributes ps = e2p $ fmap AText $ lookupAs keyText ps
+  parseNodeAttributes ps = fmap AText $ lookupAsF keyText ps
 
 instance LinkAttributes AText where
   writeLinkAttributes (AText t) = gProperty keyText <$> newBind t
-  parseLinkAttributes ps = e2p $ fmap AText $ lookupAs keyText ps
+  parseLinkAttributes ps = fmap AText $ lookupAsF keyText ps
 
 newtype AInt = AInt Int
              deriving (Show,Eq,Ord)
@@ -88,11 +85,11 @@ keyInt = "integer"
 
 instance NodeAttributes AInt where
   writeNodeAttributes (AInt n) = gProperty keyInt <$> newBind n
-  parseNodeAttributes ps = e2p $ fmap AInt $ lookupAs keyInt ps
+  parseNodeAttributes ps = fmap AInt $ lookupAsF keyInt ps
 
 instance LinkAttributes AInt where
   writeLinkAttributes (AInt n) = gProperty keyInt <$> newBind n
-  parseLinkAttributes ps = e2p $ fmap AInt $ lookupAs keyInt ps
+  parseLinkAttributes ps = fmap AInt $ lookupAsF keyInt ps
 
 
 -- | Pair of ports.
@@ -118,8 +115,8 @@ instance LinkAttributes APorts where
     writeDest <- gProperty keyTargetPort <$> newBind (apSnd ap)
     return (writeDest <<< writeSource)
   parseLinkAttributes ps = APorts
-                           <$> (e2p $ lookupAs keySubjectPort ps)
-                           <*> (e2p $ lookupAs keyTargetPort ps)
+                           <$> (lookupAsF keySubjectPort ps)
+                           <*> (lookupAsF keyTargetPort ps)
 
 swapAPorts :: APorts -> APorts
 swapAPorts ap = ap { apFst = apSnd ap,

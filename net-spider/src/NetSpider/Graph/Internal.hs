@@ -39,7 +39,7 @@ import Data.Greskell
     gIdentity, gProperty, gPropertyV, (=:), gProperties, gInV,
     newBind,
     Key, AsLabel, unKey,
-    PMap, Multi, Single, lookupAs, PMapLookupException, pMapFromList, pMapToList,
+    PMap, Multi, Single, lookupAs, lookupAsF, PMapLookupException, pMapFromList, pMapToList,
     gProject, gValueMap, gByL, gId, Keys(..)
   )
 import Data.Greskell.NonEmptyLike (NonEmptyLike)
@@ -102,10 +102,6 @@ data VFoundNodeData na =
   }
   deriving (Show)
 
-eToP :: Show e => Either e a -> Parser a
-eToP (Left e) = fail $ show e
-eToP (Right a) = return a
-
 labelVProps :: AsLabel (PMap Multi GValue)
 labelVProps = "props"
 
@@ -127,11 +123,11 @@ instance NodeAttributes na => FromGraphSON (VFoundNodeData na) where
     where
       fromPMap :: NodeAttributes na => PMap Single GValue -> Parser (VFoundNodeData na)
       fromPMap pm = do
-        eid <- eToP $ lookupAs labelVFoundNodeID pm
-        props <- eToP $ lookupAs labelVProps pm
-        mprops <- eToP $ lookupAs labelMetaProps pm
+        eid <- lookupAsF labelVFoundNodeID pm
+        props <- lookupAsF labelVProps pm
+        mprops <- lookupAsF labelMetaProps pm
         attrs <- parseNodeAttributes props
-        epoch_ts <- eToP $ lookupAs keyTimestamp props
+        epoch_ts <- lookupAsF keyTimestamp props
         mtz <- parseTimeZone mprops
         return $
           VFoundNodeData
@@ -155,6 +151,7 @@ instance NodeAttributes na => FromGraphSON (VFoundNodeData na) where
           where
             get :: FromGraphSON b => Key a b -> Either PMapLookupException b
             get k = lookupAs k ts_prop
+            eToP = either (fail . show) return
 
 -- | \"finds\" edge.
 newtype EFinds = EFinds AEdge
@@ -202,10 +199,10 @@ instance LinkAttributes la => FromGraphSON (EFindsData la) where
     where
       fromPMap :: LinkAttributes la => PMap Single GValue -> Parser (EFindsData la)
       fromPMap pm = do
-        props <- eToP $ lookupAs labelEProps pm
-        eid <- eToP $ lookupAs labelEFindsID pm
-        target <- eToP $ lookupAs labelEFindsTarget pm
-        ls <- eToP $ (either (Left . show) (parseLinkState . linkStateFromText)) $ lookupAs keyLinkState props
+        props <- lookupAsF labelEProps pm
+        eid <- lookupAsF labelEFindsID pm
+        target <- lookupAsF labelEFindsTarget pm
+        ls <- parseLinkState =<< lookupAsF keyLinkState props
         attrs <- parseLinkAttributes props
         return $
           EFindsData
@@ -214,9 +211,10 @@ instance LinkAttributes la => FromGraphSON (EFindsData la) where
             efLinkState = ls,
             efLinkAttributes = attrs
           }
-      parseLinkState = maybe
-                       (Left ("Failed to parse " ++ (unpack $ unKey $ keyLinkState) ++ " field."))
-                       Right
+      parseLinkState t =
+        case linkStateFromText t of
+          Nothing -> fail ("Failed to parse " ++ (unpack $ unKey $ keyLinkState) ++ " field.")
+          Just a -> return a
 
 -- | Class of user-defined types for node attributes. Its content is
 -- stored in the NetSpider database.
