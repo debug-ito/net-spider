@@ -52,6 +52,7 @@ import NetSpider.Graph
   ( EID, VNode, VFoundNode, EFinds,
     LinkAttributes(..), NodeAttributes(..)
   )
+import NetSpider.Graph.Internal (keyTimestamp, gSetTimestamp)
 import NetSpider.Found (FoundLink(..), LinkState(..), FoundNode(..), linkStateToText)
 import NetSpider.Query (Interval, Extended(..))
 import NetSpider.Timestamp (Timestamp(..))
@@ -125,25 +126,6 @@ gMakeFoundNode subject_vid link_pairs fnode =
                              <<< gProperty "@link_state" var_ls
                              <<< gAddE "finds" (gTo v)
                            )
-
-keyTimestamp :: Key VFoundNode Int64
-keyTimestamp = "@timestamp"
-  
-gSetTimestamp :: Timestamp -> Binder (Walk SideEffect VFoundNode VFoundNode)
-gSetTimestamp ts = do
-  var_epoch <- newBind $ epochTime ts
-  meta_props <- makeMetaProps $ timeZone ts
-  return $ gPropertyV Nothing keyTimestamp var_epoch meta_props
-  where
-    makeMetaProps Nothing = return []
-    makeMetaProps (Just tz) = do
-      offset <- newBind $ timeZoneMinutes tz
-      summer <- newBind $ timeZoneSummerOnly tz
-      name <- newBind $ pack $ timeZoneName tz
-      return $ [ "@tz_offset_min" =: offset,
-                 "@tz_summer_only" =: summer,
-                 "@tz_name" =: name
-               ]
 
 emitsAEdge :: ToGTraversal g => g c s AEdge -> g c s AEdge
 emitsAEdge = id

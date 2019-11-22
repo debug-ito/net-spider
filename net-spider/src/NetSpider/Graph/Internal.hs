@@ -14,26 +14,33 @@ module NetSpider.Graph.Internal
          VFoundNode,
          VFoundNodeData(..),
          NodeAttributes(..),
+         keyTimestamp,
+         gSetTimestamp,
+         gVFoundNodeData,
          -- * EFinds
          EFinds,
          EFindsData(..),
          LinkAttributes(..)
        ) where
 
+import Control.Category ((<<<))
 import Data.Aeson (ToJSON(..), FromJSON(..), Value(..))
 import Data.Greskell
   ( FromGraphSON(..),
     ElementData(..), Element(..), Vertex, Edge,
     ElementID,
-    AVertexProperty(..), AVertex(..), AProperty, AEdge(..),
-    Walk, SideEffect,
+    AVertexProperty, AVertex, AEdge,
+    Walk, SideEffect, Transform, unsafeCastEnd,
     Binder, Parser, GValue,
-    gIdentity, gProperty,
+    gIdentity, gProperty, gPropertyV, (=:), gProperties,
     newBind,
-    PMap, Multi, Single
+    Key, AsLabel,
+    PMap, Multi, Single, lookupAs, PMapLookupException,
+    gProject, gValueMap, gByL, gId, Keys(..)
   )
 import qualified Data.Greskell as Greskell
-import Data.Text (Text, unpack)
+import Data.Int (Int64)
+import Data.Text (Text, unpack, pack)
 import Data.Time.LocalTime (TimeZone(..))
 
 import NetSpider.Timestamp (Timestamp(..))
@@ -46,6 +53,36 @@ type EID = ElementID
 -- | The \"node\" vertex.
 newtype VNode = VNode AVertex
               deriving (Show,Eq,ElementData,Element,Vertex,FromGraphSON)
+
+type TsEpoch = Int64
+
+keyTimestamp :: Key VFoundNode TsEpoch
+keyTimestamp = "@timestamp"
+
+keyTzOffset :: Key (AVertexProperty TsEpoch) Int
+keyTzOffset = "@tz_offset_min"
+
+keyTzSummerOnly :: Key (AVertexProperty TsEpoch) Bool
+keyTzSummerOnly = "@tz_summer_only"
+
+keyTzName :: Key (AVertexProperty TsEpoch) Text
+keyTzName = "@tz_name"
+  
+gSetTimestamp :: Timestamp -> Binder (Walk SideEffect VFoundNode VFoundNode)
+gSetTimestamp ts = do
+  var_epoch <- newBind $ epochTime ts
+  meta_props <- makeMetaProps $ timeZone ts
+  return $ gPropertyV Nothing keyTimestamp var_epoch meta_props
+  where
+    makeMetaProps Nothing = return []
+    makeMetaProps (Just tz) = do
+      offset <- newBind $ timeZoneMinutes tz
+      summer <- newBind $ timeZoneSummerOnly tz
+      name <- newBind $ pack $ timeZoneName tz
+      return $ [ keyTzOffset =: offset,
+                 keyTzSummerOnly =: summer,
+                 keyTzName =: name
+               ]
 
 -- | The \"found_node\" vertex.
 newtype VFoundNode = VFoundNode AVertex
@@ -60,39 +97,59 @@ data VFoundNodeData na =
   }
   deriving (Show)
 
+eToP :: Show e => Either e a -> Parser a
+eToP (Left e) = fail $ show e
+eToP (Right a) = return a
+
+labelVProps :: AsLabel (PMap Multi GValue)
+labelVProps = "props"
+
+labelVFoundNodeID :: AsLabel (ElementID VFoundNode)
+labelVFoundNodeID = "vid"
+
+labelMetaProps :: AsLabel (PMap Single GValue)
+labelMetaProps = "mprops"
+
+gVFoundNodeData :: Walk Transform VFoundNode (VFoundNodeData na)
+gVFoundNodeData = unsafeCastEnd $ gProject
+                  ( gByL labelVFoundNodeID gId)
+                  [ gByL labelVProps $ gValueMap KeysNil,
+                    gByL labelMetaProps (gValueMap KeysNil <<< gProperties [keyTimestamp])
+                  ]
+
 instance NodeAttributes na => FromGraphSON (VFoundNodeData na) where
-  parseGraphSON gv = undefined -- TODO
-  ---- parseGraphSON gv = fromAVertex =<< parseGraphSON gv
-  ----   where
-  ----     fromAVertex av = do
-  ----       eid <- parseGraphSON $ avId av
-  ----       ts_prop <- case lookupOne "@timestamp" $ avProperties av of
-  ----         Nothing -> fail ("Cannot find property named @timestamp")
-  ----         Just p -> return p
-  ----       epoch_ts <- parseGraphSON $ avpValue ts_prop
-  ----       mtz <- parseTimeZone ts_prop
-  ----       attrs <- parseNodeAttributes $ avProperties av
-  ----       return $ VFoundNode { vfnId = eid,
-  ----                             vfnTimestamp = Timestamp { epochTime = epoch_ts,
-  ----                                                        timeZone = mtz
-  ----                                                      },
-  ----                             vfnAttributes = attrs
-  ----                           }
-  ----     parseTimeZone ts_prop =
-  ----       case (get "@tz_offset_min", get "@tz_summer_only", get "@tz_name") of
-  ----        (Left _, Left _, Left _) -> return Nothing
-  ----        (eo, es, en) -> do
-  ----          offset <- parseE eo
-  ----          is_summer_only <- parseE es
-  ----          name <- parseE en
-  ----          return $ Just $ TimeZone { timeZoneMinutes = offset,
-  ----                                     timeZoneSummerOnly = is_summer_only,
-  ----                                     timeZoneName = unpack name
-  ----                                   }
-  ----       where
-  ----         get k = maybe (Left ("Cannot find property " ++ unpack k)) Right $ lookupOneValue k $ avpProperties ts_prop
-  ----         parseE :: (FromGraphSON a) => Either String GValue -> Parser a
-  ----         parseE = either fail parseGraphSON
+  parseGraphSON gv = fromPMap =<< parseGraphSON gv
+    where
+      fromPMap :: NodeAttributes na => PMap Multi GValue -> Parser (VFoundNodeData na)
+      fromPMap pm = do
+        eid <- eToP $ lookupAs labelVFoundNodeID pm
+        props <- eToP $ lookupAs labelVProps pm
+        mprops <- eToP $ lookupAs labelMetaProps pm
+        attrs <- parseNodeAttributes props
+        epoch_ts <- eToP $ lookupAs keyTimestamp props
+        mtz <- parseTimeZone mprops
+        return $
+          VFoundNodeData
+          { vfnId = eid,
+            vfnTimestamp = Timestamp { epochTime = epoch_ts,
+                                       timeZone = mtz
+                                     },
+            vfnAttributes = attrs
+          }
+      parseTimeZone ts_prop = do
+        case (get keyTzOffset, get keyTzSummerOnly, get keyTzName) of
+          (Left _, Left _, Left _) -> return Nothing
+          (eo, es, en) -> do
+            offset <- eToP eo
+            is_summer_only <- eToP es
+            name <- eToP en
+            return $ Just $ TimeZone { timeZoneMinutes = offset,
+                                       timeZoneSummerOnly = is_summer_only,
+                                       timeZoneName = unpack name
+                                     }
+          where
+            get :: FromGraphSON b => Key a b -> Either PMapLookupException b
+            get k = lookupAs k ts_prop
 
 -- | \"finds\" edge.
 newtype EFinds = EFinds AEdge
