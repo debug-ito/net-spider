@@ -14,7 +14,8 @@ module ServerTest.Common
 import Control.Applicative ((<$>))
 import Control.Category ((<<<))
 import Control.Exception.Safe (bracket, withException)
-import Data.Greskell (parseOneValue, gProperty, newBind)
+import Data.Aeson.Types (Parser)
+import Data.Greskell (gProperty, newBind, lookupAs, Key)
 import Data.List (sort)
 import Data.Text (Text)
 import Data.Vector (Vector)
@@ -65,24 +66,33 @@ sortSnapshotElements (ns, ls) = (sortV ns, sortV ls)
 newtype AText = AText Text
               deriving (Show,Eq,Ord)
 
+e2p :: Show e => Either e a -> Parser a
+e2p = either (fail . show) return 
+
+keyText :: Key e Text
+keyText = "text"
+
 instance NodeAttributes AText where
-  writeNodeAttributes (AText t) = gProperty "text" <$> newBind t
-  parseNodeAttributes ps = AText <$> parseOneValue "text" ps
+  writeNodeAttributes (AText t) = gProperty keyText <$> newBind t
+  parseNodeAttributes ps = e2p $ fmap AText $ lookupAs keyText ps
 
 instance LinkAttributes AText where
-  writeLinkAttributes (AText t) = gProperty "text" <$> newBind t
-  parseLinkAttributes ps = AText <$> parseOneValue "text" ps
+  writeLinkAttributes (AText t) = gProperty keyText <$> newBind t
+  parseLinkAttributes ps = e2p $ fmap AText $ lookupAs keyText ps
 
 newtype AInt = AInt Int
              deriving (Show,Eq,Ord)
 
+keyInt :: Key e Int 
+keyInt = "integer"
+
 instance NodeAttributes AInt where
-  writeNodeAttributes (AInt n) = gProperty "integer" <$> newBind n
-  parseNodeAttributes ps = AInt <$> parseOneValue "integer" ps
+  writeNodeAttributes (AInt n) = gProperty keyInt <$> newBind n
+  parseNodeAttributes ps = e2p $ fmap AInt $ lookupAs keyInt ps
 
 instance LinkAttributes AInt where
-  writeLinkAttributes (AInt n) = gProperty "integer" <$> newBind n
-  parseLinkAttributes ps = AInt <$> parseOneValue "integer" ps
+  writeLinkAttributes (AInt n) = gProperty keyInt <$> newBind n
+  parseLinkAttributes ps = e2p $ fmap AInt $ lookupAs keyInt ps
 
 
 -- | Pair of ports.
@@ -96,14 +106,20 @@ data APorts =
   }
   deriving (Show,Eq,Ord)
 
+keySubjectPort :: Key e Text
+keySubjectPort = "subject_port"
+
+keyTargetPort :: Key e Text
+keyTargetPort = "target_port"
+
 instance LinkAttributes APorts where
   writeLinkAttributes ap = do
-    writeSource <- gProperty "subject_port" <$> newBind (apFst ap)
-    writeDest <- gProperty "target_port" <$> newBind (apSnd ap)
+    writeSource <- gProperty keySubjectPort <$> newBind (apFst ap)
+    writeDest <- gProperty keyTargetPort <$> newBind (apSnd ap)
     return (writeDest <<< writeSource)
   parseLinkAttributes ps = APorts
-                           <$> parseOneValue "subject_port" ps
-                           <*> parseOneValue "target_port" ps
+                           <$> (e2p $ lookupAs keySubjectPort ps)
+                           <*> (e2p $ lookupAs keyTargetPort ps)
 
 swapAPorts :: APorts -> APorts
 swapAPorts ap = ap { apFst = apSnd ap,
