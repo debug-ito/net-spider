@@ -27,15 +27,17 @@ import Control.Applicative ((<$>), (<*>))
 import Data.Aeson (ToJSON(..))
 import Data.Bifunctor (bimap)
 import Data.Greskell
-  ( PropertyMap, Property, GValue, parseOneValue,
-    Binder, Walk, SideEffect, Element, Parser
+  ( Property, GValue,
+    Binder, Walk, SideEffect, Element, Parser,
+    Key,
+    lookupAsF
   )
 import Data.Greskell.Extra (writePropertyKeyValues)
 import Data.Monoid ((<>))
 import Data.Text (Text, unpack)
 import Data.Word (Word32)
 import NetSpider.Found (FoundNode, LinkState(..))
-import NetSpider.Graph (NodeAttributes(..), LinkAttributes(..))
+import NetSpider.Graph (NodeAttributes(..), LinkAttributes(..), VFoundNode, EFinds)
 import qualified NetSpider.GraphML.Writer as GraphML
 import qualified NetSpider.Query as Query
 import NetSpider.Snapshot (SnapshotGraph)
@@ -77,8 +79,8 @@ instance NodeAttributes DIONode where
                 ("dio_interval", toJSON $ dioInterval ln)
               ]
   parseNodeAttributes ps = DIONode
-                           <$> parseOneValue "rank" ps
-                           <*> parseOneValue "dio_interval" ps
+                           <$> lookupAsF ("rank" :: Key VFoundNode Rank) ps
+                           <*> lookupAsF ("dio_interval" :: Key VFoundNode TrickleInterval) ps
 
 instance GraphML.ToAttributes DIONode where
   toAttributes ln = [ ("rank", GraphML.AttrInt $ fromIntegral $ rank ln),
@@ -114,7 +116,7 @@ adaptWalk = bimap undefined undefined
 
 instance LinkAttributes NeighborType where
   writeLinkAttributes nt = writePropertyKeyValues [("neighbor_type", neighborTypeToText nt)]
-  parseLinkAttributes ps = fromT =<< parseOneValue "neighbor_type" ps
+  parseLinkAttributes ps = fromT =<< lookupAsF ("neighbor_type" :: Key EFinds Text) ps
     where
       fromT t = maybe (fail ("Unknown neighbor type: " <> unpack t)) return $ neighborTypeFromText t
 
@@ -142,13 +144,13 @@ instance LinkAttributes DIOLink where
     return (adaptWalk nt_steps <> other)
     where
       pairs = [ ("neighbor_rank", toJSON $ neighborRank ll),
-                ("metric", toJSON $ metric ll)
+                ("metric", toJSON $ metric ll) -- TODO: is it ok to write null??
               ]
   parseLinkAttributes ps =
     DIOLink
     <$> parseLinkAttributes ps
-    <*> parseOneValue "neighbor_rank" ps
-    <*> parseOneValue "metric" ps
+    <*> lookupAsF ("neighbor_rank" :: Key EFinds Rank) ps
+    <*> lookupAsF ("metric" :: Key EFinds (Maybe Rank)) ps
 
 -- | 'LinkState' that should be set for given 'DIOLink'.
 dioLinkState :: DIOLink -> LinkState
