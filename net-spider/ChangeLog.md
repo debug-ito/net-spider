@@ -16,6 +16,15 @@
 * [BREAKING CHANGE] Kind of `VFoundNode` and `EFinds` is now `*` (was
   `* -> *`).
 
+* [BREAKING CHANGE] Remove `NodeAttributes PropertyMapList` instance
+  and `LinkAttributes PropertyMapSingle` instance, because
+  PropertyMaps are deprecated.
+  
+* Add `NodeAttributes` and `LinkAttributes` instances to `PMap`.
+
+
+* (are they public?) Add `VFoundNodeData` and `EFindsData` types.
+
 
 
 ## 0.3.3.0  -- 2019-10-13

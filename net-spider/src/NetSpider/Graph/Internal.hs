@@ -28,6 +28,7 @@ module NetSpider.Graph.Internal
 
 import Control.Category ((<<<))
 import Data.Aeson (ToJSON(..), FromJSON(..), Value(..))
+import Data.Foldable (Foldable)
 import Data.Greskell
   ( FromGraphSON(..),
     ElementData(..), Element(..), Vertex, Edge,
@@ -38,10 +39,11 @@ import Data.Greskell
     gIdentity, gProperty, gPropertyV, (=:), gProperties, gInV,
     newBind,
     Key, AsLabel, unKey,
-    PMap, Multi, Single, lookupAs, PMapLookupException,
+    PMap, Multi, Single, lookupAs, PMapLookupException, pMapFromList, pMapToList,
     gProject, gValueMap, gByL, gId, Keys(..)
   )
-import qualified Data.Greskell as Greskell
+import Data.Greskell.NonEmptyLike (NonEmptyLike)
+import Data.Greskell.Extra (writePMapProperties)
 import Data.Int (Int64)
 import Data.Text (Text, unpack, pack)
 import Data.Time.LocalTime (TimeZone(..))
@@ -229,14 +231,10 @@ instance NodeAttributes () where
   writeNodeAttributes _ = return gIdentity
   parseNodeAttributes _ = return ()
 
--- TODO.
----- -- | Straightforward implementation. Note that 'writeNodeAttributes'
----- -- does not write meta-properties of the 'AVertexProperty'.
----- --
----- -- @since 0.3.0.0
----- instance (FromGraphSON v, ToJSON v) => NodeAttributes (PropertyMapList AVertexProperty v) where
-----   writeNodeAttributes = writeAllProperties
-----   parseNodeAttributes = traverse parseGraphSON
+-- | Straightforward implementation.
+instance (FromGraphSON v, ToJSON v, Foldable c, Traversable c, NonEmptyLike c) => NodeAttributes (PMap c v) where
+  writeNodeAttributes = writePMapProperties
+  parseNodeAttributes = traverse parseGraphSON . pMapFromList . pMapToList
 
 -- | Class of user-defined types for link attributes. Its content is
 -- stored in the NetSpider database.
@@ -251,11 +249,8 @@ instance LinkAttributes () where
   writeLinkAttributes _ = return gIdentity
   parseLinkAttributes _ = return ()
 
--- TODO
----- -- | Straightforward implementation
----- --
----- -- @since 0.3.0.0
----- instance (FromGraphSON v, ToJSON v) => LinkAttributes (PropertyMapSingle AProperty v) where
-----   writeLinkAttributes = writeAllProperties
-----   parseLinkAttributes = traverse parseGraphSON
+-- | Straightforward implementation.
+instance (FromGraphSON v, ToJSON v, Foldable c, Traversable c, NonEmptyLike c) => LinkAttributes (PMap c v) where
+  writeLinkAttributes = writePMapProperties
+  parseLinkAttributes = traverse parseGraphSON . pMapFromList . pMapToList
   
