@@ -23,12 +23,12 @@ import Data.Greskell
 import Control.Applicative ((<$>), (<*>))
 import Data.Aeson (ToJSON(..))
 import Data.Greskell
-  ( parseOneValue, parseListValues
+  ( lookupAsF, Key
   )
 import Data.Greskell.Extra (writePropertyKeyValues)
 import Data.Maybe (listToMaybe)
 import NetSpider.Found (FoundNode)
-import NetSpider.Graph (NodeAttributes(..), LinkAttributes(..))
+import NetSpider.Graph (NodeAttributes(..), LinkAttributes(..), VFoundNode, EFinds)
 import qualified NetSpider.GraphML.Writer as GraphML
 import qualified NetSpider.Query as Query
 import NetSpider.Snapshot (SnapshotGraph)
@@ -65,7 +65,8 @@ instance NodeAttributes DAONode where
         case daoRouteNum dn of
           Nothing -> []
           Just n -> [("dao_route_num", toJSON n)]
-  parseNodeAttributes ps = fmap (DAONode . listToMaybe) $ parseListValues "dao_route_num" ps
+  parseNodeAttributes ps = DAONode <$> lookupAsF ("dao_route_num" :: Key VFoundNode (Maybe Word)) ps
+  -- TODO: is that ok??
 
 instance GraphML.ToAttributes DAONode where
   toAttributes dn =
@@ -96,7 +97,7 @@ instance LinkAttributes DAOLink where
     where
       pairs = [ ("path_lifetime_sec", toJSON $ pathLifetimeSec dl)
               ]
-  parseLinkAttributes ps = DAOLink <$> parseOneValue "path_lifetime_sec" ps
+  parseLinkAttributes ps = DAOLink <$> lookupAsF ("path_lifetime_sec" :: Key EFinds Word) ps
 
 instance GraphML.ToAttributes DAOLink where
   toAttributes dl = [ ("path_lifetime_sec", GraphML.AttrInt $ fromIntegral $ pathLifetimeSec dl) ]
