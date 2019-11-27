@@ -2,7 +2,8 @@
 
 ## 0.3.1.1  --
 
-* 
+* Changes instances of `LinkAttributes` and `NodeAttributes` because
+  their signature are changed in `greskell-1.0.0.0`.
 
 
 ## 0.3.1.0  -- 2019-10-04
