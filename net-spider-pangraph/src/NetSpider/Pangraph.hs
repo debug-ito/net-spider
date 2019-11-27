@@ -30,7 +30,8 @@ module NetSpider.Pangraph
 
 import Data.ByteString (ByteString)
 import qualified Data.ByteString as BS
-import Data.Greskell.Graph (PropertyMap(allProperties), Property(..))
+import Data.Foldable (Foldable)
+import Data.Greskell.PMap (PMap, pMapToList)
 import Data.Text (pack)
 import Data.Text.Encoding (encodeUtf8)
 import Data.Time.LocalTime (TimeZone(..))
@@ -119,10 +120,8 @@ instance ToAttributes () where
 instance (ToAtom k, ToAtom v) => ToAttributes [(k,v)] where
   toAttributes = map (\(k, v) -> (toAtom k, toAtom v))
 
-instance (PropertyMap m, Property p, ToAtom v) => ToAttributes (m p v) where
-  toAttributes = toAttributes . map toPair . allProperties
-    where
-      toPair p = (propertyKey p, propertyValue p)
+instance (Foldable c, ToAtom v) => ToAttributes (PMap c v) where
+  toAttributes = toAttributes . pMapToList
 
 -- | 'Nothing' is mapped to empty attributes.
 instance ToAttributes a => ToAttributes (Maybe a) where

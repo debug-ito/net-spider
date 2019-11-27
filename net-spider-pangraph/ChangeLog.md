@@ -1,5 +1,11 @@
 # Revision history for net-spider-pangraph
 
+## 0.2.0.0  -- 
+
+* Remove `ToAttributes` instance of `PropertyMap`s, because they are
+  now deprecated.
+* Add `ToAttributes` instance to `PMap`.
+
 ## 0.1.1.1  -- 2019-10-04
 
 * Confirm test with `hashable-1.3.0.0`.
