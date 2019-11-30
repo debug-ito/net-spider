@@ -85,8 +85,9 @@ test-suite server-test-suite
   hs-source-dirs:       test
   ghc-options:          -Wall -fno-warn-unused-imports "-with-rtsopts=-M512m"
   main-is:              ServerTest.hs
+  default-extensions:   OverloadedStrings
   if flag(server-test)
-    build-depends:        base, hspec, net-spider-rpl,
+    build-depends:        base, hspec, net-spider-rpl, net-spider, text,
                           hspec-need-env >=0.1.0.0 && <0.2
   else
     buildable: False
