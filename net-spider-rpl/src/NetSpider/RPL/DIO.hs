@@ -30,7 +30,7 @@ import Data.Greskell
   ( Property, GValue,
     Binder, Walk, SideEffect, Element, Parser,
     Key,
-    lookupAsF
+    lookupAsF, lookupAs, maybeNotFound, describePMapLookupException
   )
 import Data.Greskell.Extra (writePropertyKeyValues)
 import Data.Monoid ((<>))
@@ -143,14 +143,19 @@ instance LinkAttributes DIOLink where
     other <- writePropertyKeyValues pairs
     return (adaptWalk nt_steps <> other)
     where
-      pairs = [ ("neighbor_rank", toJSON $ neighborRank ll),
-                ("metric", toJSON $ metric ll) -- TODO: is it ok to write null??
-              ]
+      pairs = [ ("neighbor_rank", toJSON $ neighborRank ll)
+              ] ++
+              ( case metric ll of
+                  Just m -> [("metric", toJSON m)]
+                  Nothing -> []
+              )
   parseLinkAttributes ps =
     DIOLink
     <$> parseLinkAttributes ps
     <*> lookupAsF ("neighbor_rank" :: Key EFinds Rank) ps
-    <*> lookupAsF ("metric" :: Key EFinds (Maybe Rank)) ps
+    <*> ( either (fail . describePMapLookupException) return $
+          maybeNotFound $ lookupAs ("metric" :: Key EFinds (Maybe Rank)) ps
+        )
 
 -- | 'LinkState' that should be set for given 'DIOLink'.
 dioLinkState :: DIOLink -> LinkState
