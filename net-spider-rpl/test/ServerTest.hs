@@ -12,6 +12,9 @@ import NetSpider.Timestamp (fromEpochMillisecond)
 import Test.Hspec
 import Test.Hspec.NeedEnv (needEnvHostPort, EnvMode(Need))
 
+import NetSpider.RPL.DAO
+  ( DAONode(..), DAOLink(..), daoDefQuery
+  )
 import NetSpider.RPL.DIO
   ( DIONode(..), DIOLink(..), NeighborType(..), dioDefQuery,
     MergedDIOLink(..)
@@ -112,6 +115,48 @@ spec = before (needEnvHostPort Need "NET_SPIDER_TEST") $ describe "server test" 
         )
         Nothing
       ]
-  specify "DAONode and DAOLink" $ \(_, _) -> do
-    True `shouldBe` False -- TODO
+  specify "DAONode and DAOLink" $ withSpider' $ \spider -> do
+    let input =
+          [ FoundNode
+            { subjectNode = fromJust $ idFromText "dao://[fd00::1]",
+              foundAt = fromEpochMillisecond 100,
+              nodeAttributes = DAONode { daoRouteNum = Just 1 },
+              neighborLinks = []
+            },
+            FoundNode
+            { subjectNode = fromJust $ idFromText "dao://[fd00::2]",
+              foundAt = fromEpochMillisecond 100,
+              nodeAttributes = DAONode { daoRouteNum = Nothing },
+              neighborLinks =
+                [ FoundLink
+                  { targetNode = fromJust $ idFromText "dao://[fd00::1]",
+                    linkState = LinkToTarget,
+                    linkAttributes =
+                      DAOLink
+                      { pathLifetimeSec = 1200
+                      }
+                  }
+                ]
+            }
+          ]
+    clearAll spider
+    mapM_ (addFoundNode spider) input
+    let query = daoDefQuery $ map (fromJust . idFromText) ["dao://[fd00::2]"]
+    (got_nodes, got_links) <- fmap sortBoth $ getSnapshot spider query
+    map Sn.nodeId got_nodes `shouldBe`
+      map (fromJust . idFromText) [ "dao://[fd00::1]",
+                                    "dao://[fd00::2]"
+                                  ]
+    map Sn.nodeAttributes got_nodes `shouldBe`
+      [ Just $ DAONode { daoRouteNum = Just 1 },
+        Just $ DAONode { daoRouteNum = Nothing }
+      ]
+    map Sn.linkNodeTuple got_links `shouldBe`
+      [ idBoth ("dao://[fd00::2]", "dao://[fd00::1]")
+      ]
+    map Sn.linkAttributes got_links `shouldBe`
+      [ DAOLink
+        { pathLifetimeSec = 1200
+        }
+      ]
   
