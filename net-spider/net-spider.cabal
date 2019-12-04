@@ -24,7 +24,9 @@ library
                         FlexibleInstances,
                         DeriveGeneric,
                         TypeSynonymInstances,
-                        UndecidableInstances
+                        UndecidableInstances,
+                        NoMonomorphismRestriction,
+                        FlexibleContexts
   exposed-modules:      NetSpider,
                         NetSpider.Input,
                         NetSpider.Output,

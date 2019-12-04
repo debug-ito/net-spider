@@ -1,4 +1,5 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving, TypeFamilies, OverloadedStrings, FlexibleInstances, UndecidableInstances #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving, TypeFamilies, OverloadedStrings,
+    FlexibleInstances, UndecidableInstances, NoMonomorphismRestriction, FlexibleContexts #-}
 -- |
 -- Module: NetSpider.Graph.Internal
 -- Description: 
@@ -39,7 +40,8 @@ import Data.Greskell
     gIdentity, gProperty, gPropertyV, (=:), gProperties, gInV,
     newBind,
     Key, AsLabel, unKey,
-    PMap, Multi, Single, lookupAs, lookupAsF, PMapLookupException, pMapFromList, pMapToList,
+    PMap, Multi, Single, lookupAs, PMapLookupException,
+    pMapFromList, pMapToList, pMapToFail,
     gProject, gValueMap, gByL, gId, Keys(..)
   )
 import Data.Greskell.NonEmptyLike (NonEmptyLike)
@@ -121,6 +123,7 @@ gVFoundNodeData = unsafeCastEnd $ gProject
 instance NodeAttributes na => FromGraphSON (VFoundNodeData na) where
   parseGraphSON gv = fromPMap =<< parseGraphSON gv
     where
+      lookupAsF k pm = pMapToFail $ lookupAs k pm
       fromPMap :: NodeAttributes na => PMap Single GValue -> Parser (VFoundNodeData na)
       fromPMap pm = do
         eid <- lookupAsF labelVFoundNodeID pm
@@ -197,6 +200,7 @@ gEFindsData = unsafeCastEnd $ gProject
 instance LinkAttributes la => FromGraphSON (EFindsData la) where
   parseGraphSON gv = fromPMap =<< parseGraphSON gv
     where
+      lookupAsF k pm = pMapToFail $ lookupAs k pm
       fromPMap :: LinkAttributes la => PMap Single GValue -> Parser (EFindsData la)
       fromPMap pm = do
         props <- lookupAsF labelEProps pm
