@@ -7,6 +7,7 @@
   `net-spider-0.4.0.0`.
 * This also leads to a bug fix. Before, it could not write or parse
   attribute values of 'Nothing'.
+* Add `FromGraphSON` and `ToJSON` instances to `NeighborType`.
 
 
 ## 0.3.1.0  -- 2019-10-04

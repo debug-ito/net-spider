@@ -23,9 +23,9 @@ import Data.Greskell
 import Control.Applicative ((<$>), (<*>))
 import Data.Aeson (ToJSON(..))
 import Data.Greskell
-  ( lookupAs', Key, pMapToFail, lookupAs
+  ( lookupAs', Key, pMapToFail, lookupAs, keyText
   )
-import Data.Greskell.Extra (writePropertyKeyValues)
+import Data.Greskell.Extra (writeKeyValues, (<=:>))
 import Data.Maybe (listToMaybe)
 import NetSpider.Found (FoundNode)
 import NetSpider.Graph (NodeAttributes(..), LinkAttributes(..), VFoundNode, EFinds)
@@ -58,20 +58,23 @@ data DAONode =
   }
   deriving (Show,Eq,Ord)
 
+keyDaoRouteNum :: Key VFoundNode (Maybe Word)
+keyDaoRouteNum = "dao_route_num"
+
 instance NodeAttributes DAONode where
-  writeNodeAttributes dn = writePropertyKeyValues pairs
+  writeNodeAttributes dn = fmap writeKeyValues $ sequence pairs
     where
       pairs =
         case daoRouteNum dn of
           Nothing -> []
-          Just n -> [("dao_route_num", toJSON n)]
-  parseNodeAttributes ps = DAONode <$> (pMapToFail $ lookupAs' ("dao_route_num" :: Key VFoundNode (Maybe Word)) ps)
+          Just n -> [keyDaoRouteNum <=:> Just n]
+  parseNodeAttributes ps = DAONode <$> (pMapToFail $ lookupAs' keyDaoRouteNum ps)
 
 instance GraphML.ToAttributes DAONode where
   toAttributes dn =
     case daoRouteNum dn of
       Nothing -> []
-      Just p -> [("dao_route_num", GraphML.AttrInt $ fromIntegral $ p)]
+      Just p -> [(keyText keyDaoRouteNum, GraphML.AttrInt $ fromIntegral $ p)]
 
 
 -- | Link attributes about DAO.
@@ -91,15 +94,18 @@ data DAOLink =
   }
   deriving (Show,Eq,Ord)
 
+keyPathLifetimeSec :: Key EFinds Word
+keyPathLifetimeSec = "path_lifetime_sec"
+
 instance LinkAttributes DAOLink where
-  writeLinkAttributes dl = writePropertyKeyValues pairs
+  writeLinkAttributes dl = fmap writeKeyValues $ sequence pairs
     where
-      pairs = [ ("path_lifetime_sec", toJSON $ pathLifetimeSec dl)
+      pairs = [ keyPathLifetimeSec <=:> pathLifetimeSec dl
               ]
-  parseLinkAttributes ps = DAOLink <$> (pMapToFail $ lookupAs ("path_lifetime_sec" :: Key EFinds Word) ps)
+  parseLinkAttributes ps = DAOLink <$> (pMapToFail $ lookupAs keyPathLifetimeSec ps)
 
 instance GraphML.ToAttributes DAOLink where
-  toAttributes dl = [ ("path_lifetime_sec", GraphML.AttrInt $ fromIntegral $ pathLifetimeSec dl) ]
+  toAttributes dl = [ (keyText keyPathLifetimeSec, GraphML.AttrInt $ fromIntegral $ pathLifetimeSec dl) ]
 
 -- | Default 'Query.Query' for DAO nodes.
 daoDefQuery :: [FindingID] -- ^ 'Query.startsFrom' field.

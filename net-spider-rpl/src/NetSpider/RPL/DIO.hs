@@ -29,10 +29,10 @@ import Data.Bifunctor (bimap)
 import Data.Greskell
   ( Property, GValue,
     Binder, Walk, SideEffect, Element, Parser,
-    Key,
-    pMapToFail, lookupAs, lookupAs'
+    Key, pMapToFail, lookupAs, lookupAs', keyText,
+    FromGraphSON(..)
   )
-import Data.Greskell.Extra (writePropertyKeyValues)
+import Data.Greskell.Extra (writeKeyValues, (<=:>))
 import Data.Monoid ((<>))
 import Data.Text (Text, unpack)
 import Data.Word (Word32)
@@ -72,19 +72,25 @@ data DIONode =
   }
   deriving (Show,Eq,Ord)
 
+keyRank :: Key VFoundNode Rank
+keyRank = "rank"
+
+keyDioInterval :: Key VFoundNode TrickleInterval
+keyDioInterval = "dio_interval"
+
 instance NodeAttributes DIONode where
-  writeNodeAttributes ln = writePropertyKeyValues pairs
+  writeNodeAttributes ln = fmap writeKeyValues $ sequence pairs
     where
-      pairs = [ ("rank", toJSON $ rank ln),
-                ("dio_interval", toJSON $ dioInterval ln)
+      pairs = [ keyRank <=:> rank ln,
+                keyDioInterval <=:> dioInterval ln
               ]
-  parseNodeAttributes ps = DIONode
-                           <$> (pMapToFail $ lookupAs ("rank" :: Key VFoundNode Rank) ps)
-                           <*> (pMapToFail $ lookupAs ("dio_interval" :: Key VFoundNode TrickleInterval) ps)
+  parseNodeAttributes ps = pMapToFail $ DIONode
+                           <$> lookupAs keyRank ps
+                           <*> lookupAs keyDioInterval ps
 
 instance GraphML.ToAttributes DIONode where
-  toAttributes ln = [ ("rank", GraphML.AttrInt $ fromIntegral $ rank ln),
-                      ("dio_interval", GraphML.AttrInt $ fromIntegral $ dioInterval ln)
+  toAttributes ln = [ (keyText keyRank, GraphML.AttrInt $ fromIntegral $ rank ln),
+                      (keyText keyDioInterval, GraphML.AttrInt $ fromIntegral $ dioInterval ln)
                     ]
 
 -- | Classification of RPL neighbors.
@@ -114,11 +120,20 @@ neighborTypeFromText t = case t of
 adaptWalk :: (Element e1, Element e2) => Walk SideEffect e1 e1 -> Walk SideEffect e2 e2
 adaptWalk = bimap undefined undefined
 
-instance LinkAttributes NeighborType where
-  writeLinkAttributes nt = writePropertyKeyValues [("neighbor_type", neighborTypeToText nt)]
-  parseLinkAttributes ps = fromT =<< (pMapToFail $ lookupAs ("neighbor_type" :: Key EFinds Text) ps)
+keyNeighborType :: Key EFinds NeighborType
+keyNeighborType = "neighbor_type"
+
+instance FromGraphSON NeighborType where
+  parseGraphSON gv = fromT =<< parseGraphSON gv
     where
       fromT t = maybe (fail ("Unknown neighbor type: " <> unpack t)) return $ neighborTypeFromText t
+
+instance ToJSON NeighborType where
+  toJSON n = toJSON $ neighborTypeToText n
+
+instance LinkAttributes NeighborType where
+  writeLinkAttributes nt = fmap writeKeyValues $ sequence [keyNeighborType <=:> nt]
+  parseLinkAttributes ps = pMapToFail $ lookupAs keyNeighborType ps
 
 -- | Link attributes about DIO.
 --
@@ -137,23 +152,29 @@ data DIOLink =
   }
   deriving (Show,Eq,Ord)
 
+keyNeighborRank :: Key EFinds Rank
+keyNeighborRank = "neighbor_rank"
+
+keyMetric :: Key EFinds (Maybe Rank)
+keyMetric = "metric"
+
 instance LinkAttributes DIOLink where
   writeLinkAttributes ll = do
     nt_steps <- writeLinkAttributes $ neighborType ll
-    other <- writePropertyKeyValues pairs
+    other <- fmap writeKeyValues $ sequence pairs
     return (adaptWalk nt_steps <> other)
     where
-      pairs = [ ("neighbor_rank", toJSON $ neighborRank ll)
+      pairs = [ keyNeighborRank <=:> neighborRank ll
               ] ++
               ( case metric ll of
-                  Just m -> [("metric", toJSON m)]
+                  Just m -> [keyMetric <=:> Just m]
                   Nothing -> []
               )
   parseLinkAttributes ps =
     DIOLink
     <$> parseLinkAttributes ps
-    <*> (pMapToFail $ lookupAs ("neighbor_rank" :: Key EFinds Rank) ps)
-    <*> (pMapToFail $ lookupAs' ("metric" :: Key EFinds (Maybe Rank)) ps)
+    <*> (pMapToFail $ lookupAs keyNeighborRank ps)
+    <*> (pMapToFail $ lookupAs' keyMetric ps)
 
 -- | 'LinkState' that should be set for given 'DIOLink'.
 dioLinkState :: DIOLink -> LinkState
@@ -163,15 +184,15 @@ dioLinkState l =
     _ -> LinkUnused
 
 instance GraphML.ToAttributes DIOLink where
-  toAttributes ll = [ ("neighbor_type", GraphML.AttrString $ neighborTypeToText $ neighborType ll),
-                      ("neighbor_rank", GraphML.AttrInt $ fromIntegral $ neighborRank ll)
+  toAttributes ll = [ (keyText keyNeighborType, GraphML.AttrString $ neighborTypeToText $ neighborType ll),
+                      (keyText keyNeighborRank, GraphML.AttrInt $ fromIntegral $ neighborRank ll)
                     ]
                     ++ at_metric
     where
       at_metric =
         case metric ll of
           Nothing -> []
-          Just m -> [("metric", GraphML.AttrInt $ fromIntegral m)]
+          Just m -> [(keyText keyMetric, GraphML.AttrInt $ fromIntegral m)]
                     
 
 -- | Link attributes merging two 'DIOLink's from the two end nodes
