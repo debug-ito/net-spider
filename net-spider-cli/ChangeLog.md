@@ -1,5 +1,9 @@
 # Revision history for net-spider-cli
 
+## 0.2.0.1  --
+
+* Allow `net-spider-0.4.0.0`.
+
 ## 0.2.0.0  -- 2019-10-13
 
 * Add `--duration` option to `parserSnapshotQuery` function.

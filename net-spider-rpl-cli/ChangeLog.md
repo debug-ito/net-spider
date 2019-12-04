@@ -1,5 +1,10 @@
 # Revision history for net-spider-rpl-cli
 
+## 0.1.2.1  -- 
+
+* Allow `net-spider-0.4.0.0`, `net-spider-rpl-0.4.0.0` and
+  `greskell-1.0.0.0`.
+
 ## 0.1.2.0  -- 2019-10-13
 
 * Add `--duration` option, thanks to `net-spider-cli-0.2.0.0`.
