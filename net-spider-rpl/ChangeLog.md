@@ -4,6 +4,8 @@
 
 * Changes instances of `LinkAttributes` and `NodeAttributes` because
   their signature are changed in `greskell-1.0.0.0`.
+* This also leads to a bug fix. Before, it could not write or parse
+  attribute values of 'Nothing'.
 
 
 ## 0.3.1.0  -- 2019-10-04
