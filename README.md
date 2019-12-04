@@ -232,13 +232,13 @@ Nodes and links in your history graph can have time-varying attributes. You can 
 For example, let's monitor the total number of packets that the switch has transmitted and received. First, we define the data type for the node attributes.
 
 ```haskell attrs
-import Data.Greskell (parseOneValue)
+import Data.Greskell (Key, lookupAs, pMapToFail, keyText)
 import Data.Greskell.Extra (writePropertyKeyValues)
 
 import NetSpider.Spider
   (Spider, connectWS, close, clearAll, addFoundNode, getSnapshotSimple)
 import NetSpider.Found (FoundNode(..), FoundLink(..))
-import NetSpider.Graph (NodeAttributes(..))
+import NetSpider.Graph (NodeAttributes(..), VFoundNode)
 import NetSpider.Timestamp (fromS)
 import NetSpider.Snapshot (nodeId, nodeTimestamp)
 import qualified NetSpider.Snapshot as Sn
@@ -255,15 +255,20 @@ data PacketCount =
 Second, make it instance of `NodeAttributes` class and implement its methods. This is necessary for `Spider` to store/load the attributes to/from the history graph.
 
 ```haskell attrs
+
+keyTxCount :: Key VFoundNode Int
+keyTxCount = "tx_count"
+
+keyRxCount :: Key VFoundNode Int
+keyRxCount = "rx_count"
+
 instance NodeAttributes PacketCount where
   writeNodeAttributes packet_count =
-    writePropertyKeyValues [ ("tx_count", transmitCount packet_count),
-                             ("rx_count", receiveCount packet_count)
+    writePropertyKeyValues [ (keyText keyTxCount, transmitCount packet_count),
+                             (keyText keyRxCount, receiveCount packet_count)
                            ]
   parseNodeAttributes props =
-    PacketCount
-    <$> parseOneValue "tx_count" props
-    <*> parseOneValue "rx_count" props
+    pMapToFail (PacketCount <$> lookupAs keyTxCount props <*> lookupAs keyRxCount props)
 ```
 
 `writeNodeAttributes` function is supposed to return Gremlin steps that store the given data in the graph database. `parseNodeAttributes` function is supposed to construct the attributes from the given property data. Those functions are based on [greskell package](https://github.com/debug-ito/greskell).
@@ -406,11 +411,11 @@ For example, if you use link aggregation, you often connect a pair of switches w
 So, let's define the data type for port names first.
 
 ```haskell multi-link
-import Data.Greskell (parseOneValue)
+import Data.Greskell (lookupAs, Key, keyText, pMapToFail)
 import Data.Greskell.Extra (writePropertyKeyValues)
 
 import NetSpider.Found (FoundNode(..), FoundLink(..), LinkState(..))
-import NetSpider.Graph (LinkAttributes(..))
+import NetSpider.Graph (LinkAttributes(..), EFinds)
 import NetSpider.Pair (Pair(..))
 import NetSpider.Query (defQuery, unifyLinkSamples)
 import NetSpider.Snapshot (linkNodeTuple)
@@ -427,13 +432,19 @@ data Ports =
   }
   deriving (Show,Eq,Ord)
 
+keySPort :: Key EFinds Text
+keySPort = "sport"
+
+keyTPort :: Key EFinds Text
+keyTPort = "tport"
+
 instance LinkAttributes Ports where
   writeLinkAttributes ports =
-    writePropertyKeyValues [ ("sport", subjectPort ports),
-                             ("tport", targetPort ports)
+    writePropertyKeyValues [ (keyText keySPort, subjectPort ports),
+                             (keyText keyTPort, targetPort ports)
                            ]
   parseLinkAttributes props =
-    Ports <$> parseOneValue "sport" props <*> parseOneValue "tport" props
+    pMapToFail (Ports <$> lookupAs keySPort props <*> lookupAs keyTPort props)
 ```
 
 Then, put some local findings.
@@ -504,11 +515,11 @@ For example, when you use optical fibers to connect switches, it may be a good i
 So, let's define the link attribute type for that.
 
 ```haskell merge-link-attrs
-import Data.Greskell (newBind, gProperty, parseOneValue)
+import Data.Greskell (newBind, gProperty, lookupAs, Key, pMapToFail)
 import Data.Scientific (Scientific)
 
 import NetSpider.Found (FoundNode(..), FoundLink(..), LinkState(..))
-import NetSpider.Graph (LinkAttributes(..))
+import NetSpider.Graph (LinkAttributes(..), EFinds)
 import NetSpider.Query (defQuery, unifyLinkSamples)
 import NetSpider.Snapshot
   (SnapshotLink, sourceNode, destinationNode, linkTimestamp, linkNodeTuple)
@@ -531,7 +542,7 @@ instance LinkAttributes RxSignal where
     s_var <- newBind s
     return $ gProperty "rx_signal" s_var
   parseLinkAttributes props =
-    RxSignal <$> parseOneValue "rx_signal" props
+    pMapToFail $ RxSignal <$> lookupAs ("rx_signal" :: Key EFinds Scientific) props
 ```
 
 Then, put local findings for a link.
