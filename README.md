@@ -232,8 +232,8 @@ Nodes and links in your history graph can have time-varying attributes. You can 
 For example, let's monitor the total number of packets that the switch has transmitted and received. First, we define the data type for the node attributes.
 
 ```haskell attrs
-import Data.Greskell (Key, lookupAs, pMapToFail, keyText)
-import Data.Greskell.Extra (writePropertyKeyValues)
+import Data.Greskell (Key, lookupAs, pMapToFail)
+import Data.Greskell.Extra (writeKeyValues, (<=:>))
 
 import NetSpider.Spider
   (Spider, connectWS, close, clearAll, addFoundNode, getSnapshotSimple)
@@ -264,9 +264,10 @@ keyRxCount = "rx_count"
 
 instance NodeAttributes PacketCount where
   writeNodeAttributes packet_count =
-    writePropertyKeyValues [ (keyText keyTxCount, transmitCount packet_count),
-                             (keyText keyRxCount, receiveCount packet_count)
-                           ]
+    fmap writeKeyValues $ sequence $
+    [ keyTxCount <=:> transmitCount packet_count,
+      keyRxCount <=:> receiveCount packet_count
+    ]
   parseNodeAttributes props =
     pMapToFail (PacketCount <$> lookupAs keyTxCount props <*> lookupAs keyRxCount props)
 ```
@@ -411,8 +412,8 @@ For example, if you use link aggregation, you often connect a pair of switches w
 So, let's define the data type for port names first.
 
 ```haskell multi-link
-import Data.Greskell (lookupAs, Key, keyText, pMapToFail)
-import Data.Greskell.Extra (writePropertyKeyValues)
+import Data.Greskell (lookupAs, Key, pMapToFail)
+import Data.Greskell.Extra (writeKeyValues, (<=:>))
 
 import NetSpider.Found (FoundNode(..), FoundLink(..), LinkState(..))
 import NetSpider.Graph (LinkAttributes(..), EFinds)
@@ -440,9 +441,10 @@ keyTPort = "tport"
 
 instance LinkAttributes Ports where
   writeLinkAttributes ports =
-    writePropertyKeyValues [ (keyText keySPort, subjectPort ports),
-                             (keyText keyTPort, targetPort ports)
-                           ]
+    fmap writeKeyValues $ sequence $
+    [ keySPort <=:> subjectPort ports,
+      keyTPort <=:> targetPort ports
+    ]
   parseLinkAttributes props =
     pMapToFail (Ports <$> lookupAs keySPort props <*> lookupAs keyTPort props)
 ```
