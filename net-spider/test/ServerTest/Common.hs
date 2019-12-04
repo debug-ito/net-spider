@@ -15,7 +15,7 @@ import Control.Applicative ((<$>))
 import Control.Category ((<<<))
 import Control.Exception.Safe (bracket, withException)
 import Data.Aeson.Types (Parser)
-import Data.Greskell (gProperty, newBind, lookupAsF, Key)
+import Data.Greskell (gProperty, newBind, lookupAs, pMapToFail, Key)
 import Data.List (sort)
 import Data.Text (Text)
 import Data.Vector (Vector)
@@ -71,11 +71,11 @@ keyText = "text"
 
 instance NodeAttributes AText where
   writeNodeAttributes (AText t) = gProperty keyText <$> newBind t
-  parseNodeAttributes ps = fmap AText $ lookupAsF keyText ps
+  parseNodeAttributes ps = fmap AText $ pMapToFail $ lookupAs keyText ps
 
 instance LinkAttributes AText where
   writeLinkAttributes (AText t) = gProperty keyText <$> newBind t
-  parseLinkAttributes ps = fmap AText $ lookupAsF keyText ps
+  parseLinkAttributes ps = fmap AText $ pMapToFail $ lookupAs keyText ps
 
 newtype AInt = AInt Int
              deriving (Show,Eq,Ord)
@@ -85,11 +85,11 @@ keyInt = "integer"
 
 instance NodeAttributes AInt where
   writeNodeAttributes (AInt n) = gProperty keyInt <$> newBind n
-  parseNodeAttributes ps = fmap AInt $ lookupAsF keyInt ps
+  parseNodeAttributes ps = fmap AInt $ pMapToFail $ lookupAs keyInt ps
 
 instance LinkAttributes AInt where
   writeLinkAttributes (AInt n) = gProperty keyInt <$> newBind n
-  parseLinkAttributes ps = fmap AInt $ lookupAsF keyInt ps
+  parseLinkAttributes ps = fmap AInt $ pMapToFail $ lookupAs keyInt ps
 
 
 -- | Pair of ports.
@@ -115,8 +115,8 @@ instance LinkAttributes APorts where
     writeDest <- gProperty keyTargetPort <$> newBind (apSnd ap)
     return (writeDest <<< writeSource)
   parseLinkAttributes ps = APorts
-                           <$> (lookupAsF keySubjectPort ps)
-                           <*> (lookupAsF keyTargetPort ps)
+                           <$> (pMapToFail $ lookupAs keySubjectPort ps)
+                           <*> (pMapToFail $ lookupAs keyTargetPort ps)
 
 swapAPorts :: APorts -> APorts
 swapAPorts ap = ap { apFst = apSnd ap,
