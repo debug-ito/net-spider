@@ -23,7 +23,7 @@ import Data.Greskell
 import Control.Applicative ((<$>), (<*>))
 import Data.Aeson (ToJSON(..))
 import Data.Greskell
-  ( lookupAsF, Key
+  ( lookupAs', Key, pMapToFail, lookupAs
   )
 import Data.Greskell.Extra (writePropertyKeyValues)
 import Data.Maybe (listToMaybe)
@@ -65,8 +65,7 @@ instance NodeAttributes DAONode where
         case daoRouteNum dn of
           Nothing -> []
           Just n -> [("dao_route_num", toJSON n)]
-  parseNodeAttributes ps = DAONode <$> lookupAsF ("dao_route_num" :: Key VFoundNode (Maybe Word)) ps
-  -- TODO: is that ok??
+  parseNodeAttributes ps = DAONode <$> (pMapToFail $ lookupAs' ("dao_route_num" :: Key VFoundNode (Maybe Word)) ps)
 
 instance GraphML.ToAttributes DAONode where
   toAttributes dn =
@@ -97,7 +96,7 @@ instance LinkAttributes DAOLink where
     where
       pairs = [ ("path_lifetime_sec", toJSON $ pathLifetimeSec dl)
               ]
-  parseLinkAttributes ps = DAOLink <$> lookupAsF ("path_lifetime_sec" :: Key EFinds Word) ps
+  parseLinkAttributes ps = DAOLink <$> (pMapToFail $ lookupAs ("path_lifetime_sec" :: Key EFinds Word) ps)
 
 instance GraphML.ToAttributes DAOLink where
   toAttributes dl = [ ("path_lifetime_sec", GraphML.AttrInt $ fromIntegral $ pathLifetimeSec dl) ]

@@ -30,7 +30,7 @@ import Data.Greskell
   ( Property, GValue,
     Binder, Walk, SideEffect, Element, Parser,
     Key,
-    lookupAsF, lookupAs, maybeNotFound, describePMapLookupException
+    pMapToFail, lookupAs, lookupAs'
   )
 import Data.Greskell.Extra (writePropertyKeyValues)
 import Data.Monoid ((<>))
@@ -79,8 +79,8 @@ instance NodeAttributes DIONode where
                 ("dio_interval", toJSON $ dioInterval ln)
               ]
   parseNodeAttributes ps = DIONode
-                           <$> lookupAsF ("rank" :: Key VFoundNode Rank) ps
-                           <*> lookupAsF ("dio_interval" :: Key VFoundNode TrickleInterval) ps
+                           <$> (pMapToFail $ lookupAs ("rank" :: Key VFoundNode Rank) ps)
+                           <*> (pMapToFail $ lookupAs ("dio_interval" :: Key VFoundNode TrickleInterval) ps)
 
 instance GraphML.ToAttributes DIONode where
   toAttributes ln = [ ("rank", GraphML.AttrInt $ fromIntegral $ rank ln),
@@ -116,7 +116,7 @@ adaptWalk = bimap undefined undefined
 
 instance LinkAttributes NeighborType where
   writeLinkAttributes nt = writePropertyKeyValues [("neighbor_type", neighborTypeToText nt)]
-  parseLinkAttributes ps = fromT =<< lookupAsF ("neighbor_type" :: Key EFinds Text) ps
+  parseLinkAttributes ps = fromT =<< (pMapToFail $ lookupAs ("neighbor_type" :: Key EFinds Text) ps)
     where
       fromT t = maybe (fail ("Unknown neighbor type: " <> unpack t)) return $ neighborTypeFromText t
 
@@ -152,10 +152,8 @@ instance LinkAttributes DIOLink where
   parseLinkAttributes ps =
     DIOLink
     <$> parseLinkAttributes ps
-    <*> lookupAsF ("neighbor_rank" :: Key EFinds Rank) ps
-    <*> ( either (fail . describePMapLookupException) return $
-          maybeNotFound $ lookupAs ("metric" :: Key EFinds (Maybe Rank)) ps
-        )
+    <*> (pMapToFail $ lookupAs ("neighbor_rank" :: Key EFinds Rank) ps)
+    <*> (pMapToFail $ lookupAs' ("metric" :: Key EFinds (Maybe Rank)) ps)
 
 -- | 'LinkState' that should be set for given 'DIOLink'.
 dioLinkState :: DIOLink -> LinkState
