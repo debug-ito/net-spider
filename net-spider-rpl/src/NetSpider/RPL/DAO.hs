@@ -25,7 +25,7 @@ import Data.Aeson (ToJSON(..))
 import Data.Greskell
   ( lookupAs', Key, pMapToFail, lookupAs, keyText
   )
-import Data.Greskell.Extra (writeKeyValues, (<=:>))
+import Data.Greskell.Extra (writeKeyValues, (<=:>), (<=?>))
 import Data.Maybe (listToMaybe)
 import NetSpider.Found (FoundNode)
 import NetSpider.Graph (NodeAttributes(..), LinkAttributes(..), VFoundNode, EFinds)
@@ -62,12 +62,7 @@ keyDaoRouteNum :: Key VFoundNode (Maybe Word)
 keyDaoRouteNum = "dao_route_num"
 
 instance NodeAttributes DAONode where
-  writeNodeAttributes dn = fmap writeKeyValues $ sequence pairs
-    where
-      pairs =
-        case daoRouteNum dn of
-          Nothing -> []
-          Just n -> [keyDaoRouteNum <=:> Just n]
+  writeNodeAttributes dn = fmap writeKeyValues $ sequence [keyDaoRouteNum <=?> daoRouteNum dn]
   parseNodeAttributes ps = DAONode <$> (pMapToFail $ lookupAs' keyDaoRouteNum ps)
 
 instance GraphML.ToAttributes DAONode where

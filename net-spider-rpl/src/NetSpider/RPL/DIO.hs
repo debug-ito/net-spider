@@ -32,7 +32,7 @@ import Data.Greskell
     Key, pMapToFail, lookupAs, lookupAs', keyText,
     FromGraphSON(..)
   )
-import Data.Greskell.Extra (writeKeyValues, (<=:>))
+import Data.Greskell.Extra (writeKeyValues, (<=:>), (<=?>))
 import Data.Monoid ((<>))
 import Data.Text (Text, unpack)
 import Data.Word (Word32)
@@ -164,12 +164,9 @@ instance LinkAttributes DIOLink where
     other <- fmap writeKeyValues $ sequence pairs
     return (adaptWalk nt_steps <> other)
     where
-      pairs = [ keyNeighborRank <=:> neighborRank ll
-              ] ++
-              ( case metric ll of
-                  Just m -> [keyMetric <=:> Just m]
-                  Nothing -> []
-              )
+      pairs = [ keyNeighborRank <=:> neighborRank ll,
+                keyMetric <=?> metric ll
+              ]
   parseLinkAttributes ps =
     DIOLink
     <$> parseLinkAttributes ps
