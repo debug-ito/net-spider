@@ -2,8 +2,9 @@
 
 ## 0.1.2.1  -- 
 
-* Allow `net-spider-0.4.0.0`, `net-spider-rpl-0.4.0.0` and
-  `greskell-1.0.0.0`.
+* docker-compose.yaml: Upgrade to janusgraph:0.4.0.
+* Require `net-spider-0.4.0.0`, `net-spider-rpl-0.4.0.0` and
+  `greskell-1.0.0.0` to support janusgraph:0.4.0.
 
 ## 0.1.2.0  -- 2019-10-13
 
