@@ -11,7 +11,7 @@
   `PropertyMapSingle` are deprecated.
 
 * [BREAKING CHANGE] Now `EID` is alias for `ElementID`. It's kind is
-  now `* -> *`.
+  now `* -> *`. This fixes #3.
 
 * [BREAKING CHANGE] Kind of `VFoundNode` and `EFinds` is now `*` (was
   `* -> *`).
