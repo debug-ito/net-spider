@@ -12,7 +12,7 @@
 * [BREAKING CHANGE] Remove `ToAttributes` instance from types of
   `PropertyMap` class, because `PropertyMap` is now deprecated.
 * [BREAKING CHANGE] Now `EID` is alias for `ElementID`. It's kind is
-  now `* -> *`. This fixes #3.
+  now `* -> *`. This fixes #5.
 * [BREAKING CHANGE] Kind of `VFoundNode` and `EFinds` is now `*` (was
   `* -> *`).
 * [BREAKING CHANGE] Remove `NodeAttributes PropertyMapList` instance
