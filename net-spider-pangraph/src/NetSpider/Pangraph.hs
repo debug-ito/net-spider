@@ -6,8 +6,7 @@
 --
 -- Conversion of NetSpider data model into Pangraph data model. This
 -- module allows you to export a snapshot graph ('SnapshotNode's and
--- 'SnapshotLink's) to 'P.Pangraph'. Then you can export it to a
--- GraphML file so that external tools can handle it.
+-- 'SnapshotLink's) to 'P.Pangraph'.
 module NetSpider.Pangraph
        ( -- * Converters
          makePangraph,
@@ -120,6 +119,7 @@ instance ToAttributes () where
 instance (ToAtom k, ToAtom v) => ToAttributes [(k,v)] where
   toAttributes = map (\(k, v) -> (toAtom k, toAtom v))
 
+-- | @since 0.2.0.0
 instance (Foldable c, ToAtom v) => ToAttributes (PMap c v) where
   toAttributes = toAttributes . pMapToList
 
