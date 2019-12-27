@@ -127,7 +127,7 @@ doWithSpider spider = do
                    linkAttributes = ()
                  }
                ]
-  clearAll spider -- Delete all data from the databse for testing
+  clearAll spider -- Delete all data from the database for testing
   addFoundNode spider finding1
 ```
 
