@@ -123,11 +123,13 @@ adaptWalk = bimap undefined undefined
 keyNeighborType :: Key EFinds NeighborType
 keyNeighborType = "neighbor_type"
 
+-- | @since 0.4.0.0
 instance FromGraphSON NeighborType where
   parseGraphSON gv = fromT =<< parseGraphSON gv
     where
       fromT t = maybe (fail ("Unknown neighbor type: " <> unpack t)) return $ neighborTypeFromText t
 
+-- | @since 0.4.0.0
 instance ToJSON NeighborType where
   toJSON n = toJSON $ neighborTypeToText n
 

@@ -234,6 +234,8 @@ instance NodeAttributes () where
   parseNodeAttributes _ = return ()
 
 -- | Straightforward implementation.
+--
+-- @since 0.4.0.0
 instance (FromGraphSON v, ToJSON v, Foldable c, Traversable c, NonEmptyLike c) => NodeAttributes (PMap c v) where
   writeNodeAttributes = writePMapProperties
   parseNodeAttributes = traverse parseGraphSON . pMapFromList . pMapToList
@@ -252,6 +254,8 @@ instance LinkAttributes () where
   parseLinkAttributes _ = return ()
 
 -- | Straightforward implementation.
+--
+-- @since 0.4.0.0
 instance (FromGraphSON v, ToJSON v, Foldable c, Traversable c, NonEmptyLike c) => LinkAttributes (PMap c v) where
   writeLinkAttributes = writePMapProperties
   parseLinkAttributes = traverse parseGraphSON . pMapFromList . pMapToList

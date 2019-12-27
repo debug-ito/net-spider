@@ -111,6 +111,6 @@ daoDefQuery start =
     Query.unifyLinkSamples = Unify.unifyStd daoUnifierConf
   }
 
--- | 'UnifyStdConfig' for RPL DAO data. Used in 'defQuery'.
+-- | 'UnifyStdConfig' for RPL DAO data. Used in 'daoDefQuery'.
 daoUnifierConf :: UnifyStdConfig FindingID DAONode DAOLink DAOLink ()
 daoUnifierConf = Unify.defUnifyStdConfig { Unify.negatesLinkSample = \_ _ -> False }

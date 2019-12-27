@@ -9,22 +9,16 @@
 * [BREAKING CHANGE] Change signatures of `parseNodeAttributes` and
   `parseLinkAttributes` functions, because now `PropertMapList` and
   `PropertyMapSingle` are deprecated.
-
+* [BREAKING CHANGE] Remove `ToAttributes` instance from types of
+  `PropertyMap` class, because `PropertyMap` is now deprecated.
 * [BREAKING CHANGE] Now `EID` is alias for `ElementID`. It's kind is
   now `* -> *`. This fixes #3.
-
 * [BREAKING CHANGE] Kind of `VFoundNode` and `EFinds` is now `*` (was
   `* -> *`).
-
 * [BREAKING CHANGE] Remove `NodeAttributes PropertyMapList` instance
   and `LinkAttributes PropertyMapSingle` instance, because
   PropertyMaps are deprecated.
-  
 * Add `NodeAttributes` and `LinkAttributes` instances to `PMap`.
-
-
-* (are they public?) Add `VFoundNodeData` and `EFindsData` types.
-
 
 
 ## 0.3.3.0  -- 2019-10-13
