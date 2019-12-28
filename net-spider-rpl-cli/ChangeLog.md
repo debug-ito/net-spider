@@ -1,6 +1,6 @@
 # Revision history for net-spider-rpl-cli
 
-## 0.1.2.1  -- 
+## 0.1.2.1  -- 2019-12-28
 
 * docker-compose.yaml: Upgrade to janusgraph:0.4.0.
 * Require `net-spider-0.4.0.0`, `net-spider-rpl-0.4.0.0` and
