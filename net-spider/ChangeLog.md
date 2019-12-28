@@ -1,6 +1,6 @@
 # Revision history for net-spider
 
-## 0.4.0.0
+## 0.4.0.0  -- 2019-12-28
 
 * Use `greskell-1.0.0.0`.
 
