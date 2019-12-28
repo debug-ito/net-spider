@@ -1,6 +1,6 @@
 # Revision history for net-spider-pangraph
 
-## 0.2.0.0  -- 
+## 0.2.0.0  -- 2019-12-28
 
 * Remove `ToAttributes` instance of `PropertyMap`s, because they are
   now deprecated.
