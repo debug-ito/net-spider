@@ -1,6 +1,6 @@
 # Revision history for net-spider-rpl
 
-## 0.4.0.0  --
+## 0.4.0.0  -- 2019-12-28
 
 * [BREAKING CHANGE] Changes instances of `LinkAttributes` and
   `NodeAttributes` because their signature are changed in
