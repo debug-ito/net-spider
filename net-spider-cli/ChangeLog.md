@@ -1,6 +1,6 @@
 # Revision history for net-spider-cli
 
-## 0.2.0.1  --
+## 0.2.0.1  -- 2019-12-28
 
 * Allow `net-spider-0.4.0.0`.
 
