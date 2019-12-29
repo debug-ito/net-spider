@@ -26,7 +26,8 @@ library
                         TypeSynonymInstances,
                         UndecidableInstances,
                         NoMonomorphismRestriction,
-                        FlexibleContexts
+                        FlexibleContexts,
+                        CPP
   exposed-modules:      NetSpider,
                         NetSpider.Input,
                         NetSpider.Output,

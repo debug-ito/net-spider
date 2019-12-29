@@ -43,7 +43,6 @@ import Data.Greskell
     pGt, pGte, pLt, pLte
   )
 import Data.Int (Int64)
-import Data.Interval (lowerBound', upperBound')
 import Data.Text (Text, pack)
 import Data.Time.LocalTime (TimeZone(..))
 import Data.Traversable (traverse)
@@ -57,6 +56,7 @@ import NetSpider.Graph.Internal
     gFindsTarget
   )
 import NetSpider.Found (FoundLink(..), LinkState(..), FoundNode(..), linkStateToText)
+import NetSpider.Interval (lowerBound', upperBound')
 import NetSpider.Query (Interval, Extended(..))
 import NetSpider.Timestamp (Timestamp(..))
 import NetSpider.Spider.Config (Config(..))

@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 -- |
 -- Module: NetSpider.Interval
 -- Description: Interval type and Interval of Timestamps
@@ -10,10 +11,14 @@ module NetSpider.Interval
   ( -- * Re-exports
     Interval,
     Extended(..),
-    interval, (<=..<=), (<..<=), (<=..<), (<..<),
+    (<=..<=), (<..<=), (<=..<), (<..<),
     -- * Types
     IntervalEnd,
     ErrorMsg,
+    -- * Basic operations
+    interval,
+    lowerBound',
+    upperBound',
     -- * Parsers
     parseTimeIntervalEnd,
     parseIntervalEnd,
@@ -25,7 +30,7 @@ module NetSpider.Interval
 
 import Data.ExtendedReal (Extended(..))
 import Data.Int (Int64)
-import Data.Interval (Interval, interval, (<=..<=), (<..<=), (<=..<), (<..<))
+import Data.Interval (Interval, (<=..<=), (<..<=), (<=..<), (<..<))
 import qualified Data.Interval as Interval
 
 import NetSpider.Timestamp (Timestamp, addSec, parseTimestamp, fromEpochMillisecond)
@@ -35,6 +40,36 @@ import NetSpider.Timestamp (Timestamp, addSec, parseTimestamp, fromEpochMillisec
 --
 -- @since 0.3.2.0
 type IntervalEnd a = (Extended a, Bool)
+
+-- | Make an 'Interval' from lower and upper bounds.
+interval :: Ord r
+         => IntervalEnd r -- ^ lower bound
+         -> IntervalEnd r -- ^ upper bound
+         -> Interval r
+
+-- | Get the lower bound.
+lowerBound' :: Interval r -> IntervalEnd r
+
+-- | Get the upper bound.
+upperBound' :: Interval r -> IntervalEnd r
+
+#if MIN_VERSION_data_interval(2,0,0)
+fromBoundary :: Interval.Boundary -> Bool
+fromBoundary Interval.Open = False
+fromBoundary Interval.Closed = True
+
+toBoundary :: Bool -> Interval.Boundary
+toBoundary False = Interval.Open
+toBoundary True = Interval.Closed
+
+interval l u = Interval.interval (fmap toBoundary l) (fmap toBoundary u)
+lowerBound' = fmap fromBoundary . Interval.lowerBound'
+upperBound' = fmap fromBoundary . Interval.upperBound'
+#else
+interval = Interval.interval
+lowerBound' = Interval.lowerBound'
+upperBound' = Interval.upperBound'
+#endif
 
 -- | Error message type.
 type ErrorMsg = String
