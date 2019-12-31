@@ -26,12 +26,13 @@ module NetSpider.Timestamp
          showEpochTime
        ) where
 
-import Control.Applicative ((<$>), (<*>), (<*), (*>), optional)
+import Control.Applicative ((<$>), (<*>), (<*), (*>), optional, empty)
+import Data.Aeson (FromJSON(..), ToJSON(..), Value(..))
 import Data.Char (isDigit)
 import Data.Int (Int64)
 import Data.List (sortOn)
 import Data.Monoid ((<>))
-import Data.Text (Text, pack)
+import Data.Text (Text, pack, unpack)
 import Data.Time.Calendar (Day, fromGregorian)
 import Data.Time.Clock (UTCTime)
 import Data.Time.Clock.System (utcToSystemTime, SystemTime(..), systemToUTCTime)
@@ -58,6 +59,22 @@ data Timestamp =
 -- | Compare by 'epochTime' only. 'timeZone' is not used.
 instance Ord Timestamp where
   compare l r = compare (epochTime l) (epochTime r)
+
+-- | Parse a JSON string by 'parseTimestamp'.
+--
+-- @since 0.4.1.0
+instance FromJSON Timestamp where
+  parseJSON (String t) = maybe (fail err_msg) return $ parseTimestamp ts
+    where
+      ts = unpack t
+      err_msg = "Invalid Timestamp string: " ++ ts
+  parseJSON _ = empty
+
+-- | Convert to a JSON string by 'showTimestamp'.
+--
+-- @since 0.4.1.0
+instance ToJSON Timestamp where
+  toJSON t = String $ showTimestamp t
 
 -- | Make 'Timestamp' from milliseconds from the epoch. 'timeZone' is
 -- 'Nothing'.

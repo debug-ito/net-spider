@@ -1,5 +1,5 @@
 name:                   net-spider
-version:                0.4.0.1
+version:                0.4.1.0
 author:                 Toshio Ito <debug.ito@gmail.com>
 maintainer:             Toshio Ito <debug.ito@gmail.com>
 license:                BSD3
@@ -85,7 +85,8 @@ test-suite spec
   -- default-extensions:   
   other-extensions:     OverloadedStrings,
                         DeriveGeneric
-  other-modules:        NetSpider.GraphML.WriterSpec
+  other-modules:        NetSpider.GraphML.WriterSpec,
+                        NetSpider.TimestampSpec
   build-depends:        base, net-spider, vector, text, aeson,
                         hspec >=2.4.4
 
