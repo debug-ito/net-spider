@@ -60,6 +60,12 @@ data Timestamp =
 instance Ord Timestamp where
   compare l r = compare (epochTime l) (epochTime r)
 
+
+-- TODO: Text-based encoding loses information about the detail of
+-- TimeZone. Maybe we should use Object-based encoding based on
+-- GraphML.Writer's attribute encoding.
+
+
 -- | Parse a JSON string by 'parseTimestamp'.
 --
 -- @since 0.4.1.0
