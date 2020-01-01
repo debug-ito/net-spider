@@ -13,6 +13,8 @@ module NetSpider.GraphML.Attribute
     attributesFromAeson
   ) where
 
+import Control.Applicative (empty)
+import Data.Aeson (FromJSON(..), ToJSON(..))
 import qualified Data.Aeson as Aeson
 import qualified Data.HashMap.Strict as HM
 import qualified Data.Scientific as Sci
@@ -30,6 +32,23 @@ data AttributeValue = AttrBoolean Bool
                     | AttrDouble Double
                     | AttrString Text
                     deriving (Show,Eq,Ord)
+
+-- | Based on 'valueFromAeson'.
+--
+-- @since 0.4.1.0
+instance FromJSON AttributeValue where
+  parseJSON v = maybe empty return $ valueFromAeson v
+
+-- | @since 0.4.1.0
+instance ToJSON AttributeValue where
+  toJSON v =
+    case v of
+      AttrBoolean b -> toJSON b
+      AttrInt i -> toJSON i
+      AttrLong l -> toJSON l
+      AttrFloat f -> toJSON f
+      AttrDouble d -> toJSON d
+      AttrString t -> toJSON t
 
 -- | Type that can be converted to list of attributes.
 class ToAttributes a where
