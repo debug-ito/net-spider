@@ -152,13 +152,15 @@ instance ToAttributes Timestamp where
       ("@timestamp_str", AttrString $ showTimestamp t)
     ] ++ timezone_attrs
     where
-      timezone_attrs =
-        case timeZone t of
-          Nothing -> []
-          Just tz -> [ ("@tz_offset_min", AttrInt $ timeZoneMinutes tz),
-                       ("@tz_summer_only", AttrBoolean $ timeZoneSummerOnly tz),
-                       ("@tz_name", AttrString $ pack $ timeZoneName tz)
-                     ]
+      timezone_attrs = maybe [] toAttributes $ timeZone t
+
+-- | @since 0.4.1.0
+instance ToAttributes TimeZone where
+  toAttributes tz =
+    [ ("@tz_offset_min", AttrInt $ timeZoneMinutes tz),
+      ("@tz_summer_only", AttrBoolean $ timeZoneSummerOnly tz),
+      ("@tz_name", AttrString $ pack $ timeZoneName tz)
+    ]
 
 -- | Make 'AttributeValue' from aeson's 'Aeson.Value'. It returns
 -- 'Nothing', if the input is null, an object or an array. If the
