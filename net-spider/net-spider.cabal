@@ -87,7 +87,8 @@ test-suite spec
   other-extensions:     OverloadedStrings,
                         DeriveGeneric
   other-modules:        NetSpider.GraphML.WriterSpec,
-                        NetSpider.TimestampSpec
+                        NetSpider.TimestampSpec,
+                        NetSpider.FoundSpec
   build-depends:        base, net-spider, vector, text, aeson, bytestring, time,
                         hspec >=2.4.4
 

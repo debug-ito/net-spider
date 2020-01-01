@@ -1,4 +1,4 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings, DeriveGeneric #-}
 -- |
 -- Module: NetSpider.Found
 -- Description: Types about local findings
@@ -15,9 +15,11 @@ module NetSpider.Found
 
 import qualified Control.Monad.Fail as Fail
 import Data.Aeson (FromJSON(..), ToJSON(..))
+import qualified Data.Aeson as Aeson
 import Data.Bifunctor (Bifunctor(..))
 import Data.Greskell (FromGraphSON(..))
 import Data.Text (Text, unpack)
+import GHC.Generics (Generic)
 
 import NetSpider.Timestamp (Timestamp)
 
@@ -69,6 +71,13 @@ instance FromJSON LinkState where
 instance ToJSON LinkState where
   toJSON = toJSON . linkStateToText
 
+aesonOpt :: Aeson.Options
+aesonOpt = Aeson.defaultOptions
+           { Aeson.fieldLabelModifier = mod
+           }
+  where
+    mod s = undefined -- TODO.
+
 -- | A link found at a 'FoundNode'. The link connects from the subject
 -- node (the found node) to the target node. The link may be
 -- directional or non-directional.
@@ -81,7 +90,7 @@ data FoundLink n la =
     linkState :: LinkState,
     linkAttributes :: la
   }
-  deriving (Show,Eq,Ord)
+  deriving (Show,Eq,Ord,Generic)
 
 -- | @since 0.3.0.0
 instance Functor (FoundLink n) where
@@ -92,6 +101,15 @@ instance Bifunctor FoundLink where
   bimap fn fla l = l { targetNode = fn $ targetNode l,
                        linkAttributes = fla $ linkAttributes l
                      }
+
+-- | @since 0.4.1.0
+instance (FromJSON n, FromJSON la) => FromJSON (FoundLink n la) where
+  parseJSON = Aeson.genericParseJSON aesonOpt
+
+-- | @since 0.4.1.0
+instance (ToJSON n, ToJSON la) => ToJSON (FoundLink n la) where
+  toJSON = Aeson.genericToJSON aesonOpt
+  toEncoding = Aeson.genericToEncoding aesonOpt
 
 -- | 'FoundNode' is a node (the subject node) observed at a specific
 -- time. It has a set of neighbor links found at the moment.
