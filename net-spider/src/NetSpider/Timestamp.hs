@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 -- |
 -- Module: NetSpider.Timestamp
 -- Description: Timestamp type
@@ -46,6 +47,11 @@ import qualified Text.ParserCombinators.ReadP as P
 import Text.Read (readEither)
 import Text.Printf (printf)
 
+import NetSpider.GraphML.Attribute
+  ( ToAttributes(..),
+    AttributeValue(..)
+  )
+
 -- | Timestamp when graph elements are observed.
 data Timestamp =
   Timestamp
@@ -81,6 +87,15 @@ instance FromJSON Timestamp where
 -- @since 0.4.1.0
 instance ToJSON Timestamp where
   toJSON t = String $ showTimestamp t
+
+-- | @since 0.4.1.0
+instance ToAttributes Timestamp where
+  toAttributes t =
+    [ ("@timestamp", AttrLong $ toInteger $ epochTime t),
+      ("@timestamp_str", AttrString $ showTimestamp t)
+    ] ++ timezone_attrs
+    where
+      timezone_attrs = maybe [] toAttributes $ timeZone t
 
 -- | Make 'Timestamp' from milliseconds from the epoch. 'timeZone' is
 -- 'Nothing'.

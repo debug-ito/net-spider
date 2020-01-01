@@ -2,6 +2,10 @@
 
 ## 0.4.1.0  --
 
+* Add `GraphML.Attribute` module. `AttributeValue` and related types
+  in `GraphML.Writer` module are moved to `GraphML.Attribute` module.
+* Add `ToAttributes` instance to `TimeZone`.
+
 ### Timestamp module
 
 * Add `FromJSON`, `ToJSON` and `ToAttributes` instances to

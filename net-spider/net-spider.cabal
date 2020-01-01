@@ -43,6 +43,7 @@ library
                         NetSpider.Log,
                         NetSpider.Snapshot.Internal,
                         NetSpider.GraphML.Writer,
+                        NetSpider.GraphML.Attribute,
                         NetSpider.Interval
   other-modules:        NetSpider.Graph.Internal,
                         NetSpider.Spider.Internal.Graph,

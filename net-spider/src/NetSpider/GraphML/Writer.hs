@@ -22,7 +22,7 @@ module NetSpider.GraphML.Writer
     NodeID,
     ToNodeID(..),
     nodeIDByShow,
-    -- * Attributes
+    -- * Attributes (re-exports)
     AttributeKey,
     AttributeValue(..),
     ToAttributes(..),
@@ -30,7 +30,6 @@ module NetSpider.GraphML.Writer
     attributesFromAeson
   ) where
 
-import qualified Data.Aeson as Aeson
 import Data.Foldable (foldl')
 import Data.Greskell.Graph (Property(..))
 import Data.Hashable (Hashable(..))
@@ -39,7 +38,6 @@ import qualified Data.HashMap.Strict as HM
 import Data.Int (Int8, Int16, Int32, Int64)
 import Data.Maybe (catMaybes)
 import Data.Monoid ((<>), Monoid(..), mconcat)
-import qualified Data.Scientific as Sci
 import Data.Semigroup (Semigroup(..))
 import Data.Text (Text, pack, unpack)
 import qualified Data.Text.Lazy as TL
@@ -48,6 +46,13 @@ import Data.Time (TimeZone(..))
 import Data.Word (Word8, Word16, Word32, Word64)
 import GHC.Generics (Generic)
 
+import NetSpider.GraphML.Attribute
+  ( AttributeKey,
+    AttributeValue(..),
+    ToAttributes(..),
+    valueFromAeson,
+    attributesFromAeson
+  )
 import NetSpider.Snapshot
   ( SnapshotNode, nodeId, nodeTimestamp, isOnBoundary, nodeAttributes,
     SnapshotLink, sourceNode, destinationNode, linkTimestamp, isDirected, linkAttributes,
@@ -117,72 +122,6 @@ instance ToNodeID Double where
 instance ToNodeID Bool where
   toNodeID True = "true"
   toNodeID False = "false"
-
--- | Key of attribute.
-type AttributeKey = Text
-
--- | Typed value of attribute.
-data AttributeValue = AttrBoolean Bool
-                    | AttrInt Int
-                    | AttrLong Integer
-                    | AttrFloat Float
-                    | AttrDouble Double
-                    | AttrString Text
-                    deriving (Show,Eq,Ord)
-
--- | Type that can be converted to list of attributes.
-class ToAttributes a where
-  toAttributes :: a -> [(AttributeKey, AttributeValue)]
-
-instance ToAttributes () where
-  toAttributes _ = []
-
-instance ToAttributes [(AttributeKey, AttributeValue)] where
-  toAttributes = id
-
--- | 'Nothing' is mapped to empty attributes.
-instance ToAttributes a => ToAttributes (Maybe a) where
-  toAttributes Nothing = []
-  toAttributes (Just a) = toAttributes a
-
--- | @since 0.4.1.0
-instance ToAttributes Timestamp where
-  toAttributes t =
-    [ ("@timestamp", AttrLong $ toInteger $ epochTime t),
-      ("@timestamp_str", AttrString $ showTimestamp t)
-    ] ++ timezone_attrs
-    where
-      timezone_attrs = maybe [] toAttributes $ timeZone t
-
--- | @since 0.4.1.0
-instance ToAttributes TimeZone where
-  toAttributes tz =
-    [ ("@tz_offset_min", AttrInt $ timeZoneMinutes tz),
-      ("@tz_summer_only", AttrBoolean $ timeZoneSummerOnly tz),
-      ("@tz_name", AttrString $ pack $ timeZoneName tz)
-    ]
-
--- | Make 'AttributeValue' from aeson's 'Aeson.Value'. It returns
--- 'Nothing', if the input is null, an object or an array. If the
--- input is a number, the output uses 'AttrDouble'.
-valueFromAeson :: Aeson.Value -> Maybe AttributeValue
-valueFromAeson v =
-  case v of
-    Aeson.String t -> Just $ AttrString t
-    Aeson.Bool b -> Just $ AttrBoolean b
-    Aeson.Number n -> Just $ AttrDouble $ Sci.toRealFloat n
-    _ -> Nothing
-
--- | Make attributes from aeson's 'Aeson.Value'. It assumes the input
--- is an object, and its values can be converted by
--- 'valueFromAeson'. Otherwise, it returns 'Nothing'.
-attributesFromAeson :: Aeson.Value -> Maybe [(AttributeKey, AttributeValue)]
-attributesFromAeson v =
-  case v of
-    Aeson.Object o -> mapM convElem $ HM.toList o
-    _ -> Nothing
-  where
-    convElem (k, val) = fmap ((,) k) $ valueFromAeson val
 
 sbuild :: Show a => a -> TLB.Builder
 sbuild = TLB.fromString . show
