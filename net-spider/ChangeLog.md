@@ -13,6 +13,10 @@
 * Add `FromJSON`, `ToJSON` and `ToAttributes` instances to
   `Timestamp`.
 
+### Found module
+
+* Add `FromJSON` and `ToJSON` instances to `LinkState`.
+
 ## 0.4.0.1  -- 2019-12-29
 
 * Confirm test with `data-interval-2.0.1`.

@@ -13,6 +13,8 @@ module NetSpider.Found
          linkStateFromText
        ) where
 
+import qualified Control.Monad.Fail as Fail
+import Data.Aeson (FromJSON(..), ToJSON(..))
 import Data.Bifunctor (Bifunctor(..))
 import Data.Greskell (FromGraphSON(..))
 import Data.Text (Text, unpack)
@@ -46,12 +48,26 @@ linkStateFromText t = case t of
   "bidirectional" -> Just LinkBidirectional
   _ -> Nothing
 
+linkStateFromTextF :: Fail.MonadFail m => Text -> m LinkState
+linkStateFromTextF t = 
+  case linkStateFromText t of
+    Just ls -> return ls
+    Nothing -> Fail.fail ("Unrecognized LinkState: " ++ unpack t)
+
 instance FromGraphSON LinkState where
-  parseGraphSON gv = fromText =<< parseGraphSON gv
-    where
-      fromText t = case linkStateFromText t of
-        Just ls -> return ls
-        Nothing -> fail ("Unrecognized LinkState: " ++ unpack t)
+  parseGraphSON gv = linkStateFromTextF =<< parseGraphSON gv
+
+-- | Parse a JSON string to 'LinkState'.
+--
+-- @since 0.4.1.0
+instance FromJSON LinkState where
+  parseJSON v = linkStateFromTextF =<< parseJSON v
+
+-- | Convert 'LinkState' to a JSON string.
+--
+-- @since 0.4.1.0
+instance ToJSON LinkState where
+  toJSON = toJSON . linkStateToText
 
 -- | A link found at a 'FoundNode'. The link connects from the subject
 -- node (the found node) to the target node. The link may be
