@@ -2,7 +2,10 @@
 
 ## 0.4.1.0  --
 
-* 
+### Timestamp module
+
+* Add `FromJSON`, `ToJSON` and `ToAttributes` instances to
+  `Timestamp`.
 
 ## 0.4.0.1  -- 2019-12-29
 

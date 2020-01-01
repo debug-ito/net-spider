@@ -145,6 +145,21 @@ instance ToAttributes a => ToAttributes (Maybe a) where
   toAttributes Nothing = []
   toAttributes (Just a) = toAttributes a
 
+-- | @since 0.4.1.0
+instance ToAttributes Timestamp where
+  toAttributes t =
+    [ ("@timestamp", AttrLong $ toInteger $ epochTime t),
+      ("@timestamp_str", AttrString $ showTimestamp t)
+    ] ++ timezone_attrs
+    where
+      timezone_attrs =
+        case timeZone t of
+          Nothing -> []
+          Just tz -> [ ("@tz_offset_min", AttrInt $ timeZoneMinutes tz),
+                       ("@tz_summer_only", AttrBoolean $ timeZoneSummerOnly tz),
+                       ("@tz_name", AttrString $ pack $ timeZoneName tz)
+                     ]
+
 -- | Make 'AttributeValue' from aeson's 'Aeson.Value'. It returns
 -- 'Nothing', if the input is null, an object or an array. If the
 -- input is a number, the output uses 'AttrDouble'.
@@ -289,20 +304,6 @@ showKeyMetaWithIndex index km = "<key id=\"" <> id_str <> "\" for=\"" <> domain_
     name_str = encodeXML $ kmName km
     type_str = showAttributeType $ kmType km
 
-timestampAttrs :: Timestamp -> [(AttributeKey, AttributeValue)]
-timestampAttrs t =
-  [ ("@timestamp", AttrLong $ toInteger $ epochTime t),
-    ("@timestamp_str", AttrString $ showTimestamp t)
-  ] ++ timezone_attrs
-  where
-    timezone_attrs =
-      case timeZone t of
-        Nothing -> []
-        Just tz -> [ ("@tz_offset_min", AttrInt $ timeZoneMinutes tz),
-                     ("@tz_summer_only", AttrBoolean $ timeZoneSummerOnly tz),
-                     ("@tz_name", AttrString $ pack $ timeZoneName tz)
-                   ]
-
 nodeMetaKeys :: ToAttributes na => SnapshotNode n na -> [KeyMeta]
 nodeMetaKeys n = map fst $ nodeMetaValues n
 
@@ -311,7 +312,7 @@ nodeMetaValues n = map convert $ base <> attrs
   where
     timestamp = case nodeTimestamp n of
                   Nothing -> []
-                  Just t -> timestampAttrs t
+                  Just t -> toAttributes t
     base = timestamp <> [("@is_on_boundary", AttrBoolean $ isOnBoundary n)]
     attrs = toAttributes $ nodeAttributes n
     convert (k, v) = makeMetaValue DomainNode k v
@@ -322,7 +323,7 @@ linkMetaKeys l = map fst $ linkMetaValues l
 linkMetaValues :: ToAttributes la => SnapshotLink n la -> [(KeyMeta, AttributeValue)]
 linkMetaValues l = map convert $ base <> attrs
   where
-    base = timestampAttrs $ linkTimestamp l
+    base = toAttributes $ linkTimestamp l
     attrs = toAttributes $ linkAttributes l
     convert (k, v) = makeMetaValue DomainEdge k v
 
