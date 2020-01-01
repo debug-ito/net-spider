@@ -28,12 +28,14 @@ module NetSpider.Timestamp
        ) where
 
 import Control.Applicative ((<$>), (<*>), (<*), (*>), optional, empty)
-import Data.Aeson (FromJSON(..), ToJSON(..), Value(..))
+import Data.Aeson (FromJSON(..), ToJSON(..), Value(..), (.:), (.=))
+import qualified Data.Aeson as Aeson
 import Data.Char (isDigit)
 import Data.Int (Int64)
 import Data.List (sortOn)
 import Data.Monoid ((<>))
 import Data.Text (Text, pack, unpack)
+import qualified Data.Text as Text
 import Data.Time.Calendar (Day, fromGregorian)
 import Data.Time.Clock (UTCTime)
 import Data.Time.Clock.System (utcToSystemTime, SystemTime(..), systemToUTCTime)
@@ -67,12 +69,8 @@ instance Ord Timestamp where
   compare l r = compare (epochTime l) (epochTime r)
 
 
--- TODO: Text-based encoding loses information about the detail of
--- TimeZone. Maybe we should use Object-based encoding based on
--- GraphML.Writer's attribute encoding.
-
-
--- | Parse a JSON string by 'parseTimestamp'.
+-- | It can parse JSON string or object. If the input is a JSON
+-- string, it is parsed by 'parseTimestamp'.
 --
 -- @since 0.4.1.0
 instance FromJSON Timestamp where
@@ -80,13 +78,28 @@ instance FromJSON Timestamp where
     where
       ts = unpack t
       err_msg = "Invalid Timestamp string: " ++ ts
+  parseJSON (Object o) = Timestamp <$> (o .: "epoch_time") <*> parseTZ o
+    where
+      parseTZ ob = optional $ TimeZone
+                   <$> (ob .: "tz_offset_min")
+                   <*> (ob .: "tz_summer_only")
+                   <*> (ob .: "tz_name")
   parseJSON _ = empty
+  
 
--- | Convert to a JSON string by 'showTimestamp'.
+
+-- | Convert to a JSON object.
 --
 -- @since 0.4.1.0
 instance ToJSON Timestamp where
-  toJSON t = String $ showTimestamp t
+  toJSON t = Aeson.object $
+             [ "epoch_time" .= epochTime t
+             ]
+             ++ tz_fields
+    where
+      tz_fields = (fmap . fmap) toJSON $ map fixKeyPrefix $ toAttributes $ timeZone t
+      fixKeyPrefix (k, v) = (Text.tail k, v)
+
 
 -- | @since 0.4.1.0
 instance ToAttributes Timestamp where

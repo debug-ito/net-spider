@@ -88,7 +88,7 @@ test-suite spec
                         DeriveGeneric
   other-modules:        NetSpider.GraphML.WriterSpec,
                         NetSpider.TimestampSpec
-  build-depends:        base, net-spider, vector, text, aeson,
+  build-depends:        base, net-spider, vector, text, aeson, bytestring, time,
                         hspec >=2.4.4
 
 flag server-test
