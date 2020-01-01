@@ -10,7 +10,8 @@ module NetSpider.GraphML.Attribute
     AttributeValue(..),
     ToAttributes(..),
     valueFromAeson,
-    attributesFromAeson
+    attributesFromAeson,
+    attributesToAeson
   ) where
 
 import Control.Applicative (empty)
@@ -94,3 +95,9 @@ attributesFromAeson v =
     _ -> Nothing
   where
     convElem (k, val) = fmap ((,) k) $ valueFromAeson val
+
+-- | Make aeson 'Aeson.Object' as 'Aeson.Value' from attributes.
+--
+-- @since 0.4.1.0
+attributesToAeson :: [(AttributeKey, AttributeValue)] -> Aeson.Value
+attributesToAeson = Aeson.Object . HM.fromList . (fmap . fmap) toJSON
