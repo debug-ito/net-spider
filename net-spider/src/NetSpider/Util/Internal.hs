@@ -9,15 +9,15 @@ module NetSpider.Util.Internal
     replacePrefix
   ) where
 
-replacePrefix :: (String -> Maybe String) -> String -> (String, String)
+replacePrefix :: ([a] -> Maybe [a]) -> [a] -> Maybe ([a], [a])
 replacePrefix f input = go [] input
   where
     go start end =
       case f start of
-        Just rep -> (rep, end)
+        Just rep -> Just (rep, end)
         Nothing ->
           case end of
-            [] -> ([], start)
+            [] -> Nothing
             (x : rest) -> go (start ++ [x]) rest
 
 -- |
@@ -32,11 +32,11 @@ replacePrefix f input = go [] input
 -- "fffuufff"
 -- >>> replaceAll (\x -> case x of "f" -> Just "fff"; "go" -> Just "gg"; "hii" -> Just "H"; _ -> Nothing) "gfgoihgfhiig"
 -- "gfffggihgfffHg"
-replaceAll :: (String -> Maybe String) -> String -> String
+replaceAll :: ([a] -> Maybe [a]) -> [a] -> [a]
 replaceAll f input = go [] input
   where
     go top [] = top
     go top body@(bhead : brest) =
       case replacePrefix f body of
-        ([], _) -> go (top ++ [bhead]) brest
-        (rep, rest) -> go (top ++ rep) rest
+        Nothing -> go (top ++ [bhead]) brest
+        Just (rep, rest) -> go (top ++ rep) rest
