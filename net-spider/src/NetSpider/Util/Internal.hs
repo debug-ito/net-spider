@@ -1,10 +1,10 @@
 -- |
--- Module: NetSpider.InternalUtil
+-- Module: NetSpider.Util.Internal
 -- Description: 
 -- Maintainer: Toshio Ito <debug.ito@gmail.com>
 --
 -- __internal module__
-module NetSpider.InternalUtil
+module NetSpider.Util.Internal
   ( replaceAll,
     replacePrefix
   ) where
