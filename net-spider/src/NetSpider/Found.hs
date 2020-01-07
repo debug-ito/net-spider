@@ -17,9 +17,11 @@ import qualified Control.Monad.Fail as Fail
 import Data.Aeson (FromJSON(..), ToJSON(..))
 import qualified Data.Aeson as Aeson
 import Data.Bifunctor (Bifunctor(..))
+import Data.Char (isUpper, toLower)
 import Data.Greskell (FromGraphSON(..))
 import Data.Text (Text, unpack)
 import GHC.Generics (Generic)
+import qualified Text.Regex.Applicative as RE
 
 import NetSpider.Timestamp (Timestamp)
 
@@ -73,10 +75,13 @@ instance ToJSON LinkState where
 
 aesonOpt :: Aeson.Options
 aesonOpt = Aeson.defaultOptions
-           { Aeson.fieldLabelModifier = mod
+           { Aeson.fieldLabelModifier = modifier
            }
   where
-    mod s = undefined -- TODO.
+    modifier = RE.replace reSnake . RE.replace reAttr
+    reAttr = fmap (const "Attrs") $ RE.string "Attributes"
+    reSnake = RE.msym $ \c -> if isUpper c then Just ['_', toLower c] else Nothing
+
 
 -- | A link found at a 'FoundNode'. The link connects from the subject
 -- node (the found node) to the target node. The link may be
