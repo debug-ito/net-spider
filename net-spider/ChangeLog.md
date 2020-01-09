@@ -15,7 +15,8 @@
 
 ### Found module
 
-* Add `FromJSON` and `ToJSON` instances to `LinkState`.
+* Add `FromJSON` and `ToJSON` instances to `LinkState`, `FoundLink`
+  and `FoundNode`.
 
 ## 0.4.0.1  -- 2019-12-29
 

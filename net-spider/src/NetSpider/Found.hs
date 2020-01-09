@@ -129,7 +129,7 @@ data FoundNode n na la =
     neighborLinks :: [FoundLink n la],
     nodeAttributes :: na
   }
-  deriving (Show,Eq)
+  deriving (Show,Eq,Generic)
 
 -- | @since 0.3.0.0
 instance Functor (FoundNode n na) where
@@ -140,3 +140,12 @@ instance Bifunctor (FoundNode n) where
   bimap fna fla n = n { neighborLinks = (fmap . fmap) fla $ neighborLinks n,
                         nodeAttributes = fna $ nodeAttributes n
                       }
+
+-- | @since 0.4.1.0
+instance (FromJSON n, FromJSON na, FromJSON la) => FromJSON (FoundNode n na la) where
+  parseJSON = Aeson.genericParseJSON aesonOpt
+
+-- | @since 0.4.1.0
+instance (ToJSON n, ToJSON na, ToJSON la) => ToJSON (FoundNode n na la) where
+  toJSON = Aeson.genericToJSON aesonOpt
+  toEncoding = Aeson.genericToEncoding aesonOpt
