@@ -122,6 +122,8 @@ instance (ToJSON n, ToJSON la) => ToJSON (FoundLink n la) where
 -- - type @n@: node ID.
 -- - type @na@: node attributes.
 -- - type @la@: link attributes.
+--
+-- 'Ord' instance is added in net-spider-0.4.1.0.
 data FoundNode n na la =
   FoundNode
   { subjectNode :: n,
@@ -129,7 +131,7 @@ data FoundNode n na la =
     neighborLinks :: [FoundLink n la],
     nodeAttributes :: na
   }
-  deriving (Show,Eq,Generic)
+  deriving (Show,Eq,Ord,Generic)
 
 -- | @since 0.3.0.0
 instance Functor (FoundNode n na) where
