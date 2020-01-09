@@ -90,6 +90,7 @@ test-suite spec
   other-modules:        NetSpider.GraphML.WriterSpec,
                         NetSpider.TimestampSpec,
                         NetSpider.FoundSpec,
+                        NetSpider.SnapshotSpec,
                         JSONUtil
   build-depends:        base, net-spider, vector, text, aeson, bytestring, time,
                         hspec >=2.4.4

@@ -17,6 +17,7 @@ module NetSpider.Snapshot.Internal
          SnapshotNode(..)
        ) where
 
+import Data.Aeson (ToJSON(..), FromJSON(..))
 import Data.Bifunctor (Bifunctor(..))
 import NetSpider.Pair (Pair(..))
 import NetSpider.Timestamp (Timestamp)
@@ -62,6 +63,16 @@ instance Bifunctor SnapshotLink where
                        _destinationNode = fn $ _destinationNode l
                      }
 
+-- | @since 0.4.1.0
+instance (FromJSON n, FromJSON la) => FromJSON (SnapshotLink n la) where
+  parseJSON = undefined
+
+-- | @since 0.4.1.0
+instance (ToJSON n, ToJSON la) => ToJSON (SnapshotLink n la) where
+  toJSON = undefined
+  toEncoding = undefined
+  
+
 -- | Node-tuple (source node, destination node) of the link.
 linkNodeTuple :: SnapshotLink n la -> (n, n)
 linkNodeTuple link = (_sourceNode link, _destinationNode link)
@@ -93,3 +104,13 @@ instance Bifunctor SnapshotNode where
   bimap fn fna n = n { _nodeAttributes = fmap fna $ _nodeAttributes n,
                        _nodeId = fn $ _nodeId n
                      }
+
+-- | @since 0.4.1.0
+instance (FromJSON n, FromJSON na) => FromJSON (SnapshotNode n na) where
+  parseJSON = undefined
+
+-- | @since 0.4.1.0
+instance (ToJSON n, ToJSON na) => ToJSON (SnapshotNode n na) where
+  toJSON = undefined
+  toEncoding = undefined
+
