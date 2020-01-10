@@ -22,7 +22,6 @@
 ### Snapshot module
 
 * Add `FromJSON` and `ToJSON` instances to `SnapshotLink` and
-
   `SnapshotNode`.
 
 ## 0.4.0.1  -- 2019-12-29
