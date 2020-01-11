@@ -1,5 +1,10 @@
 # Revision history for net-spider-rpl
 
+## 0.4.1.0  --
+
+* Add `FromJSON` and `ToJSON` instances to `DIONode`, `DIOLink`,
+  `NeighborType` and `MergedDIOLink`.
+
 ## 0.4.0.1  -- 2019-12-29
 
 * Confirm `ip-1.7.0` and `fast-logger-3.0.0`.

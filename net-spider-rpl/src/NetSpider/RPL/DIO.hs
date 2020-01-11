@@ -24,7 +24,7 @@ module NetSpider.RPL.DIO
   ) where
 
 import Control.Applicative ((<$>), (<*>))
-import Data.Aeson (ToJSON(..))
+import Data.Aeson (ToJSON(..), FromJSON(..))
 import Data.Bifunctor (bimap)
 import Data.Greskell
   ( Property, GValue,
@@ -93,6 +93,15 @@ instance GraphML.ToAttributes DIONode where
                       (keyText keyDioInterval, GraphML.AttrInt $ fromIntegral $ dioInterval ln)
                     ]
 
+-- | @since 0.4.1.0
+instance FromJSON DIONode where
+  parseJSON = undefined -- TODO
+
+-- | @since 0.4.1.0
+instance ToJSON DIONode where
+  toJSON = undefined -- TODO
+  toEncoding = undefined -- TODO
+
 -- | Classification of RPL neighbors.
 data NeighborType = PreferredParent
                     -- ^ The neighbor is the preferred parent.
@@ -129,9 +138,17 @@ instance FromGraphSON NeighborType where
     where
       fromT t = maybe (fail ("Unknown neighbor type: " <> unpack t)) return $ neighborTypeFromText t
 
--- | @since 0.4.0.0
+-- | Encode to a JSON string.
+--
+-- @since 0.4.0.0
 instance ToJSON NeighborType where
   toJSON n = toJSON $ neighborTypeToText n
+
+-- | Decode from a JSON string.
+--
+-- @since 0.4.1.0
+instance FromJSON NeighborType where
+  parseJSON = undefined -- TODO
 
 instance LinkAttributes NeighborType where
   writeLinkAttributes nt = fmap writeKeyValues $ sequence [keyNeighborType <=:> nt]
@@ -192,7 +209,15 @@ instance GraphML.ToAttributes DIOLink where
         case metric ll of
           Nothing -> []
           Just m -> [(keyText keyMetric, GraphML.AttrInt $ fromIntegral m)]
-                    
+
+-- | @since 0.4.1.0
+instance FromJSON DIOLink where
+  parseJSON = undefined -- TODO
+
+-- | @since 0.4.1.0
+instance ToJSON DIOLink where
+  toJSON = undefined -- TODO
+  toEncoding = undefined -- TODO
 
 -- | Link attributes merging two 'DIOLink's from the two end nodes
 -- of the link.
@@ -255,3 +280,12 @@ instance GraphML.ToAttributes MergedDIOLink where
         Nothing -> []
         Just dl -> withKeyPrefix "dest_" $ GraphML.toAttributes dl
     )
+
+-- | @since 0.4.1.0
+instance FromJSON MergedDIOLink where
+  parseJSON = undefined -- TODO
+
+-- | @since 0.4.1.0
+instance ToJSON MergedDIOLink where
+  toJSON = undefined -- TODO
+  toEncoding = undefined -- TODO
