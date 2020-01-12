@@ -1,4 +1,4 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings, DeriveGeneric #-}
 -- |
 -- Module: NetSpider.RPL.DIO
 -- Description: Node and link information based on DIO (DODAG Information Object)
@@ -23,9 +23,11 @@ module NetSpider.RPL.DIO
     dioUnifierConf
   ) where
 
-import Control.Applicative ((<$>), (<*>))
+import Control.Applicative ((<$>), (<*>), empty)
 import Data.Aeson (ToJSON(..), FromJSON(..))
+import qualified Data.Aeson as Aeson
 import Data.Bifunctor (bimap)
+import Data.Char (isUpper, toLower)
 import Data.Greskell
   ( Property, GValue,
     Binder, Walk, SideEffect, Element, Parser,
@@ -36,6 +38,7 @@ import Data.Greskell.Extra (writeKeyValues, (<=:>), (<=?>))
 import Data.Monoid ((<>))
 import Data.Text (Text, unpack)
 import Data.Word (Word32)
+import GHC.Generics (Generic)
 import NetSpider.Found (FoundNode, LinkState(..))
 import NetSpider.Graph (NodeAttributes(..), LinkAttributes(..), VFoundNode, EFinds)
 import qualified NetSpider.GraphML.Writer as GraphML
@@ -43,6 +46,7 @@ import qualified NetSpider.Query as Query
 import NetSpider.Snapshot (SnapshotGraph)
 import NetSpider.Unify (UnifyStdConfig, lsLinkAttributes, latestLinkSample)
 import qualified NetSpider.Unify as Unify
+import qualified Text.Regex.Applicative as RE
 
 import NetSpider.RPL.FindingID (FindingID)
 
@@ -70,7 +74,7 @@ data DIONode =
     dioInterval :: TrickleInterval
     -- ^ Current interval of Trickle timer for DIO transmission.
   }
-  deriving (Show,Eq,Ord)
+  deriving (Show,Eq,Ord,Generic)
 
 keyRank :: Key VFoundNode Rank
 keyRank = "rank"
@@ -93,14 +97,19 @@ instance GraphML.ToAttributes DIONode where
                       (keyText keyDioInterval, GraphML.AttrInt $ fromIntegral $ dioInterval ln)
                     ]
 
+aesonOpt :: Aeson.Options
+aesonOpt = Aeson.defaultOptions { Aeson.fieldLabelModifier = modifier }
+  where
+    modifier = RE.replace $ RE.msym (\c -> if isUpper c then Just ['_', toLower c] else Nothing)
+
 -- | @since 0.4.1.0
 instance FromJSON DIONode where
-  parseJSON = undefined -- TODO
+  parseJSON = Aeson.genericParseJSON aesonOpt
 
 -- | @since 0.4.1.0
 instance ToJSON DIONode where
-  toJSON = undefined -- TODO
-  toEncoding = undefined -- TODO
+  toJSON = Aeson.genericToJSON aesonOpt
+  toEncoding = Aeson.genericToEncoding aesonOpt
 
 -- | Classification of RPL neighbors.
 data NeighborType = PreferredParent
@@ -110,7 +119,7 @@ data NeighborType = PreferredParent
                     -- is in the parent set.
                   | OtherNeighbor
                     -- ^ The neighbor is not in the parent set.
-                  deriving (Show,Eq,Ord,Enum,Bounded)
+                  deriving (Show,Eq,Ord,Enum,Bounded,Generic)
 
 neighborTypeToText :: NeighborType -> Text
 neighborTypeToText nt = case nt of
@@ -148,7 +157,10 @@ instance ToJSON NeighborType where
 --
 -- @since 0.4.1.0
 instance FromJSON NeighborType where
-  parseJSON = undefined -- TODO
+  parseJSON (Aeson.String t) = maybe (fail err_msg) return $ neighborTypeFromText t
+    where
+      err_msg = "Invalid string for NeighborType: " <> show t
+  parseJSON _ = empty
 
 instance LinkAttributes NeighborType where
   writeLinkAttributes nt = fmap writeKeyValues $ sequence [keyNeighborType <=:> nt]
@@ -169,7 +181,7 @@ data DIOLink =
     -- Rank computation is up to the Objective Function, this field is
     -- optional.
   }
-  deriving (Show,Eq,Ord)
+  deriving (Show,Eq,Ord,Generic)
 
 keyNeighborRank :: Key EFinds Rank
 keyNeighborRank = "neighbor_rank"
@@ -212,12 +224,12 @@ instance GraphML.ToAttributes DIOLink where
 
 -- | @since 0.4.1.0
 instance FromJSON DIOLink where
-  parseJSON = undefined -- TODO
+  parseJSON = Aeson.genericParseJSON aesonOpt
 
 -- | @since 0.4.1.0
 instance ToJSON DIOLink where
-  toJSON = undefined -- TODO
-  toEncoding = undefined -- TODO
+  toJSON = Aeson.genericToJSON aesonOpt
+  toEncoding = Aeson.genericToEncoding aesonOpt
 
 -- | Link attributes merging two 'DIOLink's from the two end nodes
 -- of the link.
@@ -226,7 +238,7 @@ data MergedDIOLink =
   { fromSource :: DIOLink,
     fromDest :: Maybe DIOLink
   }
-  deriving (Show,Eq,Ord)
+  deriving (Show,Eq,Ord,Generic)
 
 withKeyPrefix :: Monoid k
               => k
@@ -283,9 +295,9 @@ instance GraphML.ToAttributes MergedDIOLink where
 
 -- | @since 0.4.1.0
 instance FromJSON MergedDIOLink where
-  parseJSON = undefined -- TODO
+  parseJSON = Aeson.genericParseJSON aesonOpt
 
 -- | @since 0.4.1.0
 instance ToJSON MergedDIOLink where
-  toJSON = undefined -- TODO
-  toEncoding = undefined -- TODO
+  toJSON = Aeson.genericToJSON aesonOpt
+  toEncoding = Aeson.genericToEncoding aesonOpt

@@ -6,7 +6,7 @@ import Test.Hspec
 import JSONUtil (specJSONFromTo)
 
 import NetSpider.RPL.DIO
-  ( DIONode(..), NeighborType(..)
+  ( DIONode(..), NeighborType(..), DIOLink(..), MergedDIOLink(..)
   )
 
 main :: IO ()
@@ -24,6 +24,21 @@ spec = do
     specJSONFromTo "ParentCandidate" "\"parent_candidate\"" ParentCandidate
     specJSONFromTo "OtherNeighbor" "\"other_neighbor\"" OtherNeighbor
   describe "DIOLink" $ do
-    specify "TODO" (True `shouldBe` False) -- TODO
+    specJSONFromTo
+      "DIOLink with non-empty metric"
+      "{\"neighbor_type\": \"parent_candidate\", \"neighbor_rank\": 590, \"metric\": 132}"
+      DIOLink
+      { neighborType = ParentCandidate,
+        neighborRank = 590,
+        metric = Just 132
+      }
   describe "MergedDIOLink" $ do
-    specify "TODO" (True `shouldBe` False) -- TODO
+    specJSONFromTo
+      "MergedDIOLink with non-empty fromDest"
+      (    "{\"from_source\": {\"neighbor_type\": \"preferred_parent\", \"neighbor_rank\": 590, \"metric\": 132},"
+        <> " \"from_dest\": {\"neighbor_type\": \"other_neighbor\", \"neighbor_rank\": 722, \"metric\": null}}"
+      )
+      MergedDIOLink
+      { fromSource = DIOLink PreferredParent 590 (Just 132),
+        fromDest = Just $ DIOLink OtherNeighbor 722 Nothing
+      }
