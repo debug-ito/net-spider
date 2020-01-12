@@ -137,6 +137,10 @@ parseIPv6IDFromText t =
 instance FromJSON IPv6ID where
   parseJSON v = parseIPv6IDFromText =<< parseJSON v
 
+-- | @since 0.4.1.0
+instance ToJSON IPv6ID where
+  toJSON = Aeson.String . ipv6ToText
+
 instance FromGraphSON IPv6ID where
   parseGraphSON gv = parseIPv6IDFromText =<< parseGraphSON gv
 
