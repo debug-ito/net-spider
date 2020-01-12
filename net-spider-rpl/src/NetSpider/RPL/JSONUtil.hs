@@ -5,7 +5,8 @@
 --
 -- __This is an internal module. End-users should not use it.__
 module NetSpider.RPL.JSONUtil
-  ( optSnake
+  ( optSnake,
+    optCombinedNode
   ) where
 
 import qualified Data.Aeson as Aeson
@@ -17,3 +18,8 @@ toSnake = RE.replace $ RE.msym (\c -> if isUpper c then Just ['_', toLower c] el
 
 optSnake :: Aeson.Options
 optSnake = Aeson.defaultOptions { Aeson.fieldLabelModifier = toSnake }
+
+optCombinedNode :: Aeson.Options
+optCombinedNode = Aeson.defaultOptions { Aeson.fieldLabelModifier = modifier }
+  where
+    modifier = map toLower . RE.replace (fmap (const "") $ RE.string "attrs")
