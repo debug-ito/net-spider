@@ -1,4 +1,4 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings, DeriveGeneric #-}
 -- |
 -- Module: NetSpider.RPL.DAO
 -- Description: Node and link information based on DAO (Destination Advertisement Object)
@@ -21,12 +21,14 @@ import Data.Greskell
   )
   
 import Control.Applicative ((<$>), (<*>))
-import Data.Aeson (ToJSON(..))
+import Data.Aeson (ToJSON(..), FromJSON(..))
+import qualified Data.Aeson as Aeson
 import Data.Greskell
   ( lookupAs', Key, pMapToFail, lookupAs, keyText
   )
 import Data.Greskell.Extra (writeKeyValues, (<=:>), (<=?>))
 import Data.Maybe (listToMaybe)
+import GHC.Generics (Generic)
 import NetSpider.Found (FoundNode)
 import NetSpider.Graph (NodeAttributes(..), LinkAttributes(..), VFoundNode, EFinds)
 import qualified NetSpider.GraphML.Writer as GraphML
@@ -36,6 +38,7 @@ import NetSpider.Unify (UnifyStdConfig, lsLinkAttributes, latestLinkSample)
 import qualified NetSpider.Unify as Unify
 
 import NetSpider.RPL.FindingID (FindingID)
+import NetSpider.RPL.JSONUtil (optSnake)
 
 -- | 'FoundNode' for a network described by DAOs.
 type FoundNodeDAO = FoundNode FindingID DAONode DAOLink
@@ -56,7 +59,7 @@ data DAONode =
     -- supposed to be 'Nothing', because they don't have a downward
     -- routing table.
   }
-  deriving (Show,Eq,Ord)
+  deriving (Show,Eq,Ord,Generic)
 
 keyDaoRouteNum :: Key VFoundNode (Maybe Word)
 keyDaoRouteNum = "dao_route_num"
@@ -71,6 +74,14 @@ instance GraphML.ToAttributes DAONode where
       Nothing -> []
       Just p -> [(keyText keyDaoRouteNum, GraphML.AttrInt $ fromIntegral $ p)]
 
+-- | @since 0.4.1.0
+instance FromJSON DAONode where
+  parseJSON = Aeson.genericParseJSON optSnake
+
+-- | @since 0.4.1.0
+instance ToJSON DAONode where
+  toJSON = Aeson.genericToJSON optSnake
+  toEncoding = Aeson.genericToEncoding optSnake
 
 -- | Link attributes about DAO.
 --
@@ -87,7 +98,7 @@ data DAOLink =
     -- Lifetime is advertised in Transit Information Option in DAO,
     -- and managed in the routing table.
   }
-  deriving (Show,Eq,Ord)
+  deriving (Show,Eq,Ord,Generic)
 
 keyPathLifetimeSec :: Key EFinds Word
 keyPathLifetimeSec = "path_lifetime_sec"
@@ -101,6 +112,15 @@ instance LinkAttributes DAOLink where
 
 instance GraphML.ToAttributes DAOLink where
   toAttributes dl = [ (keyText keyPathLifetimeSec, GraphML.AttrInt $ fromIntegral $ pathLifetimeSec dl) ]
+
+-- | @since 0.4.1.0
+instance FromJSON DAOLink where
+  parseJSON = Aeson.genericParseJSON optSnake
+
+-- | @since 0.4.1.0
+instance ToJSON DAOLink where
+  toJSON = Aeson.genericToJSON optSnake
+  toEncoding = Aeson.genericToEncoding optSnake
 
 -- | Default 'Query.Query' for DAO nodes.
 daoDefQuery :: [FindingID] -- ^ 'Query.startsFrom' field.

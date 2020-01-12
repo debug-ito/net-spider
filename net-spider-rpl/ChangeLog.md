@@ -2,8 +2,14 @@
 
 ## 0.4.1.0  --
 
-* Add `FromJSON` and `ToJSON` instances to `DIONode`, `DIOLink`,
-  `NeighborType` and `MergedDIOLink`.
+* Add `FromJSON` and `ToJSON` instances to the following
+  types.
+    * `DIONode`
+    * `DIOLink`
+    * `NeighborType`
+    * `MergedDIOLink`
+    * `DAONode`
+    * `DAOLink`
 
 ## 0.4.0.1  -- 2019-12-29
 

@@ -27,7 +27,6 @@ import Control.Applicative ((<$>), (<*>), empty)
 import Data.Aeson (ToJSON(..), FromJSON(..))
 import qualified Data.Aeson as Aeson
 import Data.Bifunctor (bimap)
-import Data.Char (isUpper, toLower)
 import Data.Greskell
   ( Property, GValue,
     Binder, Walk, SideEffect, Element, Parser,
@@ -46,9 +45,9 @@ import qualified NetSpider.Query as Query
 import NetSpider.Snapshot (SnapshotGraph)
 import NetSpider.Unify (UnifyStdConfig, lsLinkAttributes, latestLinkSample)
 import qualified NetSpider.Unify as Unify
-import qualified Text.Regex.Applicative as RE
 
 import NetSpider.RPL.FindingID (FindingID)
+import NetSpider.RPL.JSONUtil (optSnake)
 
 -- | 'FoundNode' for a network described by DIOs.
 type FoundNodeDIO = FoundNode FindingID DIONode DIOLink
@@ -97,19 +96,14 @@ instance GraphML.ToAttributes DIONode where
                       (keyText keyDioInterval, GraphML.AttrInt $ fromIntegral $ dioInterval ln)
                     ]
 
-aesonOpt :: Aeson.Options
-aesonOpt = Aeson.defaultOptions { Aeson.fieldLabelModifier = modifier }
-  where
-    modifier = RE.replace $ RE.msym (\c -> if isUpper c then Just ['_', toLower c] else Nothing)
-
 -- | @since 0.4.1.0
 instance FromJSON DIONode where
-  parseJSON = Aeson.genericParseJSON aesonOpt
+  parseJSON = Aeson.genericParseJSON optSnake
 
 -- | @since 0.4.1.0
 instance ToJSON DIONode where
-  toJSON = Aeson.genericToJSON aesonOpt
-  toEncoding = Aeson.genericToEncoding aesonOpt
+  toJSON = Aeson.genericToJSON optSnake
+  toEncoding = Aeson.genericToEncoding optSnake
 
 -- | Classification of RPL neighbors.
 data NeighborType = PreferredParent
@@ -224,12 +218,12 @@ instance GraphML.ToAttributes DIOLink where
 
 -- | @since 0.4.1.0
 instance FromJSON DIOLink where
-  parseJSON = Aeson.genericParseJSON aesonOpt
+  parseJSON = Aeson.genericParseJSON optSnake
 
 -- | @since 0.4.1.0
 instance ToJSON DIOLink where
-  toJSON = Aeson.genericToJSON aesonOpt
-  toEncoding = Aeson.genericToEncoding aesonOpt
+  toJSON = Aeson.genericToJSON optSnake
+  toEncoding = Aeson.genericToEncoding optSnake
 
 -- | Link attributes merging two 'DIOLink's from the two end nodes
 -- of the link.
@@ -295,9 +289,9 @@ instance GraphML.ToAttributes MergedDIOLink where
 
 -- | @since 0.4.1.0
 instance FromJSON MergedDIOLink where
-  parseJSON = Aeson.genericParseJSON aesonOpt
+  parseJSON = Aeson.genericParseJSON optSnake
 
 -- | @since 0.4.1.0
 instance ToJSON MergedDIOLink where
-  toJSON = Aeson.genericToJSON aesonOpt
-  toEncoding = Aeson.genericToEncoding aesonOpt
+  toJSON = Aeson.genericToJSON optSnake
+  toEncoding = Aeson.genericToEncoding optSnake
