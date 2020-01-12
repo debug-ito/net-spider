@@ -12,6 +12,7 @@
     * `DAOLink`
     * `CombinedNode`
     * `CombinedLink`
+    * `FindingType`
 * Add `ToJSON` instance to `IPv6ID`.
 
 ## 0.4.0.1  -- 2019-12-29

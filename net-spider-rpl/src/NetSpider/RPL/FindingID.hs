@@ -21,7 +21,7 @@ module NetSpider.RPL.FindingID
     ipv6Only
   ) where
 
-import Control.Applicative ((<$>), (<*>))
+import Control.Applicative ((<$>), (<*>), empty)
 import Control.Monad.Fail (MonadFail)
 import Data.Bits (shiftL, (.|.))
 import Data.Monoid ((<>))
@@ -60,6 +60,17 @@ typeFromText t =
     "dio" -> Just FindingDIO
     "dao" -> Just FindingDAO
     _ -> Nothing
+
+-- | @since 0.4.1.0
+instance FromJSON FindingType where
+  parseJSON (Aeson.String t) = maybe (fail err_msg) return $ typeFromText t
+    where
+      err_msg = "Invalid string as FindingType: " <> show t
+  parseJSON _ = empty
+
+-- | @since 0.4.1.0
+instance ToJSON FindingType where
+  toJSON = Aeson.String . typeToText
 
 -- | The node ID.
 --
