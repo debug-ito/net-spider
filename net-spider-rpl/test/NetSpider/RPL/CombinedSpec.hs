@@ -26,7 +26,7 @@ spec = do
   describe "CombinedLink" $ do
     specJSONFromTo
       "case DIOLink"
-      (    "{\"type\": \"dio\", \"link\": "
+      (    "{\"link_type\": \"dio\", \"link\": "
         <> "  {\"from_dest\": null, \"from_source\": {\"neighbor_type\": \"preferred_parent\", \"neighbor_rank\": 332, \"metric\": 183}}}"
       )
       ( CombinedDIOLink $
@@ -42,7 +42,7 @@ spec = do
       )
     specJSONFromTo
       "case DAOLink"
-      (    "{\"type\": \"dao\", \"link\": "
+      (    "{\"link_type\": \"dao\", \"link\": "
         <> "  {\"path_lifetime_sec\": 1990}}"
       )
       ( CombinedDAOLink $
