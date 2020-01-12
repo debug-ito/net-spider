@@ -1,4 +1,4 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings, DeriveGeneric #-}
 -- |
 -- Module: NetSpider.RPL.Combined
 -- Description: Snapshot graph combining DIO and DAO graphs
@@ -27,6 +27,7 @@ import Data.Semigroup (Semigroup(..))
 import Data.Maybe (isJust)
 import Data.Monoid (Monoid(..), First(..))
 import GHC.Exts (groupWith)
+import GHC.Generics (Generic)
 import qualified NetSpider.GraphML.Writer as GraphML
 import NetSpider.Snapshot
   ( SnapshotNode, SnapshotLink, SnapshotGraph,
@@ -36,6 +37,7 @@ import NetSpider.Snapshot
 import NetSpider.RPL.FindingID (FindingID(..), FindingType(..), IPv6ID, ipv6Only)
 import NetSpider.RPL.DIO (DIONode, MergedDIOLink, SnapshotGraphDIO)
 import NetSpider.RPL.DAO (DAONode, DAOLink, SnapshotGraphDAO)
+import NetSpider.RPL.JSONUtil (optCombinedNode)
 
 -- | Node attributes combining 'DIONode' and 'DAONode'.
 data CombinedNode =
@@ -43,7 +45,7 @@ data CombinedNode =
   { attrsDIO :: Maybe DIONode,
     attrsDAO :: Maybe DAONode
   }
-  deriving (Show,Eq,Ord)
+  deriving (Show,Eq,Ord,Generic)
 
 -- | Based on instance of 'First'.
 instance Semigroup CombinedNode where
@@ -63,17 +65,17 @@ instance GraphML.ToAttributes CombinedNode where
 
 -- | @since 0.4.1.0
 instance FromJSON CombinedNode where
-  parseJSON = undefined -- TODO
+  parseJSON = Aeson.genericParseJSON optCombinedNode
 
 -- | @since 0.4.1.0
 instance ToJSON CombinedNode where
-  toJSON = undefined -- TODO
-  toEncoding = undefined -- TODO
+  toJSON = Aeson.genericToJSON optCombinedNode
+  toEncoding = Aeson.genericToEncoding optCombinedNode
 
 -- | Link attribute combining 'MergedDIOLink' and 'DAOLink'.
 data CombinedLink = CombinedDIOLink MergedDIOLink
                   | CombinedDAOLink DAOLink
-                  deriving (Show,Eq,Ord)
+                  deriving (Show,Eq,Ord,Generic)
 
 instance GraphML.ToAttributes CombinedLink where
   toAttributes (CombinedDIOLink ll) =
