@@ -19,6 +19,8 @@ module NetSpider.RPL.Combined
     combinedLinkType
   ) where
 
+import Data.Aeson (FromJSON(..), ToJSON(..))
+import qualified Data.Aeson as Aeson
 import Data.Bifunctor (bimap, second)
 import Data.List (sortOn, reverse)
 import Data.Semigroup (Semigroup(..))
@@ -59,6 +61,15 @@ instance GraphML.ToAttributes CombinedNode where
   toAttributes cn = (GraphML.toAttributes $ attrsDIO cn)
                     ++ (GraphML.toAttributes $ attrsDAO cn)
 
+-- | @since 0.4.1.0
+instance FromJSON CombinedNode where
+  parseJSON = undefined -- TODO
+
+-- | @since 0.4.1.0
+instance ToJSON CombinedNode where
+  toJSON = undefined -- TODO
+  toEncoding = undefined -- TODO
+
 -- | Link attribute combining 'MergedDIOLink' and 'DAOLink'.
 data CombinedLink = CombinedDIOLink MergedDIOLink
                   | CombinedDAOLink DAOLink
@@ -69,6 +80,15 @@ instance GraphML.ToAttributes CombinedLink where
     ("link_type", GraphML.AttrString "dio") : GraphML.toAttributes ll
   toAttributes (CombinedDAOLink ll) =
     ("link_type", GraphML.AttrString "dao") : GraphML.toAttributes ll
+
+-- | @since 0.4.1.0
+instance FromJSON CombinedLink where
+  parseJSON = undefined -- TODO
+
+-- | @since 0.4.1.0
+instance ToJSON CombinedLink where
+  toJSON = undefined -- TODO
+  toEncoding = undefined -- TODO
 
 combinedLinkType :: CombinedLink -> FindingType
 combinedLinkType (CombinedDIOLink _) = FindingDIO

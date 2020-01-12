@@ -70,6 +70,7 @@ test-suite spec
                         NetSpider.RPL.IPv6Spec,
                         NetSpider.RPL.DIOSpec,
                         NetSpider.RPL.DAOSpec,
+                        NetSpider.RPL.CombinedSpec,
                         JSONUtil
   build-depends:        base, net-spider-rpl, net-spider, text, monad-logger, ip, aeson,
                         hspec >=2.5.5,
