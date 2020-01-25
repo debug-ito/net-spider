@@ -4,7 +4,7 @@
 -- Description: GraphML attribute types
 -- Maintainer: Toshio Ito <debug.ito@gmail.com>
 --
--- 
+-- @since 0.4.1.0
 module NetSpider.GraphML.Attribute
   ( AttributeKey,
     AttributeValue(..),
