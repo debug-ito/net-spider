@@ -35,7 +35,7 @@ spec = do
           fromSource =
             DIOLink
             { neighborType = PreferredParent,
-              neighborRank = 32,
+              neighborRank = 332,
               metric = Just 183
             }
         }

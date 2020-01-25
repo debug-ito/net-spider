@@ -37,7 +37,7 @@ import NetSpider.Snapshot
 import NetSpider.RPL.FindingID (FindingID(..), FindingType(..), IPv6ID, ipv6Only)
 import NetSpider.RPL.DIO (DIONode, MergedDIOLink, SnapshotGraphDIO)
 import NetSpider.RPL.DAO (DAONode, DAOLink, SnapshotGraphDAO)
-import NetSpider.RPL.JSONUtil (optCombinedNode)
+import NetSpider.RPL.JSONUtil (optCombinedNode, optCombinedLink)
 
 -- | Node attributes combining 'DIONode' and 'DAONode'.
 data CombinedNode =
@@ -85,12 +85,12 @@ instance GraphML.ToAttributes CombinedLink where
 
 -- | @since 0.4.1.0
 instance FromJSON CombinedLink where
-  parseJSON = undefined -- TODO
+  parseJSON = Aeson.genericParseJSON optCombinedLink
 
 -- | @since 0.4.1.0
 instance ToJSON CombinedLink where
-  toJSON = undefined -- TODO
-  toEncoding = undefined -- TODO
+  toJSON = Aeson.genericToJSON optCombinedLink
+  toEncoding = Aeson.genericToEncoding optCombinedLink
 
 combinedLinkType :: CombinedLink -> FindingType
 combinedLinkType (CombinedDIOLink _) = FindingDIO
