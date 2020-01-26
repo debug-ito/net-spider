@@ -1,6 +1,6 @@
 # Revision history for net-spider-rpl
 
-## 0.4.1.0  --
+## 0.4.1.0  -- 2020-01-26
 
 * Add `FromJSON` and `ToJSON` instances to the following
   types.
