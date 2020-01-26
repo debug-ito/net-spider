@@ -1,6 +1,6 @@
 # Revision history for net-spider
 
-## 0.4.1.0  --
+## 0.4.1.0  -- 2020-01-26
 
 * Add `GraphML.Attribute` module. `AttributeValue` and related types
   in `GraphML.Writer` module are moved to `GraphML.Attribute` module.
