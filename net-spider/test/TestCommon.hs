@@ -1,5 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
-module ServerTest.Common
+module TestCommon
        ( withServer,
          withSpider,
          withSpider',

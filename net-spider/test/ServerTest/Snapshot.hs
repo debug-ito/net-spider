@@ -17,7 +17,7 @@ import qualified Network.Greskell.WebSocket.Response as Res
 import System.IO (stderr)
 import Test.Hspec
 
-import ServerTest.Common
+import TestCommon
   ( withServer, withSpider, sortSnapshotElements,
     AText(..), APorts(..), subIdWithAPorts,
     alignAPortsToLinkDirection

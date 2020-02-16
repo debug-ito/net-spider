@@ -12,7 +12,7 @@ import Data.Text (Text)
 import Data.Time.LocalTime (TimeZone(..))
 import Test.Hspec
 
-import ServerTest.Common
+import TestCommon
   ( withServer, withSpider', withSpider,
     AText(..), AInt(..)
   )

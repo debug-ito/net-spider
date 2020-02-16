@@ -111,7 +111,7 @@ test-suite server-test-suite
   hs-source-dirs:       test
   ghc-options:          -Wall -fno-warn-unused-imports "-with-rtsopts=-M512m"
   main-is:              ServerTest.hs
-  other-modules:        ServerTest.Common,
+  other-modules:        TestCommon,
                         ServerTest.Snapshot,
                         ServerTest.Attributes
   if flag(server-test)
