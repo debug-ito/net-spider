@@ -22,6 +22,8 @@ module NetSpider.Weaver
 import Data.Hashable (Hashable)
 import Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HM
+import Data.List (sort, reverse)
+import Data.Maybe (listToMaybe)
 
 import NetSpider.Found (FoundNode(..))
 import NetSpider.Query.Internal (FoundNodePolicy(..))
@@ -53,22 +55,33 @@ newWeaver p = Weaver HM.empty p
 
 -- | Add a 'FoundNode' to the 'Weaver'. See also 'newWeaver'.
 addFoundNode :: (Eq n, Hashable n) => FoundNode n na la -> Weaver n na la -> Weaver n na la
-addFoundNode = undefined -- TODO
+addFoundNode fn w = w { visitedNodes = HM.insertWith updater nid [fn] $ visitedNodes w }
+  where
+    nid = subjectNode fn
+    updater =
+      case foundNodePolicy w of
+        PolicyOverwrite -> \new old -> if latestTimeOfNodes new >= latestTimeOfNodes old
+                                       then new
+                                       else old
+        PolicyAppend -> \new old -> new ++ old
+    latestTimeOfNodes ns = listToMaybe $ reverse $ sort $ map foundAt ns
 
 -- | Mark the node ID as visited in the 'Weaver' without any
 -- 'FoundNode'. If there is already some 'FoundNode' for the node ID,
 -- this function does nothing.
 markAsVisited :: (Eq n, Hashable n) => n -> Weaver n na la -> Weaver n na la
-markAsVisited = undefined -- TODO
+markAsVisited nid w = w { visitedNodes = HM.insertWith updater nid [] $ visitedNodes w }
+  where
+    updater _ old = old
 
 -- | Returns 'True' if the node ID is already visited in the 'Weaver'.
-isVisited :: (Eq n, Hashable n) => Weaver n na la -> n -> Bool
-isVisited w n = HM.member n (visitedNodes w)
+isVisited :: (Eq n, Hashable n) => n -> Weaver n na la -> Bool
+isVisited n w = HM.member n (visitedNodes w)
 
 -- | Get the visited 'FoundNode's for the given node ID kept in
 -- 'Weaver'. It returns 'Nothing' if the node ID is not visited.
-getVisitedNodes :: (Eq n, Hashable n) => Weaver n na la -> n -> Maybe [FoundNode n na la]
-getVisitedNodes w n = HM.lookup n (visitedNodes w)
+getVisitedNodes :: (Eq n, Hashable n) => n -> Weaver n na la -> Maybe [FoundNode n na la]
+getVisitedNodes n w = HM.lookup n (visitedNodes w)
 
 -- | Make 'SnapshotGraph' from the current 'Weaver'.
 getSnapshot :: LinkSampleUnifier n na fla sla -> Weaver n na fla -> SnapshotGraph n na sla
