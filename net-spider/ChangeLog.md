@@ -1,5 +1,9 @@
 # Revision history for net-spider
 
+## 0.4.2.0  -- ???
+
+* Add Weaver module.
+
 ## 0.4.1.0  -- 2020-01-26
 
 * Add `GraphML.Attribute` module. `AttributeValue` and related types

@@ -1,5 +1,5 @@
 name:                   net-spider
-version:                0.4.1.0
+version:                0.4.2.0
 author:                 Toshio Ito <debug.ito@gmail.com>
 maintainer:             Toshio Ito <debug.ito@gmail.com>
 license:                BSD3
@@ -44,7 +44,8 @@ library
                         NetSpider.Snapshot.Internal,
                         NetSpider.GraphML.Writer,
                         NetSpider.GraphML.Attribute,
-                        NetSpider.Interval
+                        NetSpider.Interval,
+                        NetSpider.Weaver
   other-modules:        NetSpider.Graph.Internal,
                         NetSpider.Spider.Internal.Graph,
                         NetSpider.Spider.Internal.Log,
@@ -91,6 +92,7 @@ test-suite spec
                         NetSpider.TimestampSpec,
                         NetSpider.FoundSpec,
                         NetSpider.SnapshotSpec,
+                        NetSpider.WeaverSpec
                         JSONUtil
   build-depends:        base, net-spider, vector, text, aeson, bytestring, time,
                         hspec >=2.4.4
