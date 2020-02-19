@@ -87,14 +87,17 @@ test-suite spec
   main-is:              Spec.hs
   -- default-extensions:   
   other-extensions:     OverloadedStrings,
-                        DeriveGeneric
+                        DeriveGeneric,
+                        GADTs
   other-modules:        NetSpider.GraphML.WriterSpec,
                         NetSpider.TimestampSpec,
                         NetSpider.FoundSpec,
                         NetSpider.SnapshotSpec,
                         NetSpider.WeaverSpec
-                        JSONUtil
+                        JSONUtil,
+                        SnapshotTestCase
   build-depends:        base, net-spider, vector, text, aeson, bytestring, time,
+                        greskell, hashable,
                         hspec >=2.4.4
 
 flag server-test
