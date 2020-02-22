@@ -1,7 +1,7 @@
 {-# LANGUAGE GADTs, OverloadedStrings #-}
 module SnapshotTestCase
   ( SnapshotTestCase(..),
-    spec1
+    snapshotTestCases
   ) where
 
 import Data.Aeson (ToJSON)
@@ -49,14 +49,27 @@ oneNeighborFoundNodes = [nbs]
                       nodeAttributes = ()
                     }
 
-spec1 :: SnapshotTestCase
-spec1 =
-  SnapshotTestCase
-  { caseName = "one neighbor",
-    caseInput = oneNeighborFoundNodes,
-    caseQuery = defQuery ["n1"],
-    caseAssert = one_neighbor_assert
-  }
+snapshotTestCases :: [SnapshotTestCase]
+snapshotTestCases =
+  [ SnapshotTestCase
+    { caseName = "one neighbor",
+      caseInput = oneNeighborFoundNodes,
+      caseQuery = defQuery ["n1"],
+      caseAssert = one_neighbor_assert
+    },
+    SnapshotTestCase
+    { caseName = "no neighbor",
+      caseInput =
+        ([ FoundNode { subjectNode = "n1",
+                      foundAt = fromS "2018-12-01T20:00",
+                      neighborLinks = mempty,
+                      nodeAttributes = ()
+                     }
+         ] :: [FoundNode Text () ()]),
+      caseQuery = defQuery ["n1"],
+      caseAssert = no_neighbor_assert
+    }
+  ]
   where
     one_neighbor_assert (got_ns, got_ls) = do
       let (got_n1, got_n2, got_link) = case (sort got_ns, sort got_ls) of
@@ -74,3 +87,12 @@ spec1 =
       isDirected got_link `shouldBe` True
       linkTimestamp got_link `shouldBe` fromS "2018-12-01T10:00"
       S.linkAttributes got_link `shouldBe` ()
+    no_neighbor_assert (got_ns, got_ls) = do
+      let got_n1 = case (sort got_ns, sort got_ls) of
+            ([a], []) -> a
+            _ -> error ("Unexpected result: got = " ++ show (got_ns, got_ls))
+      nodeId got_n1 `shouldBe` "n1"
+      isOnBoundary got_n1 `shouldBe` False
+      nodeTimestamp got_n1 `shouldBe` Just (fromS "2018-12-01T20:00")
+      S.nodeAttributes got_n1 `shouldBe` Just ()
+

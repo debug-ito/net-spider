@@ -22,7 +22,7 @@ import TestCommon
     AText(..), APorts(..), subIdWithAPorts,
     alignAPortsToLinkDirection
   )
-import SnapshotTestCase (SnapshotTestCase(..), spec1)
+import SnapshotTestCase (SnapshotTestCase(..), snapshotTestCases)
 
 import NetSpider.Found
   ( FoundLink(..), LinkState(..), FoundNode(..)
@@ -97,23 +97,7 @@ makeTestCase SnapshotTestCase { caseName = name, caseInput = input, caseQuery = 
 
 spec_getSnapshot1 :: SpecWith (Host,Port)
 spec_getSnapshot1 = do
-  makeTestCase spec1
-  specify "no neighbor" $ withSpider $ \spider -> do
-    let nbs :: FoundNode Text () ()
-        nbs = FoundNode { subjectNode = "n1",
-                          foundAt = fromS "2018-12-01T20:00",
-                          neighborLinks = mempty,
-                          nodeAttributes = ()
-                        }
-    addFoundNode spider nbs
-    (got_ns, got_ls) <- getSnapshotSimple spider "n1"
-    let got_n1 = case (sort got_ns, sort got_ls) of
-          ([a], []) -> a
-          _ -> error ("Unexpected result: got = " ++ show (got_ns, got_ls))
-    nodeId got_n1 `shouldBe` "n1"
-    isOnBoundary got_n1 `shouldBe` False
-    nodeTimestamp got_n1 `shouldBe` Just (fromS "2018-12-01T20:00")
-    S.nodeAttributes got_n1 `shouldBe` Just ()
+  mapM_ makeTestCase snapshotTestCases
   specify "missing starting node" $ withSpider $ \spider -> do
     makeOneNeighborExample spider
     (got_ns, got_ls) <- getSnapshotSimple spider "no node"
