@@ -22,6 +22,7 @@ import TestCommon
     AText(..), APorts(..), subIdWithAPorts,
     alignAPortsToLinkDirection
   )
+import SnapshotTestCase (SnapshotTestCase(..), spec1)
 
 import NetSpider.Found
   ( FoundLink(..), LinkState(..), FoundNode(..)
@@ -87,27 +88,16 @@ spec_getSnapshot = withServer $ describe "getSnapshotSimple, getSnapshot" $ do
   spec_getSnapshot_timeInterval
   spec_getSnapshot_foundNodePolicy
 
+makeTestCase :: SnapshotTestCase -> SpecWith (Host, Port)
+makeTestCase SnapshotTestCase { caseName = name, caseInput = input, caseQuery = query, caseAssert = assert } = do
+  specify name $ withSpider $ \spider -> do
+    mapM_ (addFoundNode spider) input
+    got_graph <- getSnapshot spider query
+    assert got_graph
 
 spec_getSnapshot1 :: SpecWith (Host,Port)
 spec_getSnapshot1 = do
-  specify "one neighbor" $ withSpider $ \spider -> do
-    makeOneNeighborExample spider
-    (got_ns, got_ls) <- debugShowE $ getSnapshotSimple spider "n1"
-    let (got_n1, got_n2, got_link) = case (sort got_ns, sort got_ls) of
-          ([a, b], [c]) -> (a, b, c)
-          _ -> error ("Unexpected result: got = " ++ show (got_ns, got_ls))
-    nodeId got_n1 `shouldBe` "n1"
-    isOnBoundary got_n1 `shouldBe` False
-    nodeTimestamp got_n1 `shouldBe` Just (fromS "2018-12-01T10:00")
-    S.nodeAttributes got_n1 `shouldBe` Just ()
-    nodeId got_n2 `shouldBe` "n2"
-    isOnBoundary got_n2 `shouldBe` False
-    nodeTimestamp got_n2 `shouldBe` Nothing -- n1 is not observed.
-    S.nodeAttributes got_n2 `shouldBe` Nothing -- n1 is not observed.
-    linkNodeTuple got_link `shouldBe` ("n1", "n2")
-    isDirected got_link `shouldBe` True
-    linkTimestamp got_link `shouldBe` fromS "2018-12-01T10:00"
-    S.linkAttributes got_link `shouldBe` ()
+  makeTestCase spec1
   specify "no neighbor" $ withSpider $ \spider -> do
     let nbs :: FoundNode Text () ()
         nbs = FoundNode { subjectNode = "n1",
