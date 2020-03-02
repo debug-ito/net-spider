@@ -3,7 +3,7 @@
 this_dir=`dirname "$0"`
 cd "$this_dir"
 
-image_name="debugito/net-spider-rpl-cli:0.1.2.0"
+image_name="debugito/net-spider-rpl-cli:0.1.2.2"
 
 if ! ( which docker-compose > /dev/null ); then
     echo "docker-compose is not installed."
