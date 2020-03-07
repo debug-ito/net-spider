@@ -8,7 +8,9 @@ import Data.Aeson (ToJSON)
 import Data.Greskell (FromGraphSON)
 import Data.Hashable (Hashable)
 import Data.List (sort)
-import Data.Text (Text)
+import Data.Text (Text, pack)
+import qualified Data.Vector as V
+import Data.Vector ((!))
 import Test.Hspec
 
 import NetSpider.Found (FoundNode(..), FoundLink(..), LinkState(..))
@@ -23,7 +25,7 @@ import qualified NetSpider.Snapshot as S (nodeAttributes, linkAttributes)
 
 import NetSpider.Timestamp (fromS)
 
-import TestCommon (AText(..))
+import TestCommon (AText(..), sortSnapshotElements)
 
 
 
@@ -149,6 +151,59 @@ snapshotTestCases =
         in fns,
       caseQuery = defQuery ["n1"],
       caseAssert = multi_findings_single_node_assert
+    },
+    SnapshotTestCase
+    { caseName = "multi-hop neighbors",
+      caseInput = 
+        let fns :: [FoundNode Text () AText]
+            fns = [ FoundNode
+                    { subjectNode = intToNodeId 1,
+                      foundAt = fromS "2018-12-01T10:00",
+                      neighborLinks = return $ FoundLink
+                                      { targetNode = intToNodeId 2,
+                                        linkState = LinkToTarget,
+                                        linkAttributes = AText "first"
+                                      },
+                      nodeAttributes = ()
+                    },
+                    middleNode 2 $ fromS "2018-12-01T05:00",
+                    middleNode 3 $ fromS "2018-12-01T15:00",
+                    middleNode 4 $ fromS "2018-12-01T20:00",
+                    FoundNode
+                    { subjectNode = intToNodeId 5,
+                      foundAt = fromS "2018-12-01T15:00",
+                      neighborLinks = return $ FoundLink
+                                      { targetNode = intToNodeId 4,
+                                        linkState = LinkToSubject,
+                                        linkAttributes = AText "last"
+                                      },
+                      nodeAttributes = ()
+                    }
+                  ]
+            intToNodeId :: Int -> Text
+            intToNodeId i = pack ("n" ++ show i)
+            middleNode node_i time =
+              FoundNode
+              { subjectNode = sub_nid,
+                foundAt = time,
+                neighborLinks = [ FoundLink
+                                  { targetNode = intToNodeId (node_i - 1),
+                                    linkState = LinkToSubject,
+                                    linkAttributes = AText (sub_nid <> " to prev")
+                                  },
+                                  FoundLink
+                                  { targetNode = intToNodeId (node_i + 1),
+                                    linkState = LinkToTarget,
+                                    linkAttributes = AText (sub_nid <> " to next")
+                                  }
+                                ],
+                nodeAttributes = ()
+              }
+              where
+                sub_nid = intToNodeId node_i
+        in fns,
+      caseQuery = defQuery ["n1"],
+      caseAssert = multi_hop_neighbors_assert
     }
   ]
   where
@@ -214,6 +269,47 @@ snapshotTestCases =
       linkNodeTuple got_l31 `shouldBe` ("n3", "n1")
       isDirected got_l31 `shouldBe` True
       linkTimestamp got_l31 `shouldBe` fromS "2018-12-01T20:00"
+    multi_hop_neighbors_assert got_graph = do
+      let (got_ns, got_ls) = sortSnapshotElements got_graph
+      nodeId (got_ns ! 0) `shouldBe` "n1"
+      isOnBoundary (got_ns ! 0) `shouldBe` False
+      nodeTimestamp (got_ns ! 0) `shouldBe` Just (fromS "2018-12-01T10:00")
+      S.nodeAttributes (got_ns ! 0) `shouldBe` Just ()
+      nodeId (got_ns ! 1) `shouldBe` "n2"
+      isOnBoundary (got_ns ! 1) `shouldBe` False
+      nodeTimestamp (got_ns ! 1) `shouldBe` Just (fromS "2018-12-01T05:00")
+      S.nodeAttributes (got_ns ! 1) `shouldBe` Just ()
+      nodeId (got_ns ! 2) `shouldBe` "n3"
+      isOnBoundary (got_ns ! 2) `shouldBe` False
+      nodeTimestamp (got_ns ! 2) `shouldBe` Just (fromS "2018-12-01T15:00")
+      S.nodeAttributes (got_ns ! 2) `shouldBe` Just ()
+      nodeId (got_ns ! 3) `shouldBe` "n4"
+      isOnBoundary (got_ns ! 3) `shouldBe` False
+      nodeTimestamp (got_ns ! 3) `shouldBe` Just (fromS "2018-12-01T20:00")
+      S.nodeAttributes (got_ns ! 3) `shouldBe` Just ()
+      nodeId (got_ns ! 4) `shouldBe` "n5"
+      isOnBoundary (got_ns ! 4) `shouldBe` False
+      nodeTimestamp (got_ns ! 4) `shouldBe` Just (fromS "2018-12-01T15:00")
+      S.nodeAttributes (got_ns ! 4) `shouldBe` Just ()
+      V.length got_ns `shouldBe` 5
+      linkNodeTuple (got_ls ! 0) `shouldBe` ("n1", "n2")
+      isDirected (got_ls ! 0) `shouldBe` True
+      linkTimestamp (got_ls ! 0) `shouldBe` fromS "2018-12-01T10:00"
+      S.linkAttributes (got_ls ! 0) `shouldBe` AText "first"
+      linkNodeTuple (got_ls ! 1) `shouldBe` ("n2", "n3")
+      isDirected (got_ls ! 1) `shouldBe` True
+      linkTimestamp (got_ls ! 1) `shouldBe` fromS "2018-12-01T15:00"
+      S.linkAttributes (got_ls ! 1) `shouldBe` AText "n3 to prev"
+      linkNodeTuple (got_ls ! 2) `shouldBe` ("n3", "n4")
+      isDirected (got_ls ! 2) `shouldBe` True
+      linkTimestamp (got_ls ! 2) `shouldBe` fromS "2018-12-01T20:00"
+      S.linkAttributes (got_ls ! 2) `shouldBe` AText "n4 to prev"
+      linkNodeTuple (got_ls ! 3) `shouldBe` ("n4", "n5")
+      isDirected (got_ls ! 3) `shouldBe` True
+      linkTimestamp (got_ls ! 3) `shouldBe` fromS "2018-12-01T20:00"
+      S.linkAttributes (got_ls ! 3) `shouldBe` AText "n4 to next"
+      V.length got_ls `shouldBe` 4
+
       
 
       
