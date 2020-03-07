@@ -95,7 +95,8 @@ test-suite spec
                         NetSpider.SnapshotSpec,
                         NetSpider.WeaverSpec
                         JSONUtil,
-                        SnapshotTestCase
+                        SnapshotTestCase,
+                        TestCommon
   build-depends:        base, net-spider, vector, text, aeson, bytestring, time,
                         greskell, hashable,
                         hspec >=2.4.4
@@ -117,7 +118,8 @@ test-suite server-test-suite
   other-modules:        TestCommon,
                         SnapshotTestCase,
                         ServerTest.Snapshot,
-                        ServerTest.Attributes
+                        ServerTest.Attributes,
+                        ServerTest.ServerCommon
   if flag(server-test)
     build-depends:        base, hspec, net-spider, vector, text, greskell-websocket, greskell,
                           aeson, unordered-containers, text, hashable, time, safe-exceptions,

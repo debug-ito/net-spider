@@ -18,11 +18,12 @@ import System.IO (stderr)
 import Test.Hspec
 
 import TestCommon
-  ( withServer, withSpider, sortSnapshotElements,
+  ( sortSnapshotElements,
     AText(..), APorts(..), subIdWithAPorts,
     alignAPortsToLinkDirection
   )
 import SnapshotTestCase (SnapshotTestCase(..), snapshotTestCases)
+import ServerTest.ServerCommon (withServer, withSpider)
 
 import NetSpider.Found
   ( FoundLink(..), LinkState(..), FoundNode(..)
@@ -98,11 +99,6 @@ makeTestCase SnapshotTestCase { caseName = name, caseInput = input, caseQuery = 
 spec_getSnapshot1 :: SpecWith (Host,Port)
 spec_getSnapshot1 = do
   mapM_ makeTestCase snapshotTestCases
-  specify "missing starting node" $ withSpider $ \spider -> do
-    makeOneNeighborExample spider
-    (got_ns, got_ls) <- getSnapshotSimple spider "no node"
-    got_ns `shouldBe` mempty
-    got_ls `shouldBe` mempty
   specify "mutual neighbors" $ withSpider $ \spider -> do
     let link_12 :: FoundLink Text ()
         link_12 = FoundLink { targetNode = "n2",
