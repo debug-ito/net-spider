@@ -56,32 +56,6 @@ spec :: Spec
 spec = do
   spec_getSnapshot
 
-makeOneNeighborExample :: Spider Text () () -> IO ()
-makeOneNeighborExample spider = do
-  let link = FoundLink { targetNode = "n2",
-                         linkState = LinkToTarget,
-                         linkAttributes = ()
-                       }
-      nbs = FoundNode { subjectNode = "n1",
-                        foundAt = fromS "2018-12-01T10:00",
-                        neighborLinks = return link,
-                        nodeAttributes = ()
-                      }
-  debugShowE $ addFoundNode spider nbs
-
-queryWithAPorts :: Text -> Query Text () APorts APorts
-queryWithAPorts nid = (defQuery [nid]) { unifyLinkSamples = unifyStd unify_conf }
-  where
-    unify_conf = defUnifyStdConfig
-                 { makeLinkSubId = subIdWithAPorts,
-                   mergeSamples = \l r -> fmap alignAPortsToLinkDirection $ latestLinkSample (l ++ r)
-                 }
-
-sortLinksWithAttr :: (Ord n, Ord la) => Vector (SnapshotLink n la) -> Vector (SnapshotLink n la)
-sortLinksWithAttr = V.fromList . sortOn getKey . V.toList
-  where
-    getKey link = (linkNodeTuple link, S.linkAttributes link)
-
 spec_getSnapshot :: Spec
 spec_getSnapshot = withServer $ describe "getSnapshotSimple, getSnapshot" $ do
   mapM_ makeTestCase snapshotTestCases
@@ -95,25 +69,25 @@ makeTestCase SnapshotTestCase { caseName = name, caseInput = input, caseQuery = 
     got_graph <- getSnapshot spider query
     assert got_graph
 
-debugShowE :: IO a -> IO a
-debugShowE act = withException act showSubmitException
-
-showSubmitException :: Gr.SubmitException -> IO ()
-showSubmitException (Gr.ResponseError res) = showResponse res
-showSubmitException (Gr.ParseError res _) = showResponse res
-
-showResponse :: Res.ResponseMessage a -> IO ()
-showResponse res = showResponseStatus $ Res.status res
-
-showResponseStatus :: Res.ResponseStatus -> IO ()
-showResponseStatus status = mapM_ showKeyValue $ ("message", Res.message status) : textAttributes
-  where
-    textAttributes = justValue =<< (HM.toList $ fmap vToText $ Res.attributes status)
-    vToText (String s) = Just s
-    vToText _ = Nothing
-    justValue (k, Just v) = [(k, v)]
-    justValue (_, Nothing) = []
-    showKeyValue (key, val) = TIO.hPutStrLn stderr (key <> ": " <> val)
+---- debugShowE :: IO a -> IO a
+---- debugShowE act = withException act showSubmitException
+---- 
+---- showSubmitException :: Gr.SubmitException -> IO ()
+---- showSubmitException (Gr.ResponseError res) = showResponse res
+---- showSubmitException (Gr.ParseError res _) = showResponse res
+---- 
+---- showResponse :: Res.ResponseMessage a -> IO ()
+---- showResponse res = showResponseStatus $ Res.status res
+---- 
+---- showResponseStatus :: Res.ResponseStatus -> IO ()
+---- showResponseStatus status = mapM_ showKeyValue $ ("message", Res.message status) : textAttributes
+----   where
+----     textAttributes = justValue =<< (HM.toList $ fmap vToText $ Res.attributes status)
+----     vToText (String s) = Just s
+----     vToText _ = Nothing
+----     justValue (k, Just v) = [(k, v)]
+----     justValue (_, Nothing) = []
+----     showKeyValue (key, val) = TIO.hPutStrLn stderr (key <> ": " <> val)
 
 sort2 :: (Ord a, Ord b) => ([a], [b]) -> ([a], [b])
 sort2 (a, b) = (sort a, sort b)
