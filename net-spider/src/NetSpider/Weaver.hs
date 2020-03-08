@@ -14,9 +14,11 @@ module NetSpider.Weaver
     addFoundNode,
     markAsVisited,
     -- * Query
+    getSnapshot,
+    getSnapshot',
     isVisited,
     getVisitedNodes,
-    getSnapshot
+    getBoundaryNodes
   ) where
 
 import Data.Hashable (Hashable)
@@ -26,9 +28,11 @@ import Data.List (sort, reverse)
 import Data.Maybe (listToMaybe)
 
 import NetSpider.Found (FoundNode(..))
+import NetSpider.Log (LogLine)
 import NetSpider.Query.Internal (FoundNodePolicy(..))
 import NetSpider.Query (policyOverwrite, policyAppend)
-import NetSpider.Snapshot.Internal (SnapshotGraph)
+import NetSpider.Snapshot.Internal (SnapshotGraph, SnapshotNode(..))
+import NetSpider.Timestamp (Timestamp)
 import NetSpider.Unify (LinkSampleUnifier)
 
 -- | 'Weaver' is an on-memory builder for snapshot graphs. It builds a
@@ -84,5 +88,41 @@ getVisitedNodes :: (Eq n, Hashable n) => n -> Weaver n na la -> Maybe [FoundNode
 getVisitedNodes n w = HM.lookup n (visitedNodes w)
 
 -- | Make 'SnapshotGraph' from the current 'Weaver'.
-getSnapshot :: LinkSampleUnifier n na fla sla -> Weaver n na fla -> SnapshotGraph n na sla
-getSnapshot = undefined -- TODO
+getSnapshot :: (Eq n, Hashable n) => LinkSampleUnifier n na fla sla -> Weaver n na fla -> SnapshotGraph n na sla
+getSnapshot u w = fst $ getSnapshot' u w
+
+-- | Get boundary nodes from the 'Weaver'. A boundary node is a node
+-- that has been observed as a target of some links but not visited
+-- yet.
+getBoundaryNodes :: Weaver n na fla -> [n]
+getBoundaryNodes = undefined -- TODO
+
+latestFoundNodeFor :: (Eq n, Hashable n) => n -> Weaver n na fla -> Maybe (FoundNode n na fla)
+latestFoundNodeFor = undefined -- TODO
+
+timestampFor :: (Eq n, Hashable n) => n -> Weaver n na fla -> Maybe Timestamp
+timestampFor n w = fmap foundAt $ latestFoundNodeFor n w
+
+nodeAttributesFor :: (Eq n, Hashable n) => n -> Weaver n na fla -> Maybe na
+nodeAttributesFor n w = fmap nodeAttributes $ latestFoundNodeFor n w
+
+makeSnapshotNode :: (Eq n, Hashable n) => Weaver n na fla -> n -> SnapshotNode n na
+makeSnapshotNode weaver nid =
+  SnapshotNode { _nodeId = nid,
+                 _isOnBoundary = not $ isVisited nid weaver,
+                 _nodeTimestamp = timestampFor nid weaver,
+                 _nodeAttributes = nodeAttributesFor nid weaver
+               }
+
+-- | Same as 'getSnapshot', but it also returns logs.
+getSnapshot' :: (Eq n, Hashable n)
+             => LinkSampleUnifier n na fla sla
+             -> Weaver n na fla
+             -> (SnapshotGraph n na sla, [LogLine])
+getSnapshot' unifier weaver = ((nodes, links), logs)
+  where
+    nodes = visited_nodes ++ boundary_nodes
+    visited_nodes = map (makeSnapshotNode weaver) $ HM.keys $ visitedNodes weaver
+    boundary_nodes = map (makeSnapshotNode weaver) $ getBoundaryNodes weaver
+    links = undefined -- TODO
+    logs = undefined -- TODO
