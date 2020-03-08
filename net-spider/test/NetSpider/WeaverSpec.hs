@@ -1,22 +1,34 @@
 module NetSpider.WeaverSpec (main,spec) where
 
+import Data.Foldable (foldl')
 import Data.Maybe (fromJust)
 import Test.Hspec
 
 import NetSpider.Found (FoundNode(..))
-import NetSpider.Query (policyOverwrite, policyAppend)
+import NetSpider.Query
+  ( policyOverwrite, policyAppend,
+    foundNodePolicy, unifyLinkSamples
+  )
 import NetSpider.Timestamp (fromEpochMillisecond)
 import NetSpider.Weaver
   ( Weaver, newWeaver,
     markAsVisited, addFoundNode,
-    isVisited, getVisitedNodes
+    isVisited, getVisitedNodes, getSnapshot
   )
+
+import SnapshotTestCase (SnapshotTestCase(..), snapshotTestCases)
 
 main :: IO ()
 main = hspec spec
 
 spec :: Spec
 spec = describe "Weaver" $ do
+  spec_visitedNodes
+  describe "SnapshotTestCase" $ do
+    mapM_ makeTestCase snapshotTestCases
+  
+spec_visitedNodes :: Spec
+spec_visitedNodes = describe "visited nodes" $ do
   specify "mark and add" $ do
     let fn = FoundNode { subjectNode = 5,
                          foundAt = fromEpochMillisecond 100,
@@ -78,3 +90,12 @@ spec = describe "Weaver" $ do
         `shouldMatchList` [fn1, fn2]
       (fromJust $ getVisitedNodes 5 $ addFoundNode fn2 $ addFoundNode fn1 w)
         `shouldMatchList` [fn1, fn2]
+
+makeTestCase :: SnapshotTestCase -> Spec
+makeTestCase SnapshotTestCase { caseName = name, caseInput = input, caseQuery = query, caseAssert = assert } = do
+  specify name $ do
+    let init_w = newWeaver $ foundNodePolicy query
+        got_w = foldl' (\w fn -> addFoundNode fn w) init_w input
+        got_graph = getSnapshot (unifyLinkSamples query) got_w
+    assert got_graph
+  
