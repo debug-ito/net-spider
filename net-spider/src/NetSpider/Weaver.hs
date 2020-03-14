@@ -24,11 +24,11 @@ module NetSpider.Weaver
 import Data.Hashable (Hashable)
 import Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HM
-import Data.List (sort, reverse)
+import Data.List (sort, reverse, sortOn)
 import Data.Maybe (listToMaybe, mapMaybe)
 import GHC.Exts (groupWith)
 
-import NetSpider.Found (FoundNode(..), LinkState(..))
+import NetSpider.Found (FoundNode(..), LinkState(..), FoundLink(targetNode))
 import NetSpider.Log
   ( runWriterLoggingM, WriterLoggingM, logDebugW, LogLine, spack
   )
@@ -106,11 +106,15 @@ getSnapshot u w = fst $ getSnapshot' u w
 -- | Get boundary nodes from the 'Weaver'. A boundary node is a node
 -- that has been observed as a target of some links but not visited
 -- yet.
-getBoundaryNodes :: Weaver n na fla -> [n]
-getBoundaryNodes = undefined -- TODO
+getBoundaryNodes :: (Eq n, Hashable n) => Weaver n na fla -> [n]
+getBoundaryNodes weaver = filter (\nid -> not $ isVisited nid weaver) $ all_target_nodes
+  where
+    all_target_nodes = (map targetNode . neighborLinks) =<< (concat $ HM.elems $ visitedNodes weaver)
 
 latestFoundNodeFor :: (Eq n, Hashable n) => n -> Weaver n na fla -> Maybe (FoundNode n na fla)
-latestFoundNodeFor = undefined -- TODO
+latestFoundNodeFor nid weaver = do
+  found_nodes <- HM.lookup nid $ visitedNodes weaver
+  listToMaybe $ reverse $ sortOn foundAt $ found_nodes
 
 timestampFor :: (Eq n, Hashable n) => n -> Weaver n na fla -> Maybe Timestamp
 timestampFor n w = fmap foundAt $ latestFoundNodeFor n w
