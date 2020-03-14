@@ -18,9 +18,12 @@ module NetSpider.Weaver
     getSnapshot',
     isVisited,
     getVisitedNodes,
-    getBoundaryNodes
+    getBoundaryNodes,
+    -- * Misc.
+    visitAllBoundaryNodes
   ) where
 
+import Data.Foldable (foldl')
 import Data.Hashable (Hashable)
 import Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HM
@@ -110,6 +113,11 @@ getBoundaryNodes :: (Eq n, Hashable n) => Weaver n na fla -> [n]
 getBoundaryNodes weaver = filter (\nid -> not $ isVisited nid weaver) $ all_target_nodes
   where
     all_target_nodes = (map targetNode . neighborLinks) =<< (concat $ HM.elems $ visitedNodes weaver)
+
+-- | (Basically for testing): run 'markAsVisited' on all boundary
+-- nodes.
+visitAllBoundaryNodes :: (Eq n, Hashable n) => Weaver n na fla -> Weaver n na fla
+visitAllBoundaryNodes weaver = foldl' (\w n -> markAsVisited n w) weaver $ getBoundaryNodes weaver
 
 latestFoundNodeFor :: (Eq n, Hashable n) => n -> Weaver n na fla -> Maybe (FoundNode n na fla)
 latestFoundNodeFor nid weaver = do
