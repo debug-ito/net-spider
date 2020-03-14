@@ -16,7 +16,10 @@ import Test.Hspec
 
 import NetSpider.Found (FoundNode(..), FoundLink(..), LinkState(..))
 import NetSpider.Graph (NodeAttributes, LinkAttributes)
-import NetSpider.Query (Query, defQuery, unifyLinkSamples)
+import NetSpider.Query
+  ( Query, defQuery, unifyLinkSamples,
+    foundNodePolicy, policyOverwrite, policyAppend
+  )
 import NetSpider.Snapshot
   ( SnapshotLink, SnapshotGraph,
     nodeId, linkNodeTuple, isDirected, linkTimestamp,
@@ -458,12 +461,127 @@ basics =
         S.linkAttributes (got_ls ! 1) `shouldBe` APorts "p13" "p23"
         linkTimestamp (got_ls ! 1) `shouldBe` fromS "2018-12-01T20:00"
         V.length got_ls `shouldBe` 2
-    }
+    },
 
 -- TODO: how linkState relates to the property of SnapshotLink ?
 -- especially Bidirectional links? -> important thing is that if the
 -- link is Bidirectional, (source, destination) of snapshot link is
 -- always (subject, target).
+
+    SnapshotTestCase
+    { caseName = "policyOverwrite and link disappear",
+      caseInput =
+        let fns :: [FoundNode Text () ()]
+            fns = [ FoundNode
+                    { subjectNode = "n1",
+                      foundAt = fromS "2020-03-10T15:00",
+                      nodeAttributes = (),
+                      neighborLinks =
+                        [ FoundLink
+                          { targetNode = "n4",
+                            linkState = LinkBidirectional,
+                            linkAttributes = ()
+                          }
+                        ]
+                    },
+                    FoundNode
+                    { subjectNode = "n1",
+                      foundAt = fromS "2020-03-10T14:00",
+                      nodeAttributes = (),
+                      neighborLinks =
+                        [ FoundLink
+                          { targetNode = "n2",
+                            linkState = LinkToTarget,
+                            linkAttributes = ()
+                          },
+                          FoundLink
+                          { targetNode = "n3",
+                            linkState = LinkBidirectional,
+                            linkAttributes = ()
+                          }
+                        ]
+                    }
+                  ]
+        in fns,
+      caseQuery = (defQuery ["n1"]) { foundNodePolicy = policyOverwrite },
+      caseAssert = \got_graph -> do
+        let (got_ns, got_ls) = sortSnapshotElements got_graph
+        nodeId (got_ns ! 0) `shouldBe` "n1"
+        nodeTimestamp (got_ns ! 0) `shouldBe` (Just $ fromS "2020-03-10T15:00")
+        nodeId (got_ns ! 1) `shouldBe` "n4"
+        nodeTimestamp (got_ns ! 1) `shouldBe` Nothing
+        V.length got_ns `shouldBe` 2
+        linkNodeTuple (got_ls ! 0) `shouldBe` ("n1", "n4")
+        linkTimestamp (got_ls ! 0) `shouldBe` fromS "2020-03-10T15:00"
+        isDirected (got_ls ! 0) `shouldBe` False
+        V.length got_ls `shouldBe` 1
+    },
+
+    SnapshotTestCase
+    { caseName = "policyAppend",
+      caseInput =
+        let fns :: [FoundNode Text () ()]
+            fns = [ FoundNode
+                    { subjectNode = "n1",
+                      foundAt = fromS "2020-02-18T11:00",
+                      nodeAttributes = (),
+                      neighborLinks =
+                        [ FoundLink
+                          { targetNode = "n2",
+                            linkState = LinkToTarget,
+                            linkAttributes = ()
+                          }
+                        ]
+                    },
+                    FoundNode
+                    { subjectNode = "n1",
+                      foundAt = fromS "2020-02-18T10:00",
+                      nodeAttributes = (),
+                      neighborLinks =
+                        [ FoundLink
+                          { targetNode = "n3",
+                            linkState = LinkToSubject,
+                            linkAttributes = ()
+                          }
+                        ]
+                    },
+                    FoundNode
+                    { subjectNode = "n1",
+                      foundAt = fromS "2020-02-18T09:00",
+                      nodeAttributes = (),
+                      neighborLinks =
+                        [ FoundLink
+                          { targetNode = "n4",
+                            linkState = LinkBidirectional,
+                            linkAttributes = ()
+                          }
+                        ]
+                    }
+                  ]
+        in fns,
+      caseQuery = (defQuery ["n1"]) { foundNodePolicy = policyAppend },
+      caseAssert = \got_graph -> do
+        let (got_ns, got_ls) = sortSnapshotElements got_graph
+        nodeId (got_ns ! 0) `shouldBe` "n1"
+        nodeTimestamp (got_ns ! 0) `shouldBe` (Just $ fromS "2020-02-18T11:00")
+        nodeId (got_ns ! 1) `shouldBe` "n2"
+        nodeTimestamp (got_ns ! 1) `shouldBe` Nothing
+        nodeId (got_ns ! 2) `shouldBe` "n3"
+        nodeTimestamp (got_ns ! 2) `shouldBe` Nothing
+        nodeId (got_ns ! 3) `shouldBe` "n4"
+        nodeTimestamp (got_ns ! 3) `shouldBe` Nothing
+        V.length got_ns `shouldBe` 4
+        linkNodeTuple (got_ls ! 0) `shouldBe` ("n1", "n2")
+        isDirected (got_ls ! 0) `shouldBe` True
+        linkTimestamp (got_ls ! 0) `shouldBe` fromS "2020-02-18T11:00"
+        linkNodeTuple (got_ls ! 1) `shouldBe` ("n1", "n4")
+        isDirected (got_ls ! 1) `shouldBe` False
+        linkTimestamp (got_ls ! 1) `shouldBe` fromS "2020-02-18T09:00"
+        linkNodeTuple (got_ls ! 2) `shouldBe` ("n3", "n1")
+        isDirected (got_ls ! 2) `shouldBe` True
+        linkTimestamp (got_ls ! 2) `shouldBe` fromS "2020-02-18T10:00"
+        V.length got_ls `shouldBe` 3
+    }
 
   ]
   where
