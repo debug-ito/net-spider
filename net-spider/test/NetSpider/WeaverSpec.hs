@@ -1,6 +1,7 @@
 module NetSpider.WeaverSpec (main,spec) where
 
 import Data.Foldable (foldl')
+import Data.Hashable (Hashable)
 import Data.Maybe (fromJust)
 import Test.Hspec
 
@@ -17,7 +18,8 @@ import NetSpider.Weaver
     visitAllBoundaryNodes
   )
 
-import SnapshotTestCase (SnapshotTestCase(..), snapshotTestCases)
+import SnapshotTestCase (SnapshotTestCase(..))
+import qualified SnapshotTestCase
 
 main :: IO ()
 main = hspec spec
@@ -26,7 +28,7 @@ spec :: Spec
 spec = describe "Weaver" $ do
   spec_visitedNodes
   describe "SnapshotTestCase" $ do
-    mapM_ makeTestCase snapshotTestCases
+    mapM_ makeTestCase SnapshotTestCase.basics
   
 spec_visitedNodes :: Spec
 spec_visitedNodes = describe "visited nodes" $ do
@@ -92,7 +94,7 @@ spec_visitedNodes = describe "visited nodes" $ do
       (fromJust $ getVisitedNodes 5 $ addFoundNode fn2 $ addFoundNode fn1 w)
         `shouldMatchList` [fn1, fn2]
 
-addAllFoundNodes :: [FoundNode n na la] -> Weaver n na la -> Weaver n na la
+addAllFoundNodes :: (Eq n, Hashable n) => [FoundNode n na la] -> Weaver n na la -> Weaver n na la
 addAllFoundNodes fns weaver = foldl' (\w fn -> addFoundNode fn w) weaver fns
 
 makeTestCase :: SnapshotTestCase -> Spec

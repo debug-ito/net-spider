@@ -1,7 +1,8 @@
 {-# LANGUAGE GADTs, OverloadedStrings #-}
 module SnapshotTestCase
   ( SnapshotTestCase(..),
-    snapshotTestCases
+    basics,
+    traverses
   ) where
 
 import Data.Aeson (ToJSON)
@@ -75,8 +76,20 @@ sortLinksWithAttr = V.fromList . sortOn getKey . V.toList
   where
     getKey link = (linkNodeTuple link, S.linkAttributes link)
 
-snapshotTestCases :: [SnapshotTestCase]
-snapshotTestCases =
+-- | \"Basic\" test cases are shared by ServerTest and
+-- WeaverSpec. Weaver has the following limitation, so the test cases
+-- should not include any of those features.
+--
+-- - Weaver doesn't traverse the graph, but makes a snapshot from the
+--   whole FoundNodes input. A test case's query and input should
+--   cover the whole graph (no disconnected components or step
+--   limitation)
+--
+-- - Weaver doesn't support specifying time interval for a snapshot. A
+--   test case's query's timeInterval should be unbounded on upper and
+--   lower.
+basics :: [SnapshotTestCase]
+basics =
   [ SnapshotTestCase
     { caseName = "one neighbor",
       caseInput = oneNeighborFoundNodes,
@@ -87,21 +100,13 @@ snapshotTestCases =
     { caseName = "no neighbor",
       caseInput =
         ([ FoundNode { subjectNode = "n1",
-                      foundAt = fromS "2018-12-01T20:00",
-                      neighborLinks = mempty,
-                      nodeAttributes = ()
+                       foundAt = fromS "2018-12-01T20:00",
+                       neighborLinks = mempty,
+                       nodeAttributes = ()
                      }
          ] :: [FoundNode Text () ()]),
       caseQuery = defQuery ["n1"],
       caseAssert = no_neighbor_assert
-    },
-    SnapshotTestCase
-    { caseName = "missing starting node",
-      caseInput = oneNeighborFoundNodes,
-      caseQuery = defQuery ["no node"],
-      caseAssert = \(got_ns, got_ls) -> do
-        got_ns `shouldBe` mempty
-        got_ls `shouldBe` mempty
     },
     SnapshotTestCase
     { caseName = "mutual neighbors",
@@ -602,5 +607,17 @@ snapshotTestCases =
       linkTimestamp (got_ls ! 2) `shouldBe` fromS "2018-12-01T20:00"
       V.length got_ls `shouldBe` 3
 
-      
 
+-- | \"Traverses\" test cases involve traversing graphs. For example,
+-- it checks some nodes are not reachable from the starting node.
+traverses :: [SnapshotTestCase]
+traverses =
+  [ SnapshotTestCase
+    { caseName = "missing starting node",
+      caseInput = oneNeighborFoundNodes,
+      caseQuery = defQuery ["no node"],
+      caseAssert = \(got_ns, got_ls) -> do
+        got_ns `shouldBe` mempty
+        got_ls `shouldBe` mempty
+    }
+  ]

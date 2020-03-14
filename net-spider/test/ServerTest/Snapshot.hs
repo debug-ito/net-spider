@@ -22,7 +22,8 @@ import TestCommon
     AText(..), APorts(..), subIdWithAPorts,
     alignAPortsToLinkDirection
   )
-import SnapshotTestCase (SnapshotTestCase(..), snapshotTestCases)
+import SnapshotTestCase (SnapshotTestCase(..))
+import qualified SnapshotTestCase
 import ServerTest.ServerCommon (withServer, withSpider)
 
 import NetSpider.Found
@@ -58,7 +59,8 @@ spec = do
 
 spec_getSnapshot :: Spec
 spec_getSnapshot = withServer $ describe "getSnapshotSimple, getSnapshot" $ do
-  mapM_ makeTestCase snapshotTestCases
+  mapM_ makeTestCase SnapshotTestCase.basics
+  mapM_ makeTestCase SnapshotTestCase.traverses
   spec_getSnapshot_timeInterval
   spec_getSnapshot_foundNodePolicy
 
