@@ -13,7 +13,8 @@ import NetSpider.Timestamp (fromEpochMillisecond)
 import NetSpider.Weaver
   ( Weaver, newWeaver,
     markAsVisited, addFoundNode,
-    isVisited, getVisitedNodes, getSnapshot
+    isVisited, getVisitedNodes, getSnapshot,
+    visitAllBoundaryNodes
   )
 
 import SnapshotTestCase (SnapshotTestCase(..), snapshotTestCases)
@@ -91,11 +92,15 @@ spec_visitedNodes = describe "visited nodes" $ do
       (fromJust $ getVisitedNodes 5 $ addFoundNode fn2 $ addFoundNode fn1 w)
         `shouldMatchList` [fn1, fn2]
 
+addAllFoundNodes :: [FoundNode n na la] -> Weaver n na la -> Weaver n na la
+addAllFoundNodes fns weaver = foldl' (\w fn -> addFoundNode fn w) weaver fns
+
 makeTestCase :: SnapshotTestCase -> Spec
 makeTestCase SnapshotTestCase { caseName = name, caseInput = input, caseQuery = query, caseAssert = assert } = do
   specify name $ do
     let init_w = newWeaver $ foundNodePolicy query
-        got_w = foldl' (\w fn -> addFoundNode fn w) init_w input
+        got_w = visitAllBoundaryNodes  -- SnapshotTestCase assumes unlimited number of traverse steps. So, mark all nodes as visited.
+                $ addAllFoundNodes input init_w
         got_graph = getSnapshot (unifyLinkSamples query) got_w
     assert got_graph
   
