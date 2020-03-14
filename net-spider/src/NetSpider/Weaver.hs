@@ -1,4 +1,4 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving, OverloadedStrings #-}
 -- |
 -- Module: NetSpider.Weaver
 -- Description: On-memory builder for snapshot graphs
@@ -25,15 +25,27 @@ import Data.Hashable (Hashable)
 import Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HM
 import Data.List (sort, reverse)
-import Data.Maybe (listToMaybe)
+import Data.Maybe (listToMaybe, mapMaybe)
+import GHC.Exts (groupWith)
 
-import NetSpider.Found (FoundNode(..))
-import NetSpider.Log (LogLine)
+import NetSpider.Found (FoundNode(..), LinkState(..))
+import NetSpider.Log
+  ( runWriterLoggingM, WriterLoggingM, logDebugW, LogLine, spack
+  )
+import NetSpider.Log ()
 import NetSpider.Query.Internal (FoundNodePolicy(..))
 import NetSpider.Query (policyOverwrite, policyAppend)
-import NetSpider.Snapshot.Internal (SnapshotGraph, SnapshotNode(..))
+import NetSpider.Snapshot.Internal
+  ( SnapshotGraph, SnapshotNode(..), SnapshotLink(..)
+  )
 import NetSpider.Timestamp (Timestamp)
-import NetSpider.Unify (LinkSampleUnifier)
+import NetSpider.Unify
+  ( LinkSampleUnifier,
+    LinkSampleID,
+    LinkSample(..),
+    linkSampleId
+  )
+import qualified NetSpider.Unify as Unify
 
 -- | 'Weaver' is an on-memory builder for snapshot graphs. It builds a
 -- 'SnapshotGraph' from 'FoundNode's without using an external graph
@@ -88,7 +100,7 @@ getVisitedNodes :: (Eq n, Hashable n) => n -> Weaver n na la -> Maybe [FoundNode
 getVisitedNodes n w = HM.lookup n (visitedNodes w)
 
 -- | Make 'SnapshotGraph' from the current 'Weaver'.
-getSnapshot :: (Eq n, Hashable n) => LinkSampleUnifier n na fla sla -> Weaver n na fla -> SnapshotGraph n na sla
+getSnapshot :: (Ord n, Hashable n, Show n) => LinkSampleUnifier n na fla sla -> Weaver n na fla -> SnapshotGraph n na sla
 getSnapshot u w = fst $ getSnapshot' u w
 
 -- | Get boundary nodes from the 'Weaver'. A boundary node is a node
@@ -114,8 +126,11 @@ makeSnapshotNode weaver nid =
                  _nodeAttributes = nodeAttributesFor nid weaver
                }
 
+allLinkSamples :: Weaver n na la -> [LinkSample n la]
+allLinkSamples w = Unify.toLinkSamples =<< (concat $ HM.elems $ visitedNodes w)
+
 -- | Same as 'getSnapshot', but it also returns logs.
-getSnapshot' :: (Eq n, Hashable n)
+getSnapshot' :: (Ord n, Hashable n, Show n)
              => LinkSampleUnifier n na fla sla
              -> Weaver n na fla
              -> (SnapshotGraph n na sla, [LogLine])
@@ -124,5 +139,41 @@ getSnapshot' unifier weaver = ((nodes, links), logs)
     nodes = visited_nodes ++ boundary_nodes
     visited_nodes = map (makeSnapshotNode weaver) $ HM.keys $ visitedNodes weaver
     boundary_nodes = map (makeSnapshotNode weaver) $ getBoundaryNodes weaver
-    links = undefined -- TODO
-    logs = undefined -- TODO
+    (links, logs) = runWriterLoggingM $ fmap mconcat
+                    $ mapM (makeSnapshotLinks unifier weaver)
+                    $ groupWith linkSampleId $ allLinkSamples weaver
+
+-- | The input 'LinkSample's must be for the equivalent
+-- 'LinkSampleID'. The output is list of 'SnapshotLink's, each of
+-- which corresponds to a subgroup of 'LinkSample's.
+makeSnapshotLinks :: (Eq n, Hashable n, Show n)
+                  => LinkSampleUnifier n na fla sla
+                  -> Weaver n na fla
+                  -> [LinkSample n fla]
+                  -> WriterLoggingM [SnapshotLink n sla]
+makeSnapshotLinks _ _ [] = return []
+makeSnapshotLinks unifier weaver link_samples@(head_sample : _) = do
+  unified <- doUnify link_samples
+  logUnified unified
+  return $ mapMaybe makeSnapshotLink unified
+  where
+    makeEndNode getter = makeSnapshotNode weaver $ getter $ head_sample
+    doUnify = unifier (makeEndNode lsSubjectNode) (makeEndNode lsTargetNode)
+    logUnified unified = logDebugW ( "Unify link [" <> (spack $ lsSubjectNode head_sample) <> "]-["
+                                     <> (spack $ lsTargetNode head_sample) <> "]: "
+                                     <> "from " <> (spack $ length link_samples) <> " samples "
+                                     <> "to " <> (spack $ length unified) <> " samples"
+                                   )
+    makeSnapshotLink unified_sample = do
+      case lsLinkState unified_sample of
+       LinkUnused -> Nothing
+       LinkToTarget -> Just $ sampleToLink unified_sample True True
+       LinkToSubject -> Just $ sampleToLink unified_sample False True
+       LinkBidirectional -> Just $ sampleToLink unified_sample True False
+    sampleToLink sample to_target is_directed = 
+      SnapshotLink { _sourceNode = (if to_target then lsSubjectNode else lsTargetNode) sample,
+                     _destinationNode = (if to_target then lsTargetNode else lsSubjectNode) sample,
+                     _isDirected = is_directed,
+                     _linkTimestamp = lsTimestamp sample,
+                     _linkAttributes = lsLinkAttributes sample
+                   }
