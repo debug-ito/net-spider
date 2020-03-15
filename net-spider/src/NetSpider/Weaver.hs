@@ -131,19 +131,17 @@ latestFoundNodeFor nid weaver = do
   found_nodes <- HM.lookup nid $ visitedNodes weaver
   listToMaybe $ reverse $ sortOn foundAt $ found_nodes
 
-timestampFor :: (Eq n, Hashable n) => n -> Weaver n na fla -> Maybe Timestamp
-timestampFor n w = fmap foundAt $ latestFoundNodeFor n w
-
-nodeAttributesFor :: (Eq n, Hashable n) => n -> Weaver n na fla -> Maybe na
-nodeAttributesFor n w = fmap nodeAttributes $ latestFoundNodeFor n w
-
 makeSnapshotNode :: (Eq n, Hashable n) => Weaver n na fla -> n -> SnapshotNode n na
 makeSnapshotNode weaver nid =
   SnapshotNode { _nodeId = nid,
                  _isOnBoundary = not $ isVisited nid weaver,
-                 _nodeTimestamp = timestampFor nid weaver,
-                 _nodeAttributes = nodeAttributesFor nid weaver
+                 _nodeTimestamp = m_timestamp,
+                 _nodeAttributes = m_attributes
                }
+  where
+    mfn = latestFoundNodeFor nid weaver
+    m_timestamp = fmap foundAt mfn
+    m_attributes = fmap nodeAttributes mfn
 
 allLinkSamples :: Weaver n na la -> [LinkSample n la]
 allLinkSamples w = Unify.toLinkSamples =<< (concat $ HM.elems $ visitedNodes w)
