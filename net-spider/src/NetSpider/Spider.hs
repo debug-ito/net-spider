@@ -250,15 +250,6 @@ makeFoundNodesFromHops subject_nid hops = map toFoundNode $ groupHopsOnVFN hops
     toFoundNode (vfn, edges) = makeFoundNode subject_nid vfn $ map toFoundLink edges
     toFoundLink (ef, target_nid) = makeFoundLink target_nid ef
 
-makeLinkSample :: n -> VFoundNodeData na -> EFindsData la -> n -> LinkSample n la
-makeLinkSample subject_nid vfn efinds target_nid = 
-  LinkSample { lsSubjectNode = subject_nid,
-               lsTargetNode = target_nid,
-               lsLinkState = efLinkState efinds,
-               lsTimestamp = vfnTimestamp vfn,
-               lsLinkAttributes = efLinkAttributes efinds
-             }
-
 visitNodeForSnapshot :: (ToJSON n, Ord n, Hashable n, FromGraphSON n, Show n, LinkAttributes fla, NodeAttributes na)
                      => Spider n na fla
                      -> Query n na fla sla
