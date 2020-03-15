@@ -31,7 +31,7 @@ import Data.List (intercalate)
 import Data.Greskell
   ( runBinder, ($.), (<$.>), (<*.>),
     Binder, ToGreskell(GreskellReturn), AsIterator(IteratorItem), FromGraphSON,
-    liftWalk, gLimit, gIdentity, gSelect1, gAs, gProject, gByL, gIdentity,
+    liftWalk, gLimit, gIdentity, gSelect1, gAs, gProject, gByL, gIdentity, gFold,
     lookupAsM, newAsLabel,
     Transform, Walk
   )
@@ -198,56 +198,63 @@ recurseVisitNodesForSnapshot spider query ref_state = go
     getNextVisit = atomicModifyIORef' ref_state popUnvisitedNode
     -- TODO: limit number of steps.
 
--- | Returns the result of query: (latest VFoundNode, list of traversed edges)
+-- | Traverse one hop from the visited 'VNode'.
+--
+-- Returns: list of (VFoundNode of the VNode, EFinds links), where an
+-- EFinds link = (EFindsData, target Node Id)
 traverseEFindsOneHop :: (FromGraphSON n, NodeAttributes na, LinkAttributes fla)
                      => Spider n na fla
                      -> Interval Timestamp
+                     -> FoundNodePolicy n na
                      -> EID VNode
-                     -> IO [(VFoundNodeData na, EFindsData fla, n)]
-traverseEFindsOneHop spider time_interval visit_eid = getTraversedEdges
+                     -> IO [(VFoundNodeData na, [(EFindsData fla, n)])]
+traverseEFindsOneHop spider time_interval fn_policy visit_eid = getTraversedEdges
   where
-    foundNodeTraversal = fmap gSelectFoundNode (gFilterFoundNodeByTime time_interval)
+    foundNodeTraversal = pure latestFoundNodeIfOverwrite
+                         <*.> fmap gSelectFoundNode (gFilterFoundNodeByTime time_interval)
                          <*.> gHasNodeEID visit_eid
                          <*.> pure gAllNodes
-    -- getLatestVFoundNode = fmap vToMaybe $ Gr.slurpResults =<< submitQuery
-    --   where
-    --     submitQuery = submitB spider binder
-    --     binder = gVFoundNodeData <$.> gLatestFoundNode <$.> foundNodeTraversal
+    latestFoundNodeIfOverwrite =
+      case fn_policy of
+        PolicyOverwrite -> gLatestFoundNode
+        PolicyAppend -> gIdentity
+
     getTraversedEdges = fmap V.toList $ traverse extractFromSMap =<< Gr.slurpResults =<< submitQuery
       where
         submitQuery = Gr.submit (spiderClient spider) query (Just bindings)
-        ((query, label_vfn, label_ef, label_target_nid), bindings) = runBinder $ do
-          lvfn <- newAsLabel
+        ((query, label_vfnd, label_efs, label_efd, label_target_nid), bindings) = runBinder $ do
           lvfnd <- newAsLabel
-          lef <- newAsLabel
+          lefs <- newAsLabel
           lefd <- newAsLabel
-          ln <- newAsLabel
+          ltarget <- newAsLabel
+          let gEFindsAndTarget =
+                gProject
+                ( gByL lefd gEFindsData )
+                [ gByL ltarget (gNodeID spider <<< gFindsTarget)
+                ]
+                <<< gFinds
           gt <- gProject
-                ( gByL lvfnd (gVFoundNodeData <<< gSelect1 lvfn) )
-                [ gByL lefd (gEFindsData <<< gSelect1 lef),
-                  gByL ln (gIdentity :: Walk Transform n n)
-                ] <$.> gNodeID spider <$.> gFindsTarget
-                <$.> gAs lef <$.> gFinds <$.> gAs lvfn <$.> foundNodeTraversal
-          return (gt, lvfnd, lefd, ln)
-        extractFromSMap smap =
-          (,,)
-          <$> lookupAsM label_vfn smap 
-          <*> lookupAsM label_ef smap 
-          <*> lookupAsM label_target_nid smap 
-
--- | Group hops based on 'VFoundNodeData'. Equality of
--- 'VFoundNodeData' is based on 'vfnId'.
-groupHopsOnVFN :: [(VFoundNodeData na, EFindsData fla, n)]
-               -> [(VFoundNodeData na, [(EFindsData fla, n)])]
-groupHopsOnVFN = undefined
--- TODO: use GHC.Exts.groupWith. However, 'EID' doesn't implement 'Ord'. What should we do?
+                ( gByL lvfnd gVFoundNodeData )
+                [ gByL lefs (gFold <<< gEFindsAndTarget)
+                ]
+                <$.> foundNodeTraversal
+          return (gt, lvfnd, lefs, lefd, ltarget)
+        extractFromSMap smap = do
+          vfnd <- lookupAsM label_vfnd smap
+          efs <- lookupAsM label_efs smap
+          parsed_efs <- mapM extractHopFromSMap efs
+          return (vfnd, parsed_efs)
+        extractHopFromSMap smap =
+          (,)
+          <$> lookupAsM label_efd smap
+          <*> lookupAsM label_target_nid smap
 
 makeFoundNodesFromHops :: n -- ^ Subject node ID
-                       -> [(VFoundNodeData na, EFindsData fla, n)] -- ^ Hops
-                       -> [FoundNode n na fla]
-makeFoundNodesFromHops subject_nid hops = map toFoundNode $ groupHopsOnVFN hops
+                       -> (VFoundNodeData na, [(EFindsData fla, n)]) -- ^ Hops
+                       -> FoundNode n na fla
+makeFoundNodesFromHops subject_nid (vfnd, efs) =
+  makeFoundNode subject_nid vfnd $ map toFoundLink efs
   where
-    toFoundNode (vfn, edges) = makeFoundNode subject_nid vfn $ map toFoundLink edges
     toFoundLink (ef, target_nid) = makeFoundLink target_nid ef
 
 visitNodeForSnapshot :: (ToJSON n, Ord n, Hashable n, FromGraphSON n, Show n, LinkAttributes fla, NodeAttributes na)
@@ -273,45 +280,28 @@ visitNodeForSnapshot spider query ref_state visit_nid = do
          logWarn spider ("Node " <> spack visit_nid <> " does not exist.")
          return ()
        Just visit_eid -> do
-         found_nodes <- fmap (makeFoundNodesFromHops visit_nid) $ traverseEFindsOneHop spider (timeInterval query) visit_eid
+         found_nodes <- fmap (map $ makeFoundNodesFromHops visit_nid)
+                        $ traverseEFindsOneHop spider (timeInterval query) (foundNodePolicy query) visit_eid
          logFoundNodes found_nodes
          modifyIORef ref_state $ addFoundNodes visit_nid found_nodes
-         
-         ---- markAsVisited $ mlatest_vfn
-         ---- logLatestVFN mlatest_vfn
-         ---- let next_hops = filterHops mlatest_vfn $ hops
-         
-         -- putStrLn ("-- visit " ++ show visit_nid)
-         -- putStrLn ("   latest vfn: " ++ (show $ fmap vfnTimestamp mlatest_vfn))
-         -- forM_ next_hops $ \(vfn, _, next_nid) -> do
-         --   putStrLn ("   next: " ++ (show $ vfnTimestamp vfn) ++ " -> " ++ show next_nid)
-
-         -- TODO: adapt logHop
-         
-         -- mapM_ logHop next_hops
     getVisitedNodeEID = fmap vToMaybe $ Gr.slurpResults =<< submitB spider binder
       where
         binder = gNodeEID <$.> gHasNodeID spider visit_nid <*.> pure gAllNodes
-    -- markAsVisited mvfn = modifyIORef ref_state $ addVisitedNode visit_nid mvfn
-    logFoundNodes fns = logLatestFN $ listToMaybe $ Found.sortByTime fns
-    logLatestFN Nothing = logDebug spider ("No local finding is found for node " <> spack visit_nid)
-    logLatestFN (Just fn) = logDebug spider ( "Node " <> spack visit_nid
-                                              <> ": latest local finding is at "
-                                              <> (showEpochTime $ foundAt fn)
-                                            )
-    -- uncurry3 f (a,b,c) = f a b c
-    
-    -- filterHops mvfn =
-    --   case foundNodePolicy query of
-    --    PolicyOverwrite -> filter (hopHasVFN mvfn)
-    --    PolicyAppend -> id
-    -- hopHasVFN Nothing _ = True
-    -- hopHasVFN (Just vfn1) (vfn2, _, _) = vfnId vfn1 == vfnId vfn2
-    
-    -- logHop (vfn, _, next_nid) = logDebug spider ( "Link " <> spack visit_nid
-    --                                               <> " -> " <> spack next_nid
-    --                                               <> " at " <> (showEpochTime $ vfnTimestamp vfn)
-    --                                             )
+    logFoundNodes [] = logDebug spider ("No local finding is found for node " <> spack visit_nid)
+    logFoundNodes fns = mapM_ logFoundNode $ Found.sortByTime fns
+    logFoundNode fn = do
+      let neighbors = neighborLinks fn
+      logDebug spider
+        ( "Node " <> (spack $ subjectNode fn)
+          <> ": local finding at "  <> (showEpochTime $ foundAt fn)
+          <> ", " <> (spack $ length neighbors) <> " neighbors"
+        )
+      mapM_ logFoundLink neighbors
+    logFoundLink fl =
+      logDebug spider
+      ( "  Link is found to " <> (spack $ targetNode fl)
+      )
+
 
 -- | The state kept while making the snapshot graph.
 data SnapshotState n na fla =
@@ -367,31 +357,11 @@ addFoundNodes :: (Eq n, Hashable n)
 addFoundNodes visited_nid [] state = state { ssWeaver = new_weaver }
   where
     new_weaver = Weaver.markAsVisited visited_nid $ ssWeaver state
-addFoundNodes _ fns state = state { ssWeaver = new_weaver }
+addFoundNodes _ fns state = foldl' (\s fn -> addOneFoundNode fn s) state fns
+
+addOneFoundNode :: (Eq n, Hashable n)
+                => FoundNode n na fla -> SnapshotState n na fla -> SnapshotState n na fla
+addOneFoundNode fn state = state { ssUnvisitedNodes = new_queue, ssWeaver = new_weaver }
   where
-    old_weaver = ssWeaver state
-    new_weaver = foldl' (\w fn -> Weaver.addFoundNode fn w) old_weaver fns
-
-  -- TODO: how to deal with unvisited nodes queue??
-    
-
---------------------
-
----- addLinkSample :: (Ord n, Hashable n)
-----               => LinkSample n fla -> SnapshotState n na fla -> SnapshotState n na fla
----- addLinkSample ls state = state { ssVisitedLinks = updatedLinks,
-----                                  ssUnvisitedNodes = updatedUnvisited
-----                                }
-----   where
-----     link_id = linkSampleId ls
-----     updatedLinks = HM.insertWith (++) link_id (return ls) $ ssVisitedLinks state
-----     target_nid = lsTargetNode ls
-----     target_already_visited = isAlreadyVisited state target_nid
-----     updatedUnvisited = if target_already_visited
-----                        then ssUnvisitedNodes state
-----                        else pushQueue target_nid $ ssUnvisitedNodes state
----- 
----- addLinkSamples :: (Ord n, Hashable n)
-----                => [LinkSample n fla] -> SnapshotState n na fla -> SnapshotState n na fla
----- addLinkSamples links orig_state = foldr' addLinkSample orig_state links
-
+    (new_weaver, new_boundary_nodes) = Weaver.addFoundNode' fn $ ssWeaver state
+    new_queue = foldl' (\q n -> pushQueue n q) (ssUnvisitedNodes state) new_boundary_nodes
