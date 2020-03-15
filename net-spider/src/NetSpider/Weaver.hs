@@ -65,10 +65,10 @@ data Weaver n na la =
 
 -- | Make a new 'Weaver'.
 --
--- The 'FoundNodePolicy' controls the behavior of 'newWeaver'. If it's
--- 'policyOverwrite', 'Weaver' maintains only the 'FoundNode' with the
--- latest timestamp for each node. If it's 'policyAppend', 'Weaver'
--- maintains all 'FoundNode's added.
+-- The 'FoundNodePolicy' controls the behavior of 'addFoundNode'. If
+-- it's 'policyOverwrite', 'Weaver' maintains only the 'FoundNode'
+-- with the latest timestamp for each node. If it's 'policyAppend',
+-- 'Weaver' maintains all 'FoundNode's added.
 newWeaver :: FoundNodePolicy n na -> Weaver n na la
 newWeaver p = Weaver HM.empty p
 
@@ -94,6 +94,9 @@ markAsVisited nid w = w { visitedNodes = HM.insertWith updater nid [] $ visitedN
     updater _ old = old
 
 -- | Returns 'True' if the node ID is already visited in the 'Weaver'.
+--
+-- A visited node is the one that has at least one 'FoundNode' added,
+-- or on which 'markAsVisited' has executed.
 isVisited :: (Eq n, Hashable n) => n -> Weaver n na la -> Bool
 isVisited n w = HM.member n (visitedNodes w)
 
@@ -103,12 +106,16 @@ getVisitedNodes :: (Eq n, Hashable n) => n -> Weaver n na la -> Maybe [FoundNode
 getVisitedNodes n w = HM.lookup n (visitedNodes w)
 
 -- | Make 'SnapshotGraph' from the current 'Weaver'.
+--
+-- The 'SnapshotGraph' is constructed from all 'FoundNode's added to
+-- the 'Weaver' so far.
 getSnapshot :: (Ord n, Hashable n, Show n) => LinkSampleUnifier n na fla sla -> Weaver n na fla -> SnapshotGraph n na sla
 getSnapshot u w = fst $ getSnapshot' u w
 
--- | Get boundary nodes from the 'Weaver'. A boundary node is a node
--- that has been observed as a target of some links but not visited
--- yet.
+-- | Get boundary nodes from the 'Weaver'.
+--
+-- A boundary node is a node that has been observed as a target of
+-- some links but not visited yet.
 getBoundaryNodes :: (Eq n, Hashable n) => Weaver n na fla -> [n]
 getBoundaryNodes weaver = filter (\nid -> not $ isVisited nid weaver) $ all_target_nodes
   where
