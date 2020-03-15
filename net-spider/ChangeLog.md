@@ -8,6 +8,10 @@
 
 * Add `toLinkSamples` function.
 
+### Found module
+
+* Add `sortByTime` function.
+
 ## 0.4.1.0  -- 2020-01-26
 
 * Add `GraphML.Attribute` module. `AttributeValue` and related types
