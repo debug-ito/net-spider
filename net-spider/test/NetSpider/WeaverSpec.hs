@@ -14,7 +14,7 @@ import NetSpider.Timestamp (fromEpochMillisecond)
 import NetSpider.Weaver
   ( Weaver, newWeaver,
     markAsVisited, addFoundNode,
-    isVisited, getVisitedNodes, getSnapshot,
+    isVisited, getFoundNodes, getSnapshot,
     visitAllBoundaryNodes
   )
 
@@ -43,9 +43,9 @@ spec_visitedNodes = describe "visited nodes" $ do
     isVisited 1 w `shouldBe` False
     isVisited 5 w `shouldBe` True
     isVisited 10 w `shouldBe` True
-    getVisitedNodes 1 w `shouldBe` Nothing
-    getVisitedNodes 5 w `shouldBe` Just [fn]
-    getVisitedNodes 10 w `shouldBe` Just []
+    getFoundNodes 1 w `shouldBe` Nothing
+    getFoundNodes 5 w `shouldBe` Just [fn]
+    getFoundNodes 10 w `shouldBe` Just []
   specify "add and mark" $ do
     let fn = FoundNode { subjectNode = 5,
                          foundAt = fromEpochMillisecond 100,
@@ -57,9 +57,9 @@ spec_visitedNodes = describe "visited nodes" $ do
     isVisited 1 w `shouldBe` False
     isVisited 5 w `shouldBe` True
     isVisited 10 w `shouldBe` True
-    getVisitedNodes 1 w `shouldBe` Nothing
-    getVisitedNodes 5 w `shouldBe` Just [fn]
-    getVisitedNodes 10 w `shouldBe` Just []
+    getFoundNodes 1 w `shouldBe` Nothing
+    getFoundNodes 5 w `shouldBe` Just [fn]
+    getFoundNodes 10 w `shouldBe` Just []
   describe "FoundNodePolicy for Weaver" $ do
     let fn1 = FoundNode { subjectNode = 5,
                           foundAt = fromEpochMillisecond 100,
@@ -74,24 +74,24 @@ spec_visitedNodes = describe "visited nodes" $ do
     specify "policyOverwrite should keep only the latest FoundNode" $ do
       let w :: Weaver Int String ()
           w = newWeaver policyOverwrite
-      (getVisitedNodes 5 $ addFoundNode fn1 w)
+      (getFoundNodes 5 $ addFoundNode fn1 w)
         `shouldBe` Just [fn1]
-      (getVisitedNodes 5 $ addFoundNode fn2 w)
+      (getFoundNodes 5 $ addFoundNode fn2 w)
         `shouldBe` Just [fn2]
-      (getVisitedNodes 5 $ addFoundNode fn1 $ addFoundNode fn2 w)
+      (getFoundNodes 5 $ addFoundNode fn1 $ addFoundNode fn2 w)
         `shouldBe` Just [fn2]
-      (getVisitedNodes 5 $ addFoundNode fn2 $ addFoundNode fn1 w)
+      (getFoundNodes 5 $ addFoundNode fn2 $ addFoundNode fn1 w)
         `shouldBe` Just [fn2]
     specify "policyAppend should keep all FoundNodes" $ do
       let w :: Weaver Int String ()
           w = newWeaver policyAppend
-      (getVisitedNodes 5 $ addFoundNode fn1 w)
+      (getFoundNodes 5 $ addFoundNode fn1 w)
         `shouldBe` Just [fn1]
-      (getVisitedNodes 5 $ addFoundNode fn2 w)
+      (getFoundNodes 5 $ addFoundNode fn2 w)
         `shouldBe` Just [fn2]
-      (fromJust $ getVisitedNodes 5 $ addFoundNode fn1 $ addFoundNode fn2 w)
+      (fromJust $ getFoundNodes 5 $ addFoundNode fn1 $ addFoundNode fn2 w)
         `shouldMatchList` [fn1, fn2]
-      (fromJust $ getVisitedNodes 5 $ addFoundNode fn2 $ addFoundNode fn1 w)
+      (fromJust $ getFoundNodes 5 $ addFoundNode fn2 $ addFoundNode fn1 w)
         `shouldMatchList` [fn1, fn2]
 
 addAllFoundNodes :: (Eq n, Hashable n) => [FoundNode n na la] -> Weaver n na la -> Weaver n na la

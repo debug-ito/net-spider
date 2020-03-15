@@ -17,7 +17,7 @@ module NetSpider.Weaver
     getSnapshot,
     getSnapshot',
     isVisited,
-    getVisitedNodes,
+    getFoundNodes,
     getBoundaryNodes,
     -- * Misc.
     visitAllBoundaryNodes
@@ -100,10 +100,13 @@ markAsVisited nid w = w { visitedNodes = HM.insertWith updater nid [] $ visitedN
 isVisited :: (Eq n, Hashable n) => n -> Weaver n na la -> Bool
 isVisited n w = HM.member n (visitedNodes w)
 
--- | Get the visited 'FoundNode's for the given node ID kept in
--- 'Weaver'. It returns 'Nothing' if the node ID is not visited.
-getVisitedNodes :: (Eq n, Hashable n) => n -> Weaver n na la -> Maybe [FoundNode n na la]
-getVisitedNodes n w = HM.lookup n (visitedNodes w)
+-- | Get the 'FoundNode's for the given node ID kept in 'Weaver'.
+--
+-- It returns 'Nothing' if the node ID is not visited. It returns an
+-- empty list if the node ID is visited (by 'markAsVisited'), but
+-- doesn't have any 'FoundNode'.
+getFoundNodes :: (Eq n, Hashable n) => n -> Weaver n na la -> Maybe [FoundNode n na la]
+getFoundNodes n w = HM.lookup n (visitedNodes w)
 
 -- | Make 'SnapshotGraph' from the current 'Weaver'.
 --
