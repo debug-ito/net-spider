@@ -75,16 +75,7 @@ newWeaver p = Weaver HM.empty p
 
 -- | Add a 'FoundNode' to the 'Weaver'. See also 'newWeaver'.
 addFoundNode :: (Eq n, Hashable n) => FoundNode n na la -> Weaver n na la -> Weaver n na la
-addFoundNode fn w = w { visitedNodes = HM.insertWith updater nid [fn] $ visitedNodes w }
-  where
-    nid = subjectNode fn
-    updater =
-      case foundNodePolicy w of
-        PolicyOverwrite -> \new old -> if latestTimeOfNodes new >= latestTimeOfNodes old
-                                       then new
-                                       else old
-        PolicyAppend -> \new old -> new ++ old
-    latestTimeOfNodes ns = listToMaybe $ reverse $ sort $ map foundAt ns
+addFoundNode f w = fst $ addFoundNode' f w
 
 -- | Similar to 'addFoundNode', but this function also returns the new
 -- boundary nodes.
@@ -92,7 +83,20 @@ addFoundNode fn w = w { visitedNodes = HM.insertWith updater nid [fn] $ visitedN
 -- The new boundary nodes are the target nodes of the links included
 -- in the input 'FoundNode' which are not visited yet.
 addFoundNode' :: (Eq n, Hashable n) => FoundNode n na la -> Weaver n na la -> (Weaver n na la, [n])
-addFoundNode' = undefined -- TODO
+addFoundNode' fn weaver = (new_weaver, new_boundary_nodes)
+  where
+    nid = subjectNode fn
+    new_weaver = weaver { visitedNodes = HM.insertWith updater nid [fn] $ visitedNodes weaver }
+    updater =
+      case foundNodePolicy weaver of
+        PolicyOverwrite -> \new old -> if latestTimeOfNodes new >= latestTimeOfNodes old
+                                       then new
+                                       else old
+        PolicyAppend -> \new old -> new ++ old
+    latestTimeOfNodes ns = listToMaybe $ reverse $ sort $ map foundAt ns
+    new_boundary_nodes = filter (\n -> n /= nid && (not $ isVisited n weaver))
+                         $ map targetNode
+                         $ neighborLinks fn
 
 -- | Mark the node ID as visited in the 'Weaver' without any
 -- 'FoundNode'. If there is already some 'FoundNode' for the node ID,
