@@ -1,11 +1,15 @@
+{-# LANGUAGE OverloadedStrings #-}
 module NetSpider.WeaverSpec (main,spec) where
 
 import Data.Foldable (foldl')
 import Data.Hashable (Hashable)
+import Data.Int (Int64)
+import Data.IORef (newIORef, readIORef, writeIORef)
 import Data.Maybe (fromJust)
+import Data.Text (Text)
 import Test.Hspec
 
-import NetSpider.Found (FoundNode(..))
+import NetSpider.Found (FoundNode(..), FoundLink(..), LinkState(..))
 import NetSpider.Query
   ( policyOverwrite, policyAppend,
     foundNodePolicy, unifyLinkSamples
@@ -13,9 +17,10 @@ import NetSpider.Query
 import NetSpider.Timestamp (fromEpochMillisecond)
 import NetSpider.Weaver
   ( Weaver, newWeaver,
-    markAsVisited, addFoundNode,
+    markAsVisited, addFoundNode, addFoundNode',
     isVisited, getFoundNodes, getSnapshot,
-    visitAllBoundaryNodes
+    visitAllBoundaryNodes,
+    getBoundaryNodes
   )
 
 import SnapshotTestCase (SnapshotTestCase(..))
@@ -27,6 +32,7 @@ main = hspec spec
 spec :: Spec
 spec = describe "Weaver" $ do
   spec_visitedNodes
+  spec_boundaryNodes
   describe "SnapshotTestCase" $ do
     mapM_ makeTestCase SnapshotTestCase.basics
   
@@ -93,6 +99,29 @@ spec_visitedNodes = describe "visited nodes" $ do
         `shouldMatchList` [fn1, fn2]
       (fromJust $ getFoundNodes 5 $ addFoundNode fn2 $ addFoundNode fn1 w)
         `shouldMatchList` [fn1, fn2]
+
+spec_boundaryNodes :: Spec
+spec_boundaryNodes = specify "boundary nodes" $ do
+  rweaver <- newIORef $ newWeaver policyOverwrite
+  let addFN fn = do
+        (new_w, ns) <- fmap (addFoundNode' fn) $ readIORef rweaver
+        writeIORef rweaver new_w
+        return ns
+      getBN = fmap getBoundaryNodes $ readIORef rweaver
+      makeFN :: Text -> [Text] -> Int64 -> FoundNode Text () ()
+      makeFN sub_n tar_ns time =
+        FoundNode { subjectNode = sub_n,
+                    foundAt = fromEpochMillisecond time,
+                    nodeAttributes = (),
+                    neighborLinks = map makeFL tar_ns
+                  }
+      makeFL tar_n = FoundLink { targetNode = tar_n, linkState = LinkToTarget, linkAttributes = () }
+  getBN `shouldReturn` []
+  addFN (makeFN "n1" [] 100) `shouldReturn` []
+  getBN `shouldReturn` []
+  addFN (makeFN "n1" ["n2"] 200) `shouldReturn` ["n2"]
+  getBN `shouldReturn` ["n2"]
+  
 
 addAllFoundNodes :: (Eq n, Hashable n) => [FoundNode n na la] -> Weaver n na la -> Weaver n na la
 addAllFoundNodes fns weaver = foldl' (\w fn -> addFoundNode fn w) weaver fns
