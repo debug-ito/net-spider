@@ -100,6 +100,11 @@ spec_visitedNodes = describe "visited nodes" $ do
       (fromJust $ getFoundNodes 5 $ addFoundNode fn2 $ addFoundNode fn1 w)
         `shouldMatchList` [fn1, fn2]
 
+shouldReturnSet :: (HasCallStack, Eq a, Show a) => IO [a] -> [a] -> IO ()
+shouldReturnSet action expected = do
+  got <- action
+  got `shouldMatchList` expected
+
 spec_boundaryNodes :: Spec
 spec_boundaryNodes = specify "boundary nodes" $ do
   rweaver <- newIORef $ newWeaver policyOverwrite
@@ -116,11 +121,20 @@ spec_boundaryNodes = specify "boundary nodes" $ do
                     neighborLinks = map makeFL tar_ns
                   }
       makeFL tar_n = FoundLink { targetNode = tar_n, linkState = LinkToTarget, linkAttributes = () }
-  getBN `shouldReturn` []
-  addFN (makeFN "n1" [] 100) `shouldReturn` []
-  getBN `shouldReturn` []
-  addFN (makeFN "n1" ["n2"] 200) `shouldReturn` ["n2"]
-  getBN `shouldReturn` ["n2"]
+  getBN `shouldReturnSet` []
+  addFN (makeFN "n1" [] 100) `shouldReturnSet` []
+  getBN `shouldReturnSet` []
+  addFN (makeFN "n1" ["n2"] 200) `shouldReturnSet` ["n2"]
+  getBN `shouldReturnSet` ["n2"]
+  addFN (makeFN "n2" ["n3", "n4", "n5", "n1"] 250) `shouldReturnSet` ["n3", "n4", "n5"]
+  getBN `shouldReturnSet` ["n3", "n4", "n5"]
+  addFN (makeFN "n3" ["n4"] 200) `shouldReturnSet` ["n4"]
+  getBN `shouldReturnSet` ["n4", "n5"]
+  
+  addFN (makeFN "n5" ["n1", "n6", "n7", "n8", "n2"] 200) `shouldReturnSet` ["n6", "n7", "n8"]
+  getBN `shouldReturnSet` ["n4", "n6", "n7", "n8"]
+  
+  -- TODO: keep testing boundary nodes.
   
 
 addAllFoundNodes :: (Eq n, Hashable n) => [FoundNode n na la] -> Weaver n na la -> Weaver n na la
