@@ -10,7 +10,7 @@
 
 ### Found module
 
-* Add `sortByTime` function.
+* Add `sortByTime`, `allTargetNodes` functions.
 
 ## 0.4.1.0  -- 2020-01-26
 

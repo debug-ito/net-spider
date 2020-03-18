@@ -11,7 +11,8 @@ module NetSpider.Found
          LinkState(..),
          linkStateToText,
          linkStateFromText,
-         sortByTime
+         sortByTime,
+         allTargetNodes
        ) where
 
 import qualified Control.Monad.Fail as Fail
@@ -160,3 +161,9 @@ instance (ToJSON n, ToJSON na, ToJSON la) => ToJSON (FoundNode n na la) where
 -- @since 0.4.2.0
 sortByTime :: [FoundNode n na la] -> [FoundNode n na la]
 sortByTime fns = reverse $ sortOn foundAt fns
+
+-- | Get all 'targetNode's of the 'FoundNode'.
+--
+-- @since 0.4.2.0
+allTargetNodes :: FoundNode n na la -> [n]
+allTargetNodes = map targetNode . neighborLinks
