@@ -12,7 +12,6 @@ module NetSpider.Weaver
     newWeaver,
     -- * Add FoundNode
     addFoundNode,
-    addFoundNode',
     markAsVisited,
     -- * Query
     getSnapshot,
@@ -75,15 +74,7 @@ newWeaver p = Weaver HM.empty p
 
 -- | Add a 'FoundNode' to the 'Weaver'. See also 'newWeaver'.
 addFoundNode :: (Eq n, Hashable n) => FoundNode n na la -> Weaver n na la -> Weaver n na la
-addFoundNode f w = fst $ addFoundNode' f w
-
--- | Similar to 'addFoundNode', but this function also returns the new
--- boundary nodes.
---
--- The new boundary nodes are the target nodes of the links included
--- in the input 'FoundNode' which are not visited yet.
-addFoundNode' :: (Eq n, Hashable n) => FoundNode n na la -> Weaver n na la -> (Weaver n na la, [n])
-addFoundNode' fn weaver = (new_weaver, new_boundary_nodes)
+addFoundNode fn weaver = new_weaver
   where
     nid = subjectNode fn
     new_weaver = weaver { visitedNodes = HM.insertWith updater nid [fn] $ visitedNodes weaver }
@@ -94,9 +85,6 @@ addFoundNode' fn weaver = (new_weaver, new_boundary_nodes)
                                        else old
         PolicyAppend -> \new old -> new ++ old
     latestTimeOfNodes ns = listToMaybe $ reverse $ sort $ map foundAt ns
-    new_boundary_nodes = filter (\n -> n /= nid && (not $ isVisited n weaver))
-                         $ map targetNode
-                         $ neighborLinks fn
 
 -- | Mark the node ID as visited in the 'Weaver' without any
 -- 'FoundNode'. If there is already some 'FoundNode' for the node ID,

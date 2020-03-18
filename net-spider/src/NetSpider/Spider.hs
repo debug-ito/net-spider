@@ -56,7 +56,8 @@ import NetSpider.Graph.Internal
     gVFoundNodeData, gEFindsData,
     makeFoundNode, makeFoundLink
   )
-import NetSpider.Found (FoundNode(..), FoundLink(..), LinkState(..))
+import NetSpider.Found
+  (FoundNode(..), FoundLink(..), LinkState(..), allTargetNodes)
 import qualified NetSpider.Found as Found
 import NetSpider.Log (runWriterLoggingM, WriterLoggingM, logDebugW, LogLine, spack)
 import NetSpider.Pair (Pair)
@@ -363,5 +364,6 @@ addOneFoundNode :: (Eq n, Hashable n)
                 => FoundNode n na fla -> SnapshotState n na fla -> SnapshotState n na fla
 addOneFoundNode fn state = state { ssUnvisitedNodes = new_queue, ssWeaver = new_weaver }
   where
-    (new_weaver, new_boundary_nodes) = Weaver.addFoundNode' fn $ ssWeaver state
+    new_weaver = Weaver.addFoundNode fn $ ssWeaver state
+    new_boundary_nodes = filter (\n -> not $ Weaver.isVisited n new_weaver) $ allTargetNodes fn
     new_queue = foldl' (\q n -> pushQueue n q) (ssUnvisitedNodes state) new_boundary_nodes

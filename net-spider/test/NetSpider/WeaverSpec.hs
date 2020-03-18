@@ -17,7 +17,7 @@ import NetSpider.Query
 import NetSpider.Timestamp (fromEpochMillisecond)
 import NetSpider.Weaver
   ( Weaver, newWeaver,
-    markAsVisited, addFoundNode, addFoundNode',
+    markAsVisited, addFoundNode,
     isVisited, getFoundNodes, getSnapshot,
     visitAllBoundaryNodes,
     getBoundaryNodes
@@ -109,9 +109,8 @@ spec_boundaryNodes :: Spec
 spec_boundaryNodes = specify "boundary nodes" $ do
   rweaver <- newIORef $ newWeaver policyOverwrite
   let addFN fn = do
-        (new_w, ns) <- fmap (addFoundNode' fn) $ readIORef rweaver
+        new_w <- fmap (addFoundNode fn) $ readIORef rweaver
         writeIORef rweaver new_w
-        return ns
       getBN = fmap getBoundaryNodes $ readIORef rweaver
       makeFN :: Text -> [Text] -> Int64 -> FoundNode Text () ()
       makeFN sub_n tar_ns time =
@@ -122,19 +121,22 @@ spec_boundaryNodes = specify "boundary nodes" $ do
                   }
       makeFL tar_n = FoundLink { targetNode = tar_n, linkState = LinkToTarget, linkAttributes = () }
   getBN `shouldReturnSet` []
-  addFN (makeFN "n1" [] 100) `shouldReturnSet` []
+  addFN (makeFN "n1" [] 100)
   getBN `shouldReturnSet` []
-  addFN (makeFN "n1" ["n2"] 200) `shouldReturnSet` ["n2"]
+  addFN (makeFN "n1" ["n2"] 200)
   getBN `shouldReturnSet` ["n2"]
-  addFN (makeFN "n2" ["n3", "n4", "n5", "n1"] 250) `shouldReturnSet` ["n3", "n4", "n5"]
+  addFN (makeFN "n2" ["n3", "n4", "n5", "n1"] 250)
   getBN `shouldReturnSet` ["n3", "n4", "n5"]
-  addFN (makeFN "n3" ["n4"] 200) `shouldReturnSet` ["n4"]
-  getBN `shouldReturnSet` ["n4", "n5"]
+  addFN (makeFN "n3" ["n4"] 200)
+  getBN `shouldReturnSet` ["n4", "n5"] -- should return unique node IDs
   
-  addFN (makeFN "n5" ["n1", "n6", "n7", "n8", "n2"] 200) `shouldReturnSet` ["n6", "n7", "n8"]
+  addFN (makeFN "n5" ["n1", "n6", "n7", "n8", "n2"] 200)
   getBN `shouldReturnSet` ["n4", "n6", "n7", "n8"]
-  
+
   -- TODO: keep testing boundary nodes.
+  -- - What if a new FoundNode overwrites the old one for the same node ID?
+  -- - What if an old FoundNode is discarded due to the new one already in the weaver?
+  -- - How do boundary nodes respond to markAsVisited?
   
 
 addAllFoundNodes :: (Eq n, Hashable n) => [FoundNode n na la] -> Weaver n na la -> Weaver n na la
