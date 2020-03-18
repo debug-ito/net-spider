@@ -106,12 +106,11 @@ shouldReturnSet action expected = do
   got `shouldMatchList` expected
 
 spec_boundaryNodes :: Spec
-spec_boundaryNodes = specify "boundary nodes" $ do
-  rweaver <- newIORef $ newWeaver policyOverwrite
-  let addFN fn = do
-        new_w <- fmap (addFoundNode fn) $ readIORef rweaver
-        writeIORef rweaver new_w
-      getBN = fmap getBoundaryNodes $ readIORef rweaver
+spec_boundaryNodes = describe "boundary nodes" $ do
+  let addFN ref_w fn = do
+        new_w <- fmap (addFoundNode fn) $ readIORef ref_w
+        writeIORef ref_w new_w
+      getBN ref_w = fmap getBoundaryNodes $ readIORef ref_w
       makeFN :: Text -> [Text] -> Int64 -> FoundNode Text () ()
       makeFN sub_n tar_ns time =
         FoundNode { subjectNode = sub_n,
@@ -120,23 +119,28 @@ spec_boundaryNodes = specify "boundary nodes" $ do
                     neighborLinks = map makeFL tar_ns
                   }
       makeFL tar_n = FoundLink { targetNode = tar_n, linkState = LinkToTarget, linkAttributes = () }
-  getBN `shouldReturnSet` []
-  addFN (makeFN "n1" [] 100)
-  getBN `shouldReturnSet` []
-  addFN (makeFN "n1" ["n2"] 200)
-  getBN `shouldReturnSet` ["n2"]
-  addFN (makeFN "n2" ["n3", "n4", "n5", "n1"] 250)
-  getBN `shouldReturnSet` ["n3", "n4", "n5"]
-  addFN (makeFN "n3" ["n4"] 200)
-  getBN `shouldReturnSet` ["n4", "n5"] -- should return unique node IDs
+  specify "policyOverwrite" $ do
+    rweaver <- newIORef $ newWeaver policyOverwrite
+    let addFN' = addFN rweaver
+        getBN' = getBN rweaver
+    getBN' `shouldReturnSet` []
+    addFN' (makeFN "n1" [] 100)
+    getBN' `shouldReturnSet` []
+    addFN' (makeFN "n1" ["n2"] 200)
+    getBN' `shouldReturnSet` ["n2"]
+    addFN' (makeFN "n2" ["n3", "n4", "n5", "n1"] 250)
+    getBN' `shouldReturnSet` ["n3", "n4", "n5"]
+    addFN' (makeFN "n3" ["n4"] 200)
+    getBN' `shouldReturnSet` ["n4", "n5"] -- should return unique node IDs
+    
+    addFN' (makeFN "n5" ["n1", "n6", "n7", "n8", "n2"] 200)
+    getBN' `shouldReturnSet` ["n4", "n6", "n7", "n8"]
   
-  addFN (makeFN "n5" ["n1", "n6", "n7", "n8", "n2"] 200)
-  getBN `shouldReturnSet` ["n4", "n6", "n7", "n8"]
-
-  -- TODO: keep testing boundary nodes.
-  -- - What if a new FoundNode overwrites the old one for the same node ID?
-  -- - What if an old FoundNode is discarded due to the new one already in the weaver?
-  -- - How do boundary nodes respond to markAsVisited?
+    -- TODO: keep testing boundary nodes.
+    -- - What if a new FoundNode overwrites the old one for the same node ID?
+    -- - What if an old FoundNode is discarded due to the new one already in the weaver?
+    -- - How do boundary nodes respond to markAsVisited?
+  
   
 
 addAllFoundNodes :: (Eq n, Hashable n) => [FoundNode n na la] -> Weaver n na la -> Weaver n na la
