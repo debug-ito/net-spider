@@ -27,6 +27,7 @@ import Data.Foldable (foldl')
 import Data.Hashable (Hashable)
 import Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HM
+import qualified Data.HashSet as HS
 import Data.List (sort, reverse, sortOn)
 import Data.Maybe (listToMaybe, mapMaybe)
 import GHC.Exts (groupWith)
@@ -119,10 +120,12 @@ getSnapshot u w = fst $ getSnapshot' u w
 -- | Get boundary nodes from the 'Weaver'.
 --
 -- A boundary node is a node that has been observed as a target of
--- some links but not visited yet.
+-- some links but not visited yet. This function returns the set of
+-- unique boundary nodes.
 getBoundaryNodes :: (Eq n, Hashable n) => Weaver n na fla -> [n]
-getBoundaryNodes weaver = filter (\nid -> not $ isVisited nid weaver) $ all_target_nodes
+getBoundaryNodes weaver = HS.toList boundary_nodes_set
   where
+    boundary_nodes_set = HS.fromList $ filter (\nid -> not $ isVisited nid weaver) $ all_target_nodes
     all_target_nodes = (map targetNode . neighborLinks) =<< (concat $ HM.elems $ visitedNodes weaver)
 
 -- | (Basically for testing): run 'markAsVisited' on all boundary
