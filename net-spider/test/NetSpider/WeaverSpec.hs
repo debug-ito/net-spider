@@ -4,7 +4,7 @@ module NetSpider.WeaverSpec (main,spec) where
 import Data.Foldable (foldl')
 import Data.Hashable (Hashable)
 import Data.Int (Int64)
-import Data.IORef (newIORef, readIORef, writeIORef)
+import Data.IORef (newIORef, readIORef, writeIORef, modifyIORef')
 import Data.Maybe (fromJust)
 import Data.Text (Text)
 import Test.Hspec
@@ -119,10 +119,12 @@ spec_boundaryNodes = describe "boundary nodes" $ do
                     neighborLinks = map makeFL tar_ns
                   }
       makeFL tar_n = FoundLink { targetNode = tar_n, linkState = LinkToTarget, linkAttributes = () }
+      markV ref_w n = modifyIORef' ref_w $ markAsVisited n
   specify "policyOverwrite" $ do
     rweaver <- newIORef $ newWeaver policyOverwrite
     let addFN' = addFN rweaver
         getBN' = getBN rweaver
+        markV' = markV rweaver
     getBN' `shouldReturnSet` []
     addFN' (makeFN "n1" [] 100)
     getBN' `shouldReturnSet` []
@@ -135,11 +137,32 @@ spec_boundaryNodes = describe "boundary nodes" $ do
     
     addFN' (makeFN "n5" ["n1", "n6", "n7", "n8", "n2"] 200)
     getBN' `shouldReturnSet` ["n4", "n6", "n7", "n8"]
-  
-    -- TODO: keep testing boundary nodes.
-    -- - What if a new FoundNode overwrites the old one for the same node ID?
-    -- - What if an old FoundNode is discarded due to the new one already in the weaver?
-    -- - How do boundary nodes respond to markAsVisited?
+    addFN' (makeFN "n5" ["n4", "n9"] 250)
+    getBN' `shouldReturnSet` ["n4", "n9"] -- overwrites the previous FoundNode
+    addFN' (makeFN "n5" ["n3", "n7"] 220)
+    getBN' `shouldReturnSet` ["n4", "n9"] -- get ignored.
+
+    markV' "n5"
+    getBN' `shouldReturnSet` ["n4", "n9"]
+    markV' "n9"
+    getBN' `shouldReturnSet` ["n4"]
+  specify "policyAppend" $ do
+    rweaver <- newIORef $ newWeaver policyAppend
+    let addFN' = addFN rweaver
+        getBN' = getBN rweaver
+        markV' = markV rweaver
+    getBN' `shouldReturnSet` []
+    addFN' (makeFN "n1" ["n2"] 200)
+    getBN' `shouldReturnSet` ["n2"]
+    addFN' (makeFN "n1" ["n3"] 100)
+    getBN' `shouldReturnSet` ["n2", "n3"]    
+    addFN' (makeFN "n1" ["n4"] 300)
+    getBN' `shouldReturnSet` ["n2", "n3", "n4"]
+
+    addFN' (makeFN "n3" ["n5"] 200)
+    getBN' `shouldReturnSet` ["n2", "n4", "n5"]
+    markV' "n2"
+    getBN' `shouldReturnSet` ["n4", "n5"]
   
   
 
