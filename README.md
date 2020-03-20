@@ -235,12 +235,18 @@ The basic usage above uses an external graph database to store the history graph
 To build a snapshot graph on memory, you use `Weaver` instead of `Spider`.
 
 ```haskell weaver
-import NetSpider.Weaver (Weaver, newWeaver)
+import NetSpider.Found
+  (FoundNode(..), FoundLink(..), LinkState(LinkBidirectional))
+import NetSpider.Pair (Pair(..))
 import NetSpider.Query (policyOverwrite)
+import NetSpider.Snapshot (nodeId, linkNodePair)
+import NetSpider.Timestamp (fromS)
+import NetSpider.Unify (unifyToOne)
+import NetSpider.Weaver (Weaver, newWeaver, addFoundNode, getSnapshot)
 
 main = hspec $ specify "weaver" $ do
-  let weaver :: Weaver Text () ()
-      weaver = newWeaver policyOverwrite
+  let init_weaver :: Weaver Text () ()
+      init_weaver = newWeaver policyOverwrite
 ```
 
 `Weaver` has the same type parameters as `Spider`. `newWeaver` makes a new `Weaver` object that has no local finding yet.
@@ -248,12 +254,62 @@ main = hspec $ specify "weaver" $ do
 Then, add local findings to `Weaver` just like you did to `Spider`. Note that it's a pure (non-IO) operation for `Weaver`.
 
 ```haskell weaver
-  True `shouldBe` False -- TODO
+  let finding1 = FoundNode
+                 { subjectNode = "switch1",
+                   foundAt = fromS "2018-08-20T12:53:38",
+                   neighborLinks = links1,
+                   nodeAttributes = ()
+                 }
+      links1 = [ FoundLink
+                 { targetNode = "switch2",
+                   linkState = LinkBidirectional,
+                   linkAttributes = ()
+                 },
+                 FoundLink
+                 { targetNode = "switch3",
+                   linkState = LinkBidirectional,
+                   linkAttributes = ()
+                 }
+               ]
+      finding2 = FoundNode
+                 { subjectNode = "switch2",
+                   foundAt = fromS "2018-08-20T13:00:22",
+                   neighborLinks = links2,
+                   nodeAttributes = ()
+                 }
+      links2 = [ FoundLink
+                 { targetNode = "switch4",
+                   linkState = LinkBidirectional,
+                   linkAttributes = ()
+                 },
+                 FoundLink
+                 { targetNode = "switch1",
+                   linkState = LinkBidirectional,
+                   linkAttributes = ()
+                 }
+               ]
+      got_weaver = addFoundNode finding2
+                   $ addFoundNode finding1 init_weaver
 ```
 
-----
+`getSnapshot` function on `Weaver` makes the snapshot graph from all local findings added so far.
 
-The limitation on `Weaver` is:
+```haskell weaver
+  let (raw_nodes, raw_links) = getSnapshot unifyToOne got_weaver
+      got_nodes = sort raw_nodes
+      got_links = sortOn linkNodePair raw_links
+  map nodeId got_nodes `shouldBe` [ "switch1",
+                                    "switch2",
+                                    "switch3",
+                                    "switch4"
+                                  ]
+  map linkNodePair got_links `shouldBe` map Pair [ ("switch1", "switch2"),
+                                                   ("switch1", "switch3"),
+                                                   ("switch2", "switch4")
+                                                 ]
+```
+
+Because `Weaver` is not backed by a database, it has some limitations.
 
 - It always returns the latest snapshot graph. It does not allow querying a snapshot in the past, as [we will show later](#snapshot-graph-for-a-specific-time-interval).
 - It always returns the snapshot graph that covers all observed nodes. It does not allow traversing part of the graph.
