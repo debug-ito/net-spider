@@ -6,11 +6,14 @@
 --
 -- 
 module NetSpider.Found
-       ( FoundNode(..),
+       ( -- * Local findings
+         FoundNode(..),
          FoundLink(..),
+         -- * LinkState
          LinkState(..),
          linkStateToText,
          linkStateFromText,
+         -- * Utilities
          sortByTime,
          allTargetNodes
        ) where
