@@ -29,14 +29,14 @@ The history graph can be queried via net-spider. When queried, it traverses the 
 
 Maintaining the graph database is delegated to [Tinkerpop Gremlin Server](http://tinkerpop.apache.org/). You have to set up a server instance separately.
 
-Alternatively, net-spider provides a way to build a small-scale snapshot graph without using a graph database. See [The Weaver type](#the-weaver-type-to-build-a-snapshot-graph-on-memory) section for detail.
+Alternatively, net-spider provides a way to build a small-scale snapshot graph without using a graph database. See [Build a snapshot graph on memory](#build-a-snapshot-graph-on-memory) section for detail.
 
 ## Contents
 
 * [Use case](#use-case)
 * [Basic usage](#basic-usage)
 * [The Spider type](#the-spider-type)
-* [The Weaver type to build a snapshot graph on memory](#the-weaver-type-to-build-a-snapshot-graph-on-memory)
+* [Build a snapshot graph on memory](#build-a-snapshot-graph-on-memory)
 * [Node and link attributes](#node-and-link-attributes)
 * [Snapshot graph for a specific time interval](#snapshot-graph-for-a-specific-time-interval)
 * [Multiple links between a pair of nodes](#multiple-links-between-a-pair-of-nodes)
@@ -228,9 +228,37 @@ You are supposed to set these type variables based on your application. Because 
 type MySpider = Spider Text () ()
 ```
 
-## The Weaver type to build a snapshot graph on memory
+## Build a snapshot graph on memory
 
-Similar to `Spider` type, net-spider has `Weaver` 
+The basic usage above uses an external graph database to store the history graph. Alternatively, you can build a snapshot graph on memory, without using a graph database.
+
+To build a snapshot graph on memory, you use `Weaver` instead of `Spider`.
+
+```haskell weaver
+import NetSpider.Weaver (Weaver, newWeaver)
+import NetSpider.Query (policyOverwrite)
+
+main = hspec $ specify "weaver" $ do
+  let weaver :: Weaver Text () ()
+      weaver = newWeaver policyOverwrite
+```
+
+`Weaver` has the same type parameters as `Spider`. `newWeaver` makes a new `Weaver` object that has no local finding yet.
+
+Then, add local findings to `Weaver` just like you did to `Spider`. Note that it's a pure (non-IO) operation for `Weaver`.
+
+```haskell weaver
+  True `shouldBe` False -- TODO
+```
+
+----
+
+The limitation on `Weaver` is:
+
+- It always returns the latest snapshot graph. It does not allow querying a snapshot in the past, as [we will show later](#snapshot-graph-for-a-specific-time-interval).
+- It always returns the snapshot graph that covers all observed nodes. It does not allow traversing part of the graph.
+
+So, basically `Weaver` does not scale well in terms of time or space. However, it is very useful to analyze temporal behavior of a small time-varying graph.
 
 
 ## Node and link attributes
