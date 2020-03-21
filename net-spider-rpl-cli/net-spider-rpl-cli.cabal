@@ -24,10 +24,11 @@ library
   ghc-options:          -Wall -fno-warn-unused-imports
   default-extensions:   StrictData
   other-extensions:     OverloadedStrings, RankNTypes
-  exposed-modules:      NetSpider.RPL.CLI
+  exposed-modules:      NetSpider.RPL.CLI,
+                        NetSpider.RPL.CLI.Analyze
   -- other-modules:        
   build-depends:        base >=4.11.1.0 && <4.13,
-                        net-spider >=0.4.0.0 && <0.5,
+                        net-spider >=0.4.2.0 && <0.5,
                         net-spider-rpl >=0.4.0.0 && <0.5,
                         net-spider-cli >=0.2.0.0 && <0.3,
                         text >=1.2.2.2 && <1.3,
@@ -61,8 +62,10 @@ test-suite spec
   main-is:              Spec.hs
   -- default-extensions:   
   -- other-extensions:     
-  other-modules:        NetSpider.RPL.CLISpec
+  other-modules:        NetSpider.RPL.CLISpec,
+                        NetSpider.RPL.CLI.AnalyzeSpec
   build-depends:        base, net-spider-rpl-cli, net-spider, net-spider-rpl, optparse-applicative, net-spider-cli,
+                        text,
                         hspec >=2.5.5,
                         ip >=1.3.0 && <1.8
 
