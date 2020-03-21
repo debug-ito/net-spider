@@ -26,12 +26,12 @@ import Control.Category ((<<<))
 import Control.Exception.Safe (throwString, bracket)
 import Control.Monad (void, mapM_, mapM)
 import Data.Aeson (ToJSON)
-import Data.Foldable (foldr', toList)
+import Data.Foldable (foldr', toList, foldl')
 import Data.List (intercalate)
 import Data.Greskell
   ( runBinder, ($.), (<$.>), (<*.>),
     Binder, ToGreskell(GreskellReturn), AsIterator(IteratorItem), FromGraphSON,
-    liftWalk, gLimit, gIdentity, gSelect1, gAs, gProject, gByL, gIdentity,
+    liftWalk, gLimit, gIdentity, gSelect1, gAs, gProject, gByL, gIdentity, gFold,
     lookupAsM, newAsLabel,
     Transform, Walk
   )
@@ -43,7 +43,6 @@ import qualified Data.HashSet as HS
 import Data.IORef (IORef, modifyIORef, newIORef, readIORef, atomicModifyIORef')
 import Data.Maybe (catMaybes, mapMaybe, listToMaybe)
 import Data.Monoid (mempty, (<>))
-import Data.List (sortOn)
 import Data.Text (Text, pack)
 import Data.Vector (Vector)
 import qualified Data.Vector as V
@@ -54,9 +53,12 @@ import NetSpider.Graph (EID, LinkAttributes, NodeAttributes)
 import NetSpider.Graph.Internal
   ( VFoundNode, EFinds, VNode,
     VFoundNodeData(..), EFindsData(..),
-    gVFoundNodeData, gEFindsData
+    gVFoundNodeData, gEFindsData,
+    makeFoundNode, makeFoundLink
   )
-import NetSpider.Found (FoundNode(..), FoundLink(..), LinkState(..))
+import NetSpider.Found
+  (FoundNode(..), FoundLink(..), LinkState(..), allTargetNodes)
+import qualified NetSpider.Found as Found
 import NetSpider.Log (runWriterLoggingM, WriterLoggingM, logDebugW, LogLine, spack)
 import NetSpider.Pair (Pair)
 import NetSpider.Queue (Queue, newQueue, popQueue, pushQueue)
@@ -79,6 +81,8 @@ import NetSpider.Spider.Internal.Log
 import NetSpider.Spider.Internal.Spider (Spider(..))
 import NetSpider.Timestamp (Timestamp, showEpochTime)
 import NetSpider.Unify (LinkSampleUnifier, LinkSample(..), LinkSampleID, linkSampleId)
+import NetSpider.Weaver (Weaver, newWeaver)
+import qualified NetSpider.Weaver as Weaver
 
 -- | Connect to the WebSocket endpoint of Tinkerpop Gremlin Server
 -- that hosts the NetSpider database.
@@ -172,7 +176,7 @@ getSnapshot :: (FromGraphSON n, ToJSON n, Ord n, Hashable n, Show n, LinkAttribu
             -> Query n na fla sla
             -> IO (SnapshotGraph n na sla)
 getSnapshot spider query = do
-  ref_state <- newIORef $ initSnapshotState $ startsFrom query
+  ref_state <- newIORef $ initSnapshotState (startsFrom query) (foundNodePolicy query)
   recurseVisitNodesForSnapshot spider query ref_state
   (nodes, links, logs) <- fmap (makeSnapshot $ unifyLinkSamples query) $ readIORef ref_state
   mapM_ (logLine spider) logs
@@ -195,51 +199,64 @@ recurseVisitNodesForSnapshot spider query ref_state = go
     getNextVisit = atomicModifyIORef' ref_state popUnvisitedNode
     -- TODO: limit number of steps.
 
--- | Returns the result of query: (latest VFoundNode, list of traversed edges)
+-- | Traverse one hop from the visited 'VNode'.
+--
+-- Returns: list of (VFoundNode of the VNode, EFinds links), where an
+-- EFinds link = (EFindsData, target Node Id)
 traverseEFindsOneHop :: (FromGraphSON n, NodeAttributes na, LinkAttributes fla)
                      => Spider n na fla
                      -> Interval Timestamp
+                     -> FoundNodePolicy n na
                      -> EID VNode
-                     -> IO (Maybe (VFoundNodeData na), [(VFoundNodeData na, EFindsData fla, n)])
-traverseEFindsOneHop spider time_interval visit_eid = (,) <$> getLatestVFoundNode <*> getTraversedEdges
+                     -> IO [(VFoundNodeData na, [(EFindsData fla, n)])]
+traverseEFindsOneHop spider time_interval fn_policy visit_eid = getTraversedEdges
   where
-    foundNodeTraversal = fmap gSelectFoundNode (gFilterFoundNodeByTime time_interval)
+    foundNodeTraversal = pure latestFoundNodeIfOverwrite
+                         <*.> fmap gSelectFoundNode (gFilterFoundNodeByTime time_interval)
                          <*.> gHasNodeEID visit_eid
                          <*.> pure gAllNodes
-    getLatestVFoundNode = fmap vToMaybe $ Gr.slurpResults =<< submitQuery
-      where
-        submitQuery = submitB spider binder
-        binder = gVFoundNodeData <$.> gLatestFoundNode <$.> foundNodeTraversal
+    latestFoundNodeIfOverwrite =
+      case fn_policy of
+        PolicyOverwrite -> gLatestFoundNode
+        PolicyAppend -> gIdentity
+
     getTraversedEdges = fmap V.toList $ traverse extractFromSMap =<< Gr.slurpResults =<< submitQuery
       where
         submitQuery = Gr.submit (spiderClient spider) query (Just bindings)
-        ((query, label_vfn, label_ef, label_target_nid), bindings) = runBinder $ do
-          lvfn <- newAsLabel
+        ((query, label_vfnd, label_efs, label_efd, label_target_nid), bindings) = runBinder $ do
           lvfnd <- newAsLabel
-          lef <- newAsLabel
+          lefs <- newAsLabel
           lefd <- newAsLabel
-          ln <- newAsLabel
+          ltarget <- newAsLabel
+          let gEFindsAndTarget =
+                gProject
+                ( gByL lefd gEFindsData )
+                [ gByL ltarget (gNodeID spider <<< gFindsTarget)
+                ]
+                <<< gFinds
           gt <- gProject
-                ( gByL lvfnd (gVFoundNodeData <<< gSelect1 lvfn) )
-                [ gByL lefd (gEFindsData <<< gSelect1 lef),
-                  gByL ln (gIdentity :: Walk Transform n n)
-                ] <$.> gNodeID spider <$.> gFindsTarget
-                <$.> gAs lef <$.> gFinds <$.> gAs lvfn <$.> foundNodeTraversal
-          return (gt, lvfnd, lefd, ln)
-        extractFromSMap smap =
-          (,,)
-          <$> lookupAsM label_vfn smap 
-          <*> lookupAsM label_ef smap 
-          <*> lookupAsM label_target_nid smap 
+                ( gByL lvfnd gVFoundNodeData )
+                [ gByL lefs (gFold <<< gEFindsAndTarget)
+                ]
+                <$.> foundNodeTraversal
+          return (gt, lvfnd, lefs, lefd, ltarget)
+        extractFromSMap smap = do
+          vfnd <- lookupAsM label_vfnd smap
+          efs <- lookupAsM label_efs smap
+          parsed_efs <- mapM extractHopFromSMap efs
+          return (vfnd, parsed_efs)
+        extractHopFromSMap smap =
+          (,)
+          <$> lookupAsM label_efd smap
+          <*> lookupAsM label_target_nid smap
 
-makeLinkSample :: n -> VFoundNodeData na -> EFindsData la -> n -> LinkSample n la
-makeLinkSample subject_nid vfn efinds target_nid = 
-  LinkSample { lsSubjectNode = subject_nid,
-               lsTargetNode = target_nid,
-               lsLinkState = efLinkState efinds,
-               lsTimestamp = vfnTimestamp vfn,
-               lsLinkAttributes = efLinkAttributes efinds
-             }
+makeFoundNodesFromHops :: n -- ^ Subject node ID
+                       -> (VFoundNodeData na, [(EFindsData fla, n)]) -- ^ Hops
+                       -> FoundNode n na fla
+makeFoundNodesFromHops subject_nid (vfnd, efs) =
+  makeFoundNode subject_nid vfnd $ map toFoundLink efs
+  where
+    toFoundLink (ef, target_nid) = makeFoundLink target_nid ef
 
 visitNodeForSnapshot :: (ToJSON n, Ord n, Hashable n, FromGraphSON n, Show n, LinkAttributes fla, NodeAttributes na)
                      => Spider n na fla
@@ -264,48 +281,34 @@ visitNodeForSnapshot spider query ref_state visit_nid = do
          logWarn spider ("Node " <> spack visit_nid <> " does not exist.")
          return ()
        Just visit_eid -> do
-         (mlatest_vfn, hops) <- traverseEFindsOneHop spider (timeInterval query) visit_eid
-         markAsVisited $ mlatest_vfn
-         logLatestVFN mlatest_vfn
-         let next_hops = filterHops mlatest_vfn $ hops
-         -- putStrLn ("-- visit " ++ show visit_nid)
-         -- putStrLn ("   latest vfn: " ++ (show $ fmap vfnTimestamp mlatest_vfn))
-         -- forM_ next_hops $ \(vfn, _, next_nid) -> do
-         --   putStrLn ("   next: " ++ (show $ vfnTimestamp vfn) ++ " -> " ++ show next_nid)
-         mapM_ logHop next_hops
-         modifyIORef ref_state $ addLinkSamples
-           $ map (uncurry3 $ makeLinkSample visit_nid) $ next_hops
-         -- cur_state <- readIORef ref_state
-         -- putStrLn $ debugShowState cur_state
+         found_nodes <- fmap (map $ makeFoundNodesFromHops visit_nid)
+                        $ traverseEFindsOneHop spider (timeInterval query) (foundNodePolicy query) visit_eid
+         logFoundNodes found_nodes
+         modifyIORef ref_state $ addFoundNodes visit_nid found_nodes
     getVisitedNodeEID = fmap vToMaybe $ Gr.slurpResults =<< submitB spider binder
       where
         binder = gNodeEID <$.> gHasNodeID spider visit_nid <*.> pure gAllNodes
-    markAsVisited mvfn = modifyIORef ref_state $ addVisitedNode visit_nid mvfn
-    logLatestVFN Nothing = logDebug spider ("No local finding is found for node " <> spack visit_nid)
-    logLatestVFN (Just vfn) = logDebug spider ( "Node " <> spack visit_nid
-                                                <> ": latest local finding is at "
-                                                <> (showEpochTime $ vfnTimestamp vfn)
-                                              )
-    uncurry3 f (a,b,c) = f a b c
-    filterHops mvfn =
-      case foundNodePolicy query of
-       PolicyOverwrite -> filter (hopHasVFN mvfn)
-       PolicyAppend -> id
-    hopHasVFN Nothing _ = True
-    hopHasVFN (Just vfn1) (vfn2, _, _) = vfnId vfn1 == vfnId vfn2
-    logHop (vfn, _, next_nid) = logDebug spider ( "Link " <> spack visit_nid
-                                                  <> " -> " <> spack next_nid
-                                                  <> " at " <> (showEpochTime $ vfnTimestamp vfn)
-                                                )
+    logFoundNodes [] = logDebug spider ("No local finding is found for node " <> spack visit_nid)
+    logFoundNodes fns = mapM_ logFoundNode $ Found.sortByTime fns
+    logFoundNode fn = do
+      let neighbors = neighborLinks fn
+      logDebug spider
+        ( "Node " <> (spack $ subjectNode fn)
+          <> ": local finding at "  <> (showEpochTime $ foundAt fn)
+          <> ", " <> (spack $ length neighbors) <> " neighbors"
+        )
+      mapM_ logFoundLink neighbors
+    logFoundLink fl =
+      logDebug spider
+      ( "  Link is found to " <> (spack $ targetNode fl)
+      )
+
 
 -- | The state kept while making the snapshot graph.
 data SnapshotState n na fla =
   SnapshotState
   { ssUnvisitedNodes :: Queue n,
-    ssVisitedNodes :: HashMap n (Maybe (VFoundNodeData na)),
-    -- ^ If the visited node has no observation yet, its node
-    -- attributes 'Nothing'.
-    ssVisitedLinks :: HashMap (LinkSampleID n) [LinkSample n fla]
+    ssWeaver :: Weaver n na fla
   }
   deriving (Show)
 
@@ -322,39 +325,19 @@ data SnapshotState n na fla =
 --     visited_links = "visitedLinks: "
 --                     ++ (intercalate ", " $ map show $ HM.keys $ ssVisitedLinks state)
 
-emptySnapshotState :: (Ord n, Hashable n) => SnapshotState n na fla
-emptySnapshotState = SnapshotState
-                     { ssUnvisitedNodes = mempty,
-                       ssVisitedNodes = mempty,
-                       ssVisitedLinks = mempty
-                     }
+emptySnapshotState :: FoundNodePolicy n na -> SnapshotState n na fla
+emptySnapshotState p =
+  SnapshotState
+  { ssUnvisitedNodes = mempty,
+    ssWeaver = newWeaver p
+  }
 
-initSnapshotState :: (Ord n, Hashable n) => [n] -> SnapshotState n na fla
-initSnapshotState init_unvisited_nodes = emptySnapshotState { ssUnvisitedNodes = newQueue init_unvisited_nodes }
-
-addVisitedNode :: (Eq n, Hashable n) => n -> Maybe (VFoundNodeData na) -> SnapshotState n na fla -> SnapshotState n na fla
-addVisitedNode nid mv state = state { ssVisitedNodes = HM.insert nid mv $ ssVisitedNodes state }
+initSnapshotState :: [n] -> FoundNodePolicy n na -> SnapshotState n na fla
+initSnapshotState init_unvisited_nodes p =
+  (emptySnapshotState p) { ssUnvisitedNodes = newQueue init_unvisited_nodes }
 
 isAlreadyVisited :: (Eq n, Hashable n) => SnapshotState n na fla -> n -> Bool
-isAlreadyVisited state nid = HM.member nid $ ssVisitedNodes state
-
-addLinkSample :: (Ord n, Hashable n)
-              => LinkSample n fla -> SnapshotState n na fla -> SnapshotState n na fla
-addLinkSample ls state = state { ssVisitedLinks = updatedLinks,
-                                 ssUnvisitedNodes = updatedUnvisited
-                               }
-  where
-    link_id = linkSampleId ls
-    updatedLinks = HM.insertWith (++) link_id (return ls) $ ssVisitedLinks state
-    target_nid = lsTargetNode ls
-    target_already_visited = isAlreadyVisited state target_nid
-    updatedUnvisited = if target_already_visited
-                       then ssUnvisitedNodes state
-                       else pushQueue target_nid $ ssUnvisitedNodes state
-
-addLinkSamples :: (Ord n, Hashable n)
-               => [LinkSample n fla] -> SnapshotState n na fla -> SnapshotState n na fla
-addLinkSamples links orig_state = foldr' addLinkSample orig_state links
+isAlreadyVisited state nid = Weaver.isVisited nid $ ssWeaver state
 
 popUnvisitedNode :: SnapshotState n na fla -> (SnapshotState n na fla, Maybe n)
 popUnvisitedNode state = (updated, popped)
@@ -362,64 +345,25 @@ popUnvisitedNode state = (updated, popped)
     updated = state { ssUnvisitedNodes = updatedUnvisited }
     (popped, updatedUnvisited) = popQueue $ ssUnvisitedNodes state
 
-makeSnapshot :: (Eq n, Hashable n, Show n)
+makeSnapshot :: (Ord n, Hashable n, Show n)
              => LinkSampleUnifier n na fla sla
              -> SnapshotState n na fla
              -> ([SnapshotNode n na], [SnapshotLink n sla], [LogLine])
 makeSnapshot unifier state = (nodes, links, logs)
   where
-    nodes = visited_nodes ++ boundary_nodes
-    visited_nodes = map (makeSnapshotNode state) $ HM.keys $ ssVisitedNodes state
-    boundary_nodes = map (makeSnapshotNode state) $ toList $ ssUnvisitedNodes state
-    (links, logs) = runWriterLoggingM $ fmap mconcat
-                    $ mapM (makeSnapshotLinks unifier state) $ HM.elems $ ssVisitedLinks state
-    
+    ((nodes, links), logs) = Weaver.getSnapshot' unifier $ ssWeaver state
 
-makeSnapshotNode :: (Eq n, Hashable n) => SnapshotState n na fla -> n -> SnapshotNode n na
-makeSnapshotNode state nid =
-  SnapshotNode { _nodeId = nid,
-                 _isOnBoundary = on_boundary,
-                 _nodeTimestamp = fmap vfnTimestamp $ mvfn,
-                 _nodeAttributes = fmap vfnAttributes $ mvfn
-               }
+addFoundNodes :: (Eq n, Hashable n)
+              => n -> [FoundNode n na fla] -> SnapshotState n na fla -> SnapshotState n na fla
+addFoundNodes visited_nid [] state = state { ssWeaver = new_weaver }
   where
-    (on_boundary, mvfn) =
-      case HM.lookup nid $ ssVisitedNodes state of
-       Nothing -> (True, Nothing)
-       Just mv -> (False, mv)
+    new_weaver = Weaver.markAsVisited visited_nid $ ssWeaver state
+addFoundNodes _ fns state = foldl' (\s fn -> addOneFoundNode fn s) state fns
 
--- | The input 'LinkSample's must be for the equivalent
--- 'LinkSampleID'. The output is list of 'SnapshotLink's, each of
--- which corresponds to a subgroup of 'LinkSample's.
-makeSnapshotLinks :: (Eq n, Hashable n, Show n)
-                  => LinkSampleUnifier n na fla sla
-                  -> SnapshotState n na fla
-                  -> [LinkSample n fla]
-                  -> WriterLoggingM [SnapshotLink n sla]
-makeSnapshotLinks _ _ [] = return []
-makeSnapshotLinks unifier state link_samples@(head_sample : _) = do
-  unified <- doUnify link_samples
-  logUnified unified
-  return $ mapMaybe makeSnapshotLink unified
+addOneFoundNode :: (Eq n, Hashable n)
+                => FoundNode n na fla -> SnapshotState n na fla -> SnapshotState n na fla
+addOneFoundNode fn state = state { ssUnvisitedNodes = new_queue, ssWeaver = new_weaver }
   where
-    makeEndNode getter = makeSnapshotNode state $ getter $ head_sample
-    doUnify = unifier (makeEndNode lsSubjectNode) (makeEndNode lsTargetNode)
-    logUnified unified = logDebugW ( "Unify link [" <> (spack $ lsSubjectNode head_sample) <> "]-["
-                                     <> (spack $ lsTargetNode head_sample) <> "]: "
-                                     <> "from " <> (spack $ length link_samples) <> " samples "
-                                     <> "to " <> (spack $ length unified) <> " samples"
-                                   )
-    makeSnapshotLink unified_sample = do
-      case lsLinkState unified_sample of
-       LinkUnused -> Nothing
-       LinkToTarget -> Just $ sampleToLink unified_sample True True
-       LinkToSubject -> Just $ sampleToLink unified_sample False True
-       LinkBidirectional -> Just $ sampleToLink unified_sample True False
-    sampleToLink sample to_target is_directed = 
-      SnapshotLink { _sourceNode = (if to_target then lsSubjectNode else lsTargetNode) sample,
-                     _destinationNode = (if to_target then lsTargetNode else lsSubjectNode) sample,
-                     _isDirected = is_directed,
-                     _linkTimestamp = lsTimestamp sample,
-                     _linkAttributes = lsLinkAttributes sample
-                   }
-
+    new_weaver = Weaver.addFoundNode fn $ ssWeaver state
+    new_boundary_nodes = filter (\n -> not $ Weaver.isVisited n new_weaver) $ allTargetNodes fn
+    new_queue = foldl' (\q n -> pushQueue n q) (ssUnvisitedNodes state) new_boundary_nodes

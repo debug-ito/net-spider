@@ -12,10 +12,8 @@ import Data.Text (Text)
 import Data.Time.LocalTime (TimeZone(..))
 import Test.Hspec
 
-import ServerTest.Common
-  ( withServer, withSpider', withSpider,
-    AText(..), AInt(..)
-  )
+import TestCommon (AText(..), AInt(..))
+import ServerTest.ServerCommon (withServer, withSpider', withSpider)
 
 import NetSpider.Found (FoundNode(..), FoundLink(..), LinkState(..))
 import NetSpider.Graph (NodeAttributes(..), LinkAttributes(..), VNode)

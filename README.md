@@ -27,13 +27,16 @@ All local findings are stored in the graph database with timestamps. So the data
 
 The history graph can be queried via net-spider. When queried, it traverses the history graph to build a graph that should be the state of the time-varying graph at the specific time in the past.
 
-Maintaining the graph database is delegated to [Tinkerpop Gremlin Server](http://tinkerpop.apache.org/). You have to set up a server instance seprately.
+Maintaining the graph database is delegated to [Tinkerpop Gremlin Server](http://tinkerpop.apache.org/). You have to set up a server instance separately.
+
+Alternatively, net-spider provides a way to build a small-scale snapshot graph without using a graph database. See [Build a snapshot graph on memory](#build-a-snapshot-graph-on-memory) section for detail.
 
 ## Contents
 
 * [Use case](#use-case)
 * [Basic usage](#basic-usage)
 * [The Spider type](#the-spider-type)
+* [Build a snapshot graph on memory](#build-a-snapshot-graph-on-memory)
 * [Node and link attributes](#node-and-link-attributes)
 * [Snapshot graph for a specific time interval](#snapshot-graph-for-a-specific-time-interval)
 * [Multiple links between a pair of nodes](#multiple-links-between-a-pair-of-nodes)
@@ -164,7 +167,7 @@ So, by combining these local findings, we can infer the network topology is like
 [switch3]
 ```
 
-The above graph can be obtained by `getSnapshotSimple` function. This function retrieves the snapshot graph that is supposed to be the latest state of the network.
+The above graph can be obtained by `getSnapshotSimple` function. This function traverses the history graph from "switch1" node, and retrieves the snapshot graph that is supposed to be the latest state of the network.
 
 ```haskell basic
   got_graph <- getSnapshotSimple spider "switch1"
@@ -224,6 +227,95 @@ You are supposed to set these type variables based on your application. Because 
 ```haskell
 type MySpider = Spider Text () ()
 ```
+
+## Build a snapshot graph on memory
+
+The basic usage above uses an external graph database to store the history graph. Alternatively, you can build a snapshot graph on memory, without using a graph database.
+
+To build a snapshot graph on memory, you use `Weaver` instead of `Spider`.
+
+```haskell weaver
+import NetSpider.Found
+  (FoundNode(..), FoundLink(..), LinkState(LinkBidirectional))
+import NetSpider.Pair (Pair(..))
+import NetSpider.Query (policyOverwrite)
+import NetSpider.Snapshot (nodeId, linkNodePair)
+import NetSpider.Timestamp (fromS)
+import NetSpider.Unify (unifyToOne)
+import NetSpider.Weaver (Weaver, newWeaver, addFoundNode, getSnapshot)
+
+main = hspec $ specify "weaver" $ do
+  let init_weaver :: Weaver Text () ()
+      init_weaver = newWeaver policyOverwrite
+```
+
+`Weaver` has the same type parameters as `Spider`. `newWeaver` makes a new `Weaver` object that has no local finding yet.
+
+Then, add local findings to `Weaver` just like you did to `Spider`. Note that it's a pure (non-IO) operation for `Weaver`.
+
+```haskell weaver
+  let finding1 = FoundNode
+                 { subjectNode = "switch1",
+                   foundAt = fromS "2018-08-20T12:53:38",
+                   neighborLinks = links1,
+                   nodeAttributes = ()
+                 }
+      links1 = [ FoundLink
+                 { targetNode = "switch2",
+                   linkState = LinkBidirectional,
+                   linkAttributes = ()
+                 },
+                 FoundLink
+                 { targetNode = "switch3",
+                   linkState = LinkBidirectional,
+                   linkAttributes = ()
+                 }
+               ]
+      finding2 = FoundNode
+                 { subjectNode = "switch2",
+                   foundAt = fromS "2018-08-20T13:00:22",
+                   neighborLinks = links2,
+                   nodeAttributes = ()
+                 }
+      links2 = [ FoundLink
+                 { targetNode = "switch4",
+                   linkState = LinkBidirectional,
+                   linkAttributes = ()
+                 },
+                 FoundLink
+                 { targetNode = "switch1",
+                   linkState = LinkBidirectional,
+                   linkAttributes = ()
+                 }
+               ]
+      got_weaver = addFoundNode finding2
+                   $ addFoundNode finding1 init_weaver
+```
+
+`getSnapshot` function on `Weaver` makes the snapshot graph from all local findings added so far.
+
+```haskell weaver
+  let (raw_nodes, raw_links) = getSnapshot unifyToOne got_weaver
+      got_nodes = sort raw_nodes
+      got_links = sortOn linkNodePair raw_links
+  map nodeId got_nodes `shouldBe` [ "switch1",
+                                    "switch2",
+                                    "switch3",
+                                    "switch4"
+                                  ]
+  map linkNodePair got_links `shouldBe` map Pair [ ("switch1", "switch2"),
+                                                   ("switch1", "switch3"),
+                                                   ("switch2", "switch4")
+                                                 ]
+```
+
+Because `Weaver` is not backed by a database, it has some limitations.
+
+- It always returns the latest snapshot graph. It does not allow querying a snapshot in the past, as [we will show later](#snapshot-graph-for-a-specific-time-interval).
+- It always returns the snapshot graph that covers all observed nodes. It does not allow traversing part of the graph.
+
+So, basically `Weaver` does not scale well in terms of time or space. However, it is very useful to analyze temporal behavior of a small time-varying graph.
+
 
 ## Node and link attributes
 
@@ -662,7 +754,7 @@ Sometimes you have to take care of configurations specific to the graph database
 - [net-spider-cli](http://hackage.haskell.org/package/net-spider-cli): Composable CLI option parsers for NetSpider objects based on [optparse-applicative](http://hackage.haskell.org/package/optparse-applicative).
 - [net-spider-rpl](http://hackage.haskell.org/package/net-spider-rpl): net-spider data model for RPL ([RFC 6550 - RPL: IPv6 Routing Protocol for Low-Power and Lossy Networks](https://tools.ietf.org/html/rfc6550))
 - [net-spider-pangraph](http://hackage.haskell.org/package/net-spider-pangraph): Conversion between net-spider and [pangraph](https://hackage.haskell.org/package/pangraph).
-- [net-spider-rpl-example](https://github.com/debug-ito/net-spider/tree/master/net-spider-rpl-example/): A working example of using net-spider. It uses net-spider-rpl and net-spider-cli.
+- [net-spider-rpl-cli](https://github.com/debug-ito/net-spider/tree/master/net-spider-rpl-cli/): A working example of using net-spider. It uses net-spider-rpl and net-spider-cli.
 
 
 ## Author

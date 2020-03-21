@@ -11,6 +11,7 @@ module NetSpider.Unify
          LinkSample(..),
          LinkSampleID,
          linkSampleId,
+         toLinkSamples,
          -- * Standard unifiers
          unifyToOne,
          unifyToMany,
@@ -30,7 +31,8 @@ import Data.Maybe (catMaybes)
 import Data.Monoid ((<>))
 import GHC.Exts (groupWith)
 
-import NetSpider.Found (FoundLink, LinkState)
+import NetSpider.Found (FoundLink, LinkState, FoundNode)
+import qualified NetSpider.Found as Found
 import NetSpider.Log (WriterLoggingM, logDebugW, spack)
 import NetSpider.Pair (Pair(..))
 import NetSpider.Snapshot (SnapshotNode, nodeTimestamp, nodeId, SnapshotLink)
@@ -60,7 +62,20 @@ type LinkSampleID n = Pair n
 linkSampleId :: LinkSample n la -> LinkSampleID n
 linkSampleId l = Pair (lsSubjectNode l, lsTargetNode l)
 
-
+-- | Make 'LinkSample's from 'FoundLink's in 'FoundNode'.
+--
+-- @since 0.4.2.0
+toLinkSamples :: FoundNode n na la -> [LinkSample n la]
+toLinkSamples fn = map fromFoundLink $ Found.neighborLinks fn
+  where
+    fromFoundLink fl =
+      LinkSample
+      { lsSubjectNode = Found.subjectNode fn,
+        lsTargetNode = Found.targetNode fl,
+        lsLinkState = Found.linkState fl,
+        lsTimestamp = Found.foundAt fn,
+        lsLinkAttributes = Found.linkAttributes fl
+      }
 
 -- | Function to unify 'LinkSample's collected for the given pair of
 -- nodes and return 'LinkSample' per physical link. The returned

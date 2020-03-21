@@ -24,7 +24,10 @@ module NetSpider.Graph.Internal
          LinkAttributes(..),
          gSetLinkState,
          gFindsTarget,
-         gEFindsData
+         gEFindsData,
+         -- * Reconstruction
+         makeFoundNode,
+         makeFoundLink
        ) where
 
 import Control.Category ((<<<))
@@ -51,7 +54,10 @@ import Data.Text (Text, unpack, pack)
 import Data.Time.LocalTime (TimeZone(..))
 
 import NetSpider.Timestamp (Timestamp(..))
-import NetSpider.Found (LinkState, linkStateToText, linkStateFromText)
+import NetSpider.Found
+  ( LinkState, linkStateToText, linkStateFromText,
+    FoundLink(..), FoundNode(..)
+  )
 
 -- | Generic element ID used in the graph DB.
 type EID = ElementID
@@ -260,3 +266,27 @@ instance (FromGraphSON v, ToJSON v, Foldable c, Traversable c, NonEmptyLike c) =
   writeLinkAttributes = writePMapProperties
   parseLinkAttributes = traverse parseGraphSON . pMapFromList . pMapToList
   
+-- | Make 'FoundLink' out of 'EFindsData'.
+makeFoundLink :: n -- ^ Target node ID
+              -> EFindsData la -- ^ Attributes of \"finds\" edge
+              -> FoundLink n la
+makeFoundLink target_nid ef_data =
+  FoundLink
+  { targetNode = target_nid,
+    linkState = efLinkState ef_data,
+    linkAttributes = efLinkAttributes ef_data
+  }
+
+-- | Make 'FoundNode' out of 'VFoundNodeData' and other graph
+-- elements.
+makeFoundNode :: n -- ^ Subject node ID
+              -> VFoundNodeData na -- ^ Attributes of the 'FoundNode'.
+              -> [FoundLink n la] -- ^ neighbor links
+              -> FoundNode n na la
+makeFoundNode subject_nid vfn neighbors =
+  FoundNode
+  { subjectNode = subject_nid,
+    foundAt = vfnTimestamp vfn,
+    neighborLinks = neighbors,
+    nodeAttributes = vfnAttributes vfn
+  }

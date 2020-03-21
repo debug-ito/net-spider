@@ -6,11 +6,16 @@
 --
 -- 
 module NetSpider.Found
-       ( FoundNode(..),
+       ( -- * Local findings
+         FoundNode(..),
          FoundLink(..),
+         -- * LinkState
          LinkState(..),
          linkStateToText,
-         linkStateFromText
+         linkStateFromText,
+         -- * Utilities
+         sortByTime,
+         allTargetNodes
        ) where
 
 import qualified Control.Monad.Fail as Fail
@@ -19,6 +24,7 @@ import qualified Data.Aeson as Aeson
 import Data.Bifunctor (Bifunctor(..))
 import Data.Char (isUpper, toLower)
 import Data.Greskell (FromGraphSON(..))
+import Data.List (sortOn, reverse)
 import Data.Text (Text, unpack)
 import GHC.Generics (Generic)
 import qualified Text.Regex.Applicative as RE
@@ -151,3 +157,16 @@ instance (FromJSON n, FromJSON na, FromJSON la) => FromJSON (FoundNode n na la) 
 instance (ToJSON n, ToJSON na, ToJSON la) => ToJSON (FoundNode n na la) where
   toJSON = Aeson.genericToJSON aesonOpt
   toEncoding = Aeson.genericToEncoding aesonOpt
+
+-- | Sort the list of 'FoundNode's by descending order of their
+-- timestamps. The latest 'FoundNode' is at the top.
+--
+-- @since 0.4.2.0
+sortByTime :: [FoundNode n na la] -> [FoundNode n na la]
+sortByTime fns = reverse $ sortOn foundAt fns
+
+-- | Get all 'targetNode's of the 'FoundNode'.
+--
+-- @since 0.4.2.0
+allTargetNodes :: FoundNode n na la -> [n]
+allTargetNodes = map targetNode . neighborLinks

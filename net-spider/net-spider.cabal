@@ -1,5 +1,5 @@
 name:                   net-spider
-version:                0.4.1.0
+version:                0.4.2.0
 author:                 Toshio Ito <debug.ito@gmail.com>
 maintainer:             Toshio Ito <debug.ito@gmail.com>
 license:                BSD3
@@ -44,7 +44,8 @@ library
                         NetSpider.Snapshot.Internal,
                         NetSpider.GraphML.Writer,
                         NetSpider.GraphML.Attribute,
-                        NetSpider.Interval
+                        NetSpider.Interval,
+                        NetSpider.Weaver
   other-modules:        NetSpider.Graph.Internal,
                         NetSpider.Spider.Internal.Graph,
                         NetSpider.Spider.Internal.Log,
@@ -86,13 +87,18 @@ test-suite spec
   main-is:              Spec.hs
   -- default-extensions:   
   other-extensions:     OverloadedStrings,
-                        DeriveGeneric
+                        DeriveGeneric,
+                        GADTs
   other-modules:        NetSpider.GraphML.WriterSpec,
                         NetSpider.TimestampSpec,
                         NetSpider.FoundSpec,
                         NetSpider.SnapshotSpec,
-                        JSONUtil
+                        NetSpider.WeaverSpec
+                        JSONUtil,
+                        SnapshotTestCase,
+                        TestCommon
   build-depends:        base, net-spider, vector, text, aeson, bytestring, time,
+                        greskell, hashable,
                         hspec >=2.4.4
 
 flag server-test
@@ -109,9 +115,11 @@ test-suite server-test-suite
   hs-source-dirs:       test
   ghc-options:          -Wall -fno-warn-unused-imports "-with-rtsopts=-M512m"
   main-is:              ServerTest.hs
-  other-modules:        ServerTest.Common,
+  other-modules:        TestCommon,
+                        SnapshotTestCase,
                         ServerTest.Snapshot,
-                        ServerTest.Attributes
+                        ServerTest.Attributes,
+                        ServerTest.ServerCommon
   if flag(server-test)
     build-depends:        base, hspec, net-spider, vector, text, greskell-websocket, greskell,
                           aeson, unordered-containers, text, hashable, time, safe-exceptions,

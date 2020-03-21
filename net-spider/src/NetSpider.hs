@@ -23,6 +23,10 @@
 -- * "NetSpider.Query"
 -- * "NetSpider.Unify"
 --
+-- == Weaver (on-memory snapshot builder)
+--
+-- * "NetSpider.Weaver"
+--
 -- == Data models
 --
 -- * "NetSpider.Found"

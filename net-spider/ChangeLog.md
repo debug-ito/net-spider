@@ -1,5 +1,17 @@
 # Revision history for net-spider
 
+## 0.4.2.0  -- 2020-03-21
+
+* Add Weaver module.
+
+### Unify module
+
+* Add `toLinkSamples` function.
+
+### Found module
+
+* Add `sortByTime`, `allTargetNodes` functions.
+
 ## 0.4.1.0  -- 2020-01-26
 
 * Add `GraphML.Attribute` module. `AttributeValue` and related types

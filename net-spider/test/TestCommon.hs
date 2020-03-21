@@ -1,9 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
-module ServerTest.Common
-       ( withServer,
-         withSpider,
-         withSpider',
-         sortSnapshotElements,
+module TestCommon
+       ( sortSnapshotElements,
          AText(..),
          AInt(..),
          APorts(..),
@@ -13,7 +10,6 @@ module ServerTest.Common
 
 import Control.Applicative ((<$>))
 import Control.Category ((<<<))
-import Control.Exception.Safe (bracket, withException)
 import Data.Aeson.Types (Parser)
 import Data.Greskell (gProperty, newBind, lookupAs, pMapToFail, Key)
 import Data.List (sort)
@@ -21,38 +17,16 @@ import Data.Text (Text)
 import Data.Vector (Vector)
 import qualified Data.Vector as V
 import Test.Hspec
-import Test.Hspec.NeedEnv (needEnvHostPort, EnvMode(Need))
 
 import NetSpider.Found (LinkState(..))
 import NetSpider.Graph (NodeAttributes(..), LinkAttributes(..), VNode)
 import NetSpider.Pair (Pair(..))
-import NetSpider.Spider.Config
-  ( Host, Port, Config(..), defConfig, LogLevel(..)
-  )
-import NetSpider.Spider
-  ( connectWith, close, clearAll, Spider
-  )
 import NetSpider.Snapshot
   ( SnapshotNode, SnapshotLink
   )
 import NetSpider.Unify
   ( LinkSample(..)
   )
-
-withServer :: SpecWith (Host,Port) -> Spec
-withServer = before $ needEnvHostPort Need "NET_SPIDER_TEST"
-
-withSpider :: Eq n => (Spider n na fla -> IO ()) -> (Host, Port) -> IO ()
-withSpider = withSpider' $ defConfig { logThreshold = LevelWarn }
-
-withSpider' :: Config n na fla -> (Spider n na fla -> IO ()) -> (Host, Port) -> IO ()
-withSpider' orig_conf action (host, port) = bracket (connectWith conf) close $ \spider -> do
-  clearAll spider
-  action spider
-    where
-      conf = orig_conf { wsHost = host,
-                         wsPort = port
-                       }
 
 sortSnapshotElements :: (Ord n, Eq na, Eq la)
                      => ([SnapshotNode n na], [SnapshotLink n la])
