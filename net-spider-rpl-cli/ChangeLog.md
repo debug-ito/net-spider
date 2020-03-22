@@ -1,5 +1,9 @@
 # Revision history for net-spider-rpl-cli
 
+## 0.1.3.0  -- ?
+
+* Add Analyze module.
+
 ## 0.1.2.2  -- 2019-12-29
 
 * Confirm `ip-1.7.0`.

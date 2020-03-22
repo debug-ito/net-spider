@@ -3,7 +3,7 @@
 -- Description: Analyze graph attributes
 -- Maintainer: Toshio Ito <debug.ito@gmail.com>
 --
--- 
+-- @since 0.1.3.0
 module NetSpider.RPL.CLI.Analyze
   ( DODAGAttributes(..),
     analyzeDIO,
