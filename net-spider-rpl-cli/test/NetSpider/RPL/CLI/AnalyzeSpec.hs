@@ -172,6 +172,16 @@ spec_DIO = describe "analyzeDIO" $ do
               ]
         (got, _) = runWriterLoggingM $ analyzeDIO $ makeSnapshotDIO fns
     got `shouldBe` Nothing
+  specify "all orphan nodes" $ do
+    let fns = [ dioNode 120 "dio://[fd00::1]" [],
+                dioNode 170 "dio://[fd00::2]" [],
+                dioNode 110 "dio://[fd00::5]" [],
+                dioNode 100 "dio://[fd00::3]" [],
+                dioNode 180 "dio://[fd00::4]" []
+              ]
+        (got, _) = runWriterLoggingM $ analyzeDIO $ makeSnapshotDIO fns
+    got `shouldBe` Nothing
+
 
 spec_DAO :: Spec
 spec_DAO = describe "analyzeDAO" $ do
