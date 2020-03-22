@@ -6,6 +6,7 @@
 -- 
 module NetSpider.RPL.CLI.Analyze
   ( DODAGAttributes(..),
+    analyzeDIO,
     analyzeDAO
   ) where
 
@@ -27,9 +28,9 @@ data DODAGAttributes =
   }
   deriving (Show,Eq,Ord)
 
----- -- | Get analysis on a DIO graph.
----- analyzeDIO :: SnapshotGraphDIO -> WriterLoggingM (Maybe DODAGAttributes)
----- analyzeDIO = undefined
+-- | Get analysis on a DIO graph.
+analyzeDIO :: SnapshotGraphDIO -> WriterLoggingM (Maybe DODAGAttributes)
+analyzeDIO = undefined
 
 -- | Get analysis on a DAO graph.
 analyzeDAO :: SnapshotGraphDAO -> WriterLoggingM (Maybe DODAGAttributes)
