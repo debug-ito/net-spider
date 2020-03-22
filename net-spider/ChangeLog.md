@@ -1,5 +1,9 @@
 # Revision history for net-spider
 
+## 0.4.3.0  -- ?
+
+* Add SeqID module.
+
 ## 0.4.2.0  -- 2020-03-21
 
 * Add Weaver module.

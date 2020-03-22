@@ -1,5 +1,5 @@
 name:                   net-spider
-version:                0.4.2.0
+version:                0.4.3.0
 author:                 Toshio Ito <debug.ito@gmail.com>
 maintainer:             Toshio Ito <debug.ito@gmail.com>
 license:                BSD3
@@ -45,7 +45,8 @@ library
                         NetSpider.GraphML.Writer,
                         NetSpider.GraphML.Attribute,
                         NetSpider.Interval,
-                        NetSpider.Weaver
+                        NetSpider.Weaver,
+                        NetSpider.SeqID
   other-modules:        NetSpider.Graph.Internal,
                         NetSpider.Spider.Internal.Graph,
                         NetSpider.Spider.Internal.Log,
