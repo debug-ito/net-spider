@@ -148,6 +148,30 @@ spec_DIO = describe "analyzeDIO" $ do
           A.time = fromEpochMillisecond 140
         }
       )
+  specify "multiple orphan nodes with one root" $ do
+    let fns = [ dioNode 110 "dio://[fd00::1]" [],
+                dioNode 120 "dio://[fd00::2]" [],
+                dioNode 130 "dio://[fd00::3]" [],
+                dioNode 100 "dio://[fd00::4]" ["dio://[fd00::2]"]
+              ]
+        (got, _) = runWriterLoggingM $ analyzeDIO $ makeSnapshotDIO fns
+    got `shouldBe`
+      ( Just $ DODAGAttributes
+        { A.node_num = 4,
+          A.edge_num = 1,
+          A.depth = 1,
+          A.root = ipFromText' "fd00::2",
+          A.time = fromEpochMillisecond 120
+        }
+      )
+  specify "multiple roots" $ do
+    let fns = [ dioNode 100 "dio://[fd00::1]" [],
+                dioNode 200 "dio://[fd00::2]" ["dio://[fd00::1]"],
+                dioNode 150 "dio://[fd00::3]" [],
+                dioNode 130 "dio://[fd00::4]" ["dio://[fd00::4]"]
+              ]
+        (got, _) = runWriterLoggingM $ analyzeDIO $ makeSnapshotDIO fns
+    got `shouldBe` Nothing
 
 spec_DAO :: Spec
 spec_DAO = describe "analyzeDAO" $ do
