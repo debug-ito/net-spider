@@ -3,7 +3,7 @@
 -- Description: Sequential node IDs
 -- Maintainer: Toshio Ito <debug.ito@gmail.com>
 --
--- 
+-- @since 0.4.3.0
 module NetSpider.SeqID
   ( -- * Type
     SeqIDMaker,
