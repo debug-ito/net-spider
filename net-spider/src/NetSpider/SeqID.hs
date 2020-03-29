@@ -9,10 +9,12 @@ module NetSpider.SeqID
     SeqIDMaker,
     -- * Construction
     newSeqIDMaker,
+    -- * Conversion
     convertGraph,
     convertLink,
     convertNode,
-    convertNodeID
+    convertNodeID,
+    originalIDFor
   ) where
 
 import NetSpider.Snapshot (SnapshotNode, SnapshotLink, SnapshotGraph)
@@ -47,3 +49,6 @@ convertLink = undefined
 convertNode :: SeqIDMaker n i -> SnapshotNode n na -> (SeqIDMaker n i, SnapshotNode i na)
 convertNode = undefined
 
+-- | Get the original ID of type @n@ for the new ID of type @i@.
+originalIDFor :: SeqIDMaker n i -> i -> Maybe n
+originalIDFor = undefined
