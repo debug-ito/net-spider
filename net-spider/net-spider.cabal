@@ -94,7 +94,8 @@ test-suite spec
                         NetSpider.TimestampSpec,
                         NetSpider.FoundSpec,
                         NetSpider.SnapshotSpec,
-                        NetSpider.WeaverSpec
+                        NetSpider.WeaverSpec,
+                        NetSpider.SeqIDSpec,
                         JSONUtil,
                         SnapshotTestCase,
                         TestCommon
