@@ -8,6 +8,7 @@
 module NetSpider.Snapshot
        ( -- * SnapshotGraph
          SnapshotGraph,
+         graphTimestamp,
          -- * SnapshotNode
          SnapshotNode,
          nodeId,
@@ -33,6 +34,13 @@ import NetSpider.Snapshot.Internal
     linkNodePair
   )
 import NetSpider.Timestamp (Timestamp)
+
+-- | Get the timestamp of the graph. It's the latest timestamp of the
+-- nodes and links.
+--
+-- @since 0.4.3.0
+graphTimestamp :: SnapshotGraph n na la -> Maybe Timestamp
+graphTimestamp = undefined -- TODO
 
 nodeId :: SnapshotNode n na -> n
 nodeId = _nodeId

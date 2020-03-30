@@ -4,6 +4,11 @@
 
 * Add SeqID module.
 
+### Snapshot module
+
+* Add `graphTimestamp` function.
+
+
 ## 0.4.2.0  -- 2020-03-21
 
 * Add Weaver module.
