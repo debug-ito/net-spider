@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 -- |
 -- Module: NetSpider.RPL.CLI.Analyze
 -- Description: Analyze graph attributes
@@ -14,7 +15,8 @@ import Data.Graph.Inductive (LNode, LEdge, Gr)
 import qualified Data.Graph.Inductive as FGL
 import Data.List (sortOn, reverse)
 import Data.Maybe (listToMaybe)
-import NetSpider.Log (WriterLoggingM)
+import Data.Monoid ((<>))
+import NetSpider.Log (WriterLoggingM, logErrorW)
 import NetSpider.SeqID
   (SeqIDMaker, newSeqIDMaker, convertGraph)
 import NetSpider.Snapshot
@@ -24,7 +26,7 @@ import NetSpider.Snapshot
 import NetSpider.Timestamp (Timestamp)
 import NetSpider.RPL.DIO (SnapshotGraphDIO)
 import NetSpider.RPL.DAO (SnapshotGraphDAO)
-import NetSpider.RPL.FindingID (IPv6ID, FindingID)
+import NetSpider.RPL.FindingID (IPv6ID, FindingID, FindingType(..))
 
 
 -- | Attributes of a DODAG.
@@ -45,6 +47,31 @@ analyzeDIO = undefined
 -- | Get analysis on a DAO graph.
 analyzeDAO :: SnapshotGraphDAO -> WriterLoggingM (Maybe DODAGAttributes)
 analyzeDAO = undefined
+
+analyzeGeneric :: SnapshotGraph FindingID na la -> RootType -> FindingType -> WriterLoggingM (Maybe DODAGAttributes)
+analyzeGeneric graph rtype ftype =
+  case mroot of
+    Nothing -> noRoot
+    Just r -> withRoot r
+  where
+    (seqid, gr) = toGr graph
+    mroot = getRoot rtype gr
+    ft_str =
+      case ftype of
+        FindingDIO -> "DIO"
+        FindingDAO -> "DAO"
+    noRoot = do
+      logErrorW ("The " <> ft_str <> " graph doesn't have the root.")
+      return Nothing
+    withRoot (root_node, _) = do
+      -- TODO: print debug log about the root
+      return $ Just $
+        DODAGAttributes { node_num = nodeNum gr,
+                          edge_num = edgeNum gr,
+                          depth = getDepth root_node rtype gr,
+                          root = undefined, -- TODO
+                          time = undefined -- TODO: because graphTimestamp can fail, maybe we should use MaybeT.
+                        }
 
 toLNode :: SnapshotNode Int na -> LNode (Maybe na)
 toLNode n = (nodeId n, nodeAttributes n)
