@@ -26,6 +26,8 @@ module NetSpider.Snapshot
          linkAttributes
        ) where
 
+import Data.Maybe (catMaybes)
+
 import NetSpider.Snapshot.Internal
   ( SnapshotGraph,
     SnapshotNode(..),
@@ -40,7 +42,12 @@ import NetSpider.Timestamp (Timestamp)
 --
 -- @since 0.4.3.0
 graphTimestamp :: SnapshotGraph n na la -> Maybe Timestamp
-graphTimestamp = undefined -- TODO
+graphTimestamp (nodes, links) = maximum' (node_times ++ link_times)
+  where
+    maximum' [] = Nothing
+    maximum ts = maximum ts
+    node_times = catMaybes $ map nodeTimestamp nodes
+    link_times = map linkTimestamp links
 
 nodeId :: SnapshotNode n na -> n
 nodeId = _nodeId
