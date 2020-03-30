@@ -33,6 +33,12 @@ import NetSpider.Snapshot.Internal
 -- | 'SeqIDMaker' converts node ID type @n@ into the new node ID type
 -- @i@. The type @i@ is supposed to be an 'Enum', and it generates the
 -- node ID of type @i@ sequentially for each node ID of type @n@.
+--
+-- 'SeqIDMaker' is useful to convert the 'SnapshotGraph' into a graph
+-- representation of another graph library such as
+-- [fgl](https://hackage.haskell.org/package/fgl). Note that the
+-- target graph library can provide a better way for conversion. For
+-- example, fgl has @NodeMap@ type to do basically the same thing.
 data SeqIDMaker n i =
   SeqIDMaker
   { toSeqID :: HashMap n i,
