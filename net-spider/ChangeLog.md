@@ -8,6 +8,9 @@
 
 * Add `graphTimestamp` function.
 
+### Log module
+
+* Add `logInfoW`, `logWarnW` and `logErrorW` functions.
 
 ## 0.4.2.0  -- 2020-03-21
 

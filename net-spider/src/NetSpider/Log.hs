@@ -12,6 +12,9 @@ module NetSpider.Log
          WriterLoggingM,
          runWriterLoggingM,
          logDebugW,
+         logInfoW,
+         logWarnW,
+         logErrorW,
          spack
        ) where
 
@@ -28,6 +31,18 @@ runWriterLoggingM = runIdentity . Log.runWriterLoggingT
 
 logDebugW :: Text -> WriterLoggingM ()
 logDebugW = Log.logDebugN
+
+-- | @since 0.4.3.0
+logInfoW :: Text -> WriterLoggingM ()
+logInfoW = Log.logInfoN
+
+-- | @since 0.4.3.0
+logWarnW :: Text -> WriterLoggingM ()
+logWarnW = Log.logWarnN
+
+-- | @since 0.4.3.0
+logErrorW :: Text -> WriterLoggingM ()
+logErrorW = Log.logErrorN
 
 spack :: Show a => a -> Text
 spack = pack . show
