@@ -80,5 +80,21 @@ getRoot rt gr = listToMaybe
       case rt of
         RootSource -> (FGL.indeg gr, FGL.outdeg gr)
         RootDest   -> (FGL.outdeg gr, FGL.indeg gr)
-  
+
+getDepth :: FGL.Node -- ^ the root node
+         -> RootType -- ^ type of the root
+         -> Gr na la
+         -> Int
+getDepth root_node rtype gr = maximum' $ map toPathLen $ FGL.spTree root_node $ convertGr gr
+  where
+    convertGr = FGL.gmap setEdgeDir . FGL.emap setEdgeLabel
+      where
+        setEdgeLabel _ = (1 :: Int)
+        setEdgeDir orig@(inedges, n, nlabel, outedges) =
+          case rtype of
+            RootSource -> orig
+            RootDest -> (outedges, n, nlabel, inedges)
+    toPathLen (FGL.LP nodes) = length nodes
+    maximum' [] = 0
+    maximum' l = maximum l
 
