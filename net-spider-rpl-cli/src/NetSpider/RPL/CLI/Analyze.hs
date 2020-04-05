@@ -106,7 +106,6 @@ getRoot :: RootType -> Gr na la -> Maybe (LNode na)
 getRoot rt gr = listToMaybe
                 $ reverse
                 $ sortOn (\(n, _) -> childNum n)
-                $ filter (\(n, _) -> childNum n > 0)
                 $ filter (\(n, _) -> parentNum n == 0)
                 $ FGL.labNodes gr
   where
@@ -128,7 +127,7 @@ getDepth root_node rtype gr = maximum' $ map toPathLen $ FGL.spTree root_node $ 
           case rtype of
             RootSource -> orig
             RootDest -> (outedges, n, nlabel, inedges)
-    toPathLen (FGL.LP nodes) = length nodes
+    toPathLen (FGL.LP nodes) = length nodes - 1
     maximum' [] = 0
     maximum' l = maximum l
 
