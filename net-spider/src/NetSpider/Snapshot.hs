@@ -45,7 +45,7 @@ graphTimestamp :: SnapshotGraph n na la -> Maybe Timestamp
 graphTimestamp (nodes, links) = maximum' (node_times ++ link_times)
   where
     maximum' [] = Nothing
-    maximum ts = maximum ts
+    maximum' ts = Just $ maximum ts
     node_times = catMaybes $ map nodeTimestamp nodes
     link_times = map linkTimestamp links
 
