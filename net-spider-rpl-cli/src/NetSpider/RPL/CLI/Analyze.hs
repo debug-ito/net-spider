@@ -11,22 +11,27 @@ module NetSpider.RPL.CLI.Analyze
     analyzeDAO
   ) where
 
+import Control.Applicative (empty)
+import Control.Monad.Trans.Class (lift)
+import Control.Monad.Trans.Maybe (MaybeT(..))
 import Data.Graph.Inductive (LNode, LEdge, Gr)
 import qualified Data.Graph.Inductive as FGL
 import Data.List (sortOn, reverse)
 import Data.Maybe (listToMaybe)
 import Data.Monoid ((<>))
-import NetSpider.Log (WriterLoggingM, logErrorW)
+import NetSpider.Log (WriterLoggingM, logErrorW, spack)
 import NetSpider.SeqID
-  (SeqIDMaker, newSeqIDMaker, convertGraph)
+  (SeqIDMaker, newSeqIDMaker, convertGraph, originalIDFor)
 import NetSpider.Snapshot
   ( SnapshotNode, SnapshotLink, SnapshotGraph,
-    nodeId, nodeAttributes, sourceNode, destinationNode, linkAttributes
+    nodeId, nodeAttributes, sourceNode, destinationNode, linkAttributes,
+    graphTimestamp
   )
 import NetSpider.Timestamp (Timestamp)
 import NetSpider.RPL.DIO (SnapshotGraphDIO)
 import NetSpider.RPL.DAO (SnapshotGraphDAO)
-import NetSpider.RPL.FindingID (IPv6ID, FindingID, FindingType(..))
+import NetSpider.RPL.FindingID
+  ( IPv6ID, FindingID, FindingType(..), ipv6Only)
 
 
 -- | Attributes of a DODAG.
@@ -42,36 +47,38 @@ data DODAGAttributes =
 
 -- | Get analysis on a DIO graph.
 analyzeDIO :: SnapshotGraphDIO -> WriterLoggingM (Maybe DODAGAttributes)
-analyzeDIO = undefined
+analyzeDIO = analyzeGeneric RootDest FindingDIO
 
 -- | Get analysis on a DAO graph.
 analyzeDAO :: SnapshotGraphDAO -> WriterLoggingM (Maybe DODAGAttributes)
-analyzeDAO = undefined
+analyzeDAO = analyzeGeneric RootSource FindingDAO
 
-analyzeGeneric :: SnapshotGraph FindingID na la -> RootType -> FindingType -> WriterLoggingM (Maybe DODAGAttributes)
-analyzeGeneric graph rtype ftype =
-  case mroot of
-    Nothing -> noRoot
-    Just r -> withRoot r
+analyzeGeneric :: RootType -> FindingType -> SnapshotGraph FindingID na la -> WriterLoggingM (Maybe DODAGAttributes)
+analyzeGeneric rtype ftype graph = runMaybeT $ go
   where
+    maybeLog m err_log =
+      case m of
+        Nothing -> do
+          lift $ logErrorW err_log
+          empty
+        Just v -> return v
     (seqid, gr) = toGr graph
-    mroot = getRoot rtype gr
     ft_str =
       case ftype of
         FindingDIO -> "DIO"
         FindingDAO -> "DAO"
-    noRoot = do
-      logErrorW ("The " <> ft_str <> " graph doesn't have the root.")
-      return Nothing
-    withRoot (root_node, _) = do
+    go = do
+      root_node <- fmap fst $ maybeLog (getRoot rtype gr) ("The " <> ft_str <> " graph doesn't have the root.")
       -- TODO: print debug log about the root
-      return $ Just $
-        DODAGAttributes { node_num = nodeNum gr,
-                          edge_num = edgeNum gr,
-                          depth = getDepth root_node rtype gr,
-                          root = undefined, -- TODO
-                          time = undefined -- TODO: because graphTimestamp can fail, maybe we should use MaybeT.
-                        }
+      graph_ts <- maybeLog (graphTimestamp graph) ("The graph has no timestamp.")
+      -- TODO: print debug log about the timestamp
+      root_fid <- maybeLog (originalIDFor seqid root_node) ("Cannot find the FindingID for root node " <> spack root_node <> ".")
+      return DODAGAttributes { node_num = nodeNum gr,
+                               edge_num = edgeNum gr,
+                               depth = getDepth root_node rtype gr,
+                               root = ipv6Only root_fid,
+                               time = graph_ts
+                             }
 
 toLNode :: SnapshotNode Int na -> LNode (Maybe na)
 toLNode n = (nodeId n, nodeAttributes n)
