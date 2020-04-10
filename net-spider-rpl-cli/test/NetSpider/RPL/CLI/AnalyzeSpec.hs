@@ -168,7 +168,7 @@ spec_DIO = describe "analyzeDIO" $ do
     let fns = [ dioNode 100 "dio://[fd00::1]" [],
                 dioNode 200 "dio://[fd00::2]" ["dio://[fd00::1]"],
                 dioNode 150 "dio://[fd00::3]" [],
-                dioNode 130 "dio://[fd00::4]" ["dio://[fd00::4]"]
+                dioNode 130 "dio://[fd00::4]" ["dio://[fd00::3]"]
               ]
         (got, _) = runWriterLoggingM $ analyzeDIO $ makeSnapshotDIO fns
     got `shouldBe` Nothing

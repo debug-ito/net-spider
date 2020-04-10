@@ -19,6 +19,7 @@ import qualified Data.Graph.Inductive as FGL
 import Data.List (sortOn, reverse)
 import Data.Maybe (listToMaybe)
 import Data.Monoid ((<>))
+import Data.Text (Text)
 import NetSpider.Log (WriterLoggingM, logErrorW, spack)
 import NetSpider.SeqID
   (SeqIDMaker, newSeqIDMaker, convertGraph, originalIDFor)
@@ -62,13 +63,17 @@ analyzeGeneric rtype ftype graph = runMaybeT $ go
           lift $ logErrorW err_log
           empty
         Just v -> return v
+    eitherLog e =
+      case e of
+        Left err_log -> maybeLog Nothing err_log
+        Right v -> return v
     (seqid, gr) = toGr graph
     ft_str =
       case ftype of
         FindingDIO -> "DIO"
         FindingDAO -> "DAO"
     go = do
-      root_node <- fmap fst $ maybeLog (getRoot rtype gr) ("The " <> ft_str <> " graph doesn't have the root.")
+      root_node <- fmap fst $ eitherLog $ getRoot rtype gr
       -- TODO: print debug log about the root
       graph_ts <- maybeLog (graphTimestamp graph) ("The graph has no timestamp.")
       -- TODO: print debug log about the timestamp
@@ -102,17 +107,25 @@ edgeNum = FGL.size
 data RootType = RootSource -- ^ Node with no incoming edges.
               | RootDest -- ^ Node with no outgoing edges.
 
-getRoot :: RootType -> Gr na la -> Maybe (LNode na)
-getRoot rt gr = listToMaybe
+getRoot :: RootType -> Gr na la -> Either Text (LNode na)
+getRoot rt gr = toEither
                 $ reverse
-                $ sortOn (\(n, _) -> childNum n)
-                $ filter (\(n, _) -> parentNum n == 0)
+                $ sortOn childNum
+                $ filter (\n -> parentNum n == 0)
                 $ FGL.labNodes gr
   where
     (parentNum, childNum) =
       case rt of
-        RootSource -> (FGL.indeg gr, FGL.outdeg gr)
-        RootDest   -> (FGL.outdeg gr, FGL.indeg gr)
+        RootSource -> ((FGL.indeg gr  . fst), (FGL.outdeg gr . fst))
+        RootDest   -> ((FGL.outdeg gr . fst), (FGL.indeg gr  . fst))
+    toEither [] = Left ("The graph has no node that has no parent.")
+    toEither [n] = Right n
+    toEither (rnode : others) =
+      if childNum rnode > 0 && (all (\n -> childNum n == 0) others)
+      then Right rnode
+      else if childNum rnode == 0
+           then Left ("The graph contains orphan nodes only.")
+           else Left ("The graph contains multiple root candidates.")
 
 getDepth :: FGL.Node -- ^ the root node
          -> RootType -- ^ type of the root
