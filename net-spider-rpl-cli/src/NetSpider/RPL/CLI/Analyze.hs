@@ -20,7 +20,7 @@ import Data.List (sortOn, reverse)
 import Data.Maybe (listToMaybe)
 import Data.Monoid ((<>))
 import Data.Text (Text)
-import NetSpider.Log (WriterLoggingM, logErrorW, spack)
+import NetSpider.Log (WriterLoggingM, logErrorW, spack, logDebugW)
 import NetSpider.SeqID
   (SeqIDMaker, newSeqIDMaker, convertGraph, originalIDFor)
 import NetSpider.Snapshot
@@ -28,11 +28,11 @@ import NetSpider.Snapshot
     nodeId, nodeAttributes, sourceNode, destinationNode, linkAttributes,
     graphTimestamp
   )
-import NetSpider.Timestamp (Timestamp)
+import NetSpider.Timestamp (Timestamp, showTimestamp)
 import NetSpider.RPL.DIO (SnapshotGraphDIO)
 import NetSpider.RPL.DAO (SnapshotGraphDAO)
 import NetSpider.RPL.FindingID
-  ( IPv6ID, FindingID, FindingType(..), ipv6Only)
+  ( IPv6ID, FindingID, FindingType(..), ipv6Only, ipv6ToText)
 
 
 -- | Attributes of a DODAG.
@@ -72,16 +72,22 @@ analyzeGeneric rtype ftype graph = runMaybeT $ go
       case ftype of
         FindingDIO -> "DIO"
         FindingDAO -> "DAO"
+    logRootIP root_ip = do
+      lift $ logDebugW ("Root of the " <> ft_str <> " graph: " <> ipv6ToText root_ip)
+    logTS ts = do
+      lift $ logDebugW ("Timestamp of the " <> ft_str <> " graph: " <> showTimestamp ts)
     go = do
       root_node <- fmap fst $ eitherLog $ getRoot rtype gr
-      -- TODO: print debug log about the root
+      root_ip <- fmap ipv6Only $ maybeLog
+                 (originalIDFor seqid root_node)
+                 ("Cannot find the FindingID for root node " <> (spack root_node) <> ".")
+      logRootIP root_ip
       graph_ts <- maybeLog (graphTimestamp graph) ("The graph has no timestamp.")
-      -- TODO: print debug log about the timestamp
-      root_fid <- maybeLog (originalIDFor seqid root_node) ("Cannot find the FindingID for root node " <> spack root_node <> ".")
+      logTS graph_ts
       return DODAGAttributes { node_num = nodeNum gr,
                                edge_num = edgeNum gr,
                                depth = getDepth root_node rtype gr,
-                               root = ipv6Only root_fid,
+                               root = root_ip,
                                time = graph_ts
                              }
 
