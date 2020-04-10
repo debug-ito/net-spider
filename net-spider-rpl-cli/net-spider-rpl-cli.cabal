@@ -70,7 +70,10 @@ test-suite spec
                         text,
                         hspec >=2.5.5,
                         ip >=1.3.0 && <1.8,
-                        hashable
+                        hashable,
+                        bytestring,
+                        monad-logger,
+                        fast-logger
 
 source-repository head
   type:                 git
