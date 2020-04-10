@@ -145,7 +145,7 @@ spec_DIO = describe "analyzeDIO" $ do
           A.edge_num = 5,
           A.depth = 4,
           A.root = ipFromText' "fd00::1",
-          A.time = fromEpochMillisecond 140
+          A.time = fromEpochMillisecond 200
         }
       )
   specify "multiple orphan nodes with one root" $ do
@@ -161,7 +161,7 @@ spec_DIO = describe "analyzeDIO" $ do
           A.edge_num = 1,
           A.depth = 1,
           A.root = ipFromText' "fd00::2",
-          A.time = fromEpochMillisecond 120
+          A.time = fromEpochMillisecond 130
         }
       )
   specify "multiple roots" $ do
