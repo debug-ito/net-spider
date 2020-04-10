@@ -219,11 +219,11 @@ spec_DAO = describe "analyzeDAO" $ do
         }
       )
   specify "depth 4" $ do
-    let fns = [ daoNode 100 Nothing  "dao://[fd00::3]" ["dao://[fd00:4]"],
-                daoNode 100 (Just 4) "dao://[fd00::1]" ["dao://[fd00:2]"],
+    let fns = [ daoNode 100 Nothing  "dao://[fd00::3]" ["dao://[fd00::4]"],
+                daoNode 100 (Just 4) "dao://[fd00::1]" ["dao://[fd00::2]"],
                 daoNode 100 Nothing  "dao://[fd00::5]" [],
-                daoNode 100 Nothing  "dao://[fd00::2]" ["dao://[fd00:3]"],
-                daoNode 100 Nothing  "dao://[fd00::4]" ["dao://[fd00:5]"]
+                daoNode 100 Nothing  "dao://[fd00::2]" ["dao://[fd00::3]"],
+                daoNode 100 Nothing  "dao://[fd00::4]" ["dao://[fd00::5]"]
               ]
         (got, _) = runWriterLoggingM $ analyzeDAO $ makeSnapshotDAO fns
     got `shouldBe`
