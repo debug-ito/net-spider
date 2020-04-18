@@ -41,7 +41,8 @@
 --
 -- == Utility
 --
--- * "NetSpider.Pair"
+-- * "NetSpider.Pair": Swap-insensitive two-element homogeneous tuple
 -- * "NetSpider.Log"
+-- * "NetSpider.SeqID": Utility to generate sequential node IDs.
 module NetSpider
        () where
