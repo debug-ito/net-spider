@@ -1,6 +1,6 @@
 # Revision history for net-spider
 
-## 0.4.3.0  -- ?
+## 0.4.3.0  -- 2020-04-18
 
 * Add SeqID module.
 
