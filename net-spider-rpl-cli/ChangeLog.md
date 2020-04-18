@@ -1,6 +1,6 @@
 # Revision history for net-spider-rpl-cli
 
-## 0.1.3.0  -- ?
+## 0.1.3.0  -- 2020-04-18
 
 * Add Analyze module.
 
