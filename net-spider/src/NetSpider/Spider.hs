@@ -32,7 +32,7 @@ import Data.Greskell
   ( runBinder, ($.), (<$.>), (<*.>),
     Binder, ToGreskell(GreskellReturn), AsIterator(IteratorItem), FromGraphSON,
     liftWalk, gLimit, gIdentity, gSelect1, gAs, gProject, gByL, gIdentity, gFold,
-    gRepeat, gEmitAlwaysHead,
+    gRepeat, gEmitAlwaysHead, gSimplePath,
     lookupAsM, newAsLabel,
     Transform, Walk
   )
@@ -227,7 +227,8 @@ traverseFoundNodes spider time_interval fn_policy start_nid = do
               gByL lefs (gFold <<< walk_finds_and_target)
             ]
       gt <- walk_construct_result
-            <$.> gRepeat Nothing (walk_select_fnode <<< gTraverseViaFinds) repeat_until gEmitAlwaysHead
+            <$.> gRepeat Nothing (walk_select_fnode <<< gSimplePath <<< gTraverseViaFinds)
+                 repeat_until gEmitAlwaysHead
             <$.> walk_select_fnode
             <$.> sourceVNode
       return (gt, lsubject, lvfnd, lefs, lefd, ltarget)
