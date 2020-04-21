@@ -183,6 +183,23 @@ getSnapshot spider query = do
   mapM_ (logLine spider) logs
   return (nodes, links)
 
+traverseFromOneNode :: Spider n na fla
+                    -> Interval Timestamp
+                    -> FoundNodePolicy n na
+                    -> IORef (SnapshotState n na fla)
+                    -> n -- ^ starting node
+                    -> IO ()
+traverseFromOneNode spider time_interval fn_policy ref_state start_nid = do
+  getNext <- traverseFoundNodes spider time_interval fn_policy start_nid
+  go getNext
+  where
+    go getNext = do
+      mfnode <- getNext
+      case mfnode of
+        Nothing -> return ()
+        Just fnode -> undefined -- TODO:
+          
+
 -- | Recursively traverse the history graph based on the query to get
 -- the FoundNodes. It returns an action to get the new 'FoundNode' via
 -- the response stream.
@@ -244,73 +261,73 @@ traverseFoundNodes spider time_interval fn_policy start_nid = do
       <*> lookupAsM label_target smap
 
 
-recurseVisitNodesForSnapshot :: (ToJSON n, Ord n, Hashable n, FromGraphSON n, Show n, LinkAttributes fla, NodeAttributes na)
-                             => Spider n na fla
-                             -> Query n na fla sla
-                             -> IORef (SnapshotState n na fla)
-                             -> IO ()
-recurseVisitNodesForSnapshot spider query ref_state = go
-  where
-    go = do
-      mnext_visit <- getNextVisit
-      case mnext_visit of
-       Nothing -> return ()
-       Just next_visit -> do
-         visitNodeForSnapshot spider query ref_state next_visit
-         go
-    getNextVisit = atomicModifyIORef' ref_state popUnvisitedNode
-    -- TODO: limit number of steps.
+---- recurseVisitNodesForSnapshot :: (ToJSON n, Ord n, Hashable n, FromGraphSON n, Show n, LinkAttributes fla, NodeAttributes na)
+----                              => Spider n na fla
+----                              -> Query n na fla sla
+----                              -> IORef (SnapshotState n na fla)
+----                              -> IO ()
+---- recurseVisitNodesForSnapshot spider query ref_state = go
+----   where
+----     go = do
+----       mnext_visit <- getNextVisit
+----       case mnext_visit of
+----        Nothing -> return ()
+----        Just next_visit -> do
+----          visitNodeForSnapshot spider query ref_state next_visit
+----          go
+----     getNextVisit = atomicModifyIORef' ref_state popUnvisitedNode
+----     -- TODO: limit number of steps.
 
--- | Traverse one hop from the visited 'VNode'.
---
--- Returns: list of (VFoundNode of the VNode, EFinds links), where an
--- EFinds link = (EFindsData, target Node Id)
-traverseEFindsOneHop :: (FromGraphSON n, NodeAttributes na, LinkAttributes fla)
-                     => Spider n na fla
-                     -> Interval Timestamp
-                     -> FoundNodePolicy n na
-                     -> EID VNode
-                     -> IO [(VFoundNodeData na, [(EFindsData fla, n)])]
-traverseEFindsOneHop spider time_interval fn_policy visit_eid = getTraversedEdges
-  where
-    foundNodeTraversal = pure latestFoundNodeIfOverwrite
-                         <*.> fmap gSelectFoundNode (gFilterFoundNodeByTime time_interval)
-                         <*.> gHasNodeEID visit_eid
-                         <*.> pure gAllNodes
-    latestFoundNodeIfOverwrite =
-      case fn_policy of
-        PolicyOverwrite -> gLatestFoundNode
-        PolicyAppend -> gIdentity
-
-    getTraversedEdges = fmap V.toList $ traverse extractFromSMap =<< Gr.slurpResults =<< submitQuery
-      where
-        submitQuery = Gr.submit (spiderClient spider) query (Just bindings)
-        ((query, label_vfnd, label_efs, label_efd, label_target_nid), bindings) = runBinder $ do
-          lvfnd <- newAsLabel
-          lefs <- newAsLabel
-          lefd <- newAsLabel
-          ltarget <- newAsLabel
-          let gEFindsAndTarget =
-                gProject
-                ( gByL lefd gEFindsData )
-                [ gByL ltarget (gNodeID spider <<< gFindsTarget)
-                ]
-                <<< gFinds
-          gt <- gProject
-                ( gByL lvfnd gVFoundNodeData )
-                [ gByL lefs (gFold <<< gEFindsAndTarget)
-                ]
-                <$.> foundNodeTraversal
-          return (gt, lvfnd, lefs, lefd, ltarget)
-        extractFromSMap smap = do
-          vfnd <- lookupAsM label_vfnd smap
-          efs <- lookupAsM label_efs smap
-          parsed_efs <- mapM extractHopFromSMap efs
-          return (vfnd, parsed_efs)
-        extractHopFromSMap smap =
-          (,)
-          <$> lookupAsM label_efd smap
-          <*> lookupAsM label_target_nid smap
+---- -- | Traverse one hop from the visited 'VNode'.
+---- --
+---- -- Returns: list of (VFoundNode of the VNode, EFinds links), where an
+---- -- EFinds link = (EFindsData, target Node Id)
+---- traverseEFindsOneHop :: (FromGraphSON n, NodeAttributes na, LinkAttributes fla)
+----                      => Spider n na fla
+----                      -> Interval Timestamp
+----                      -> FoundNodePolicy n na
+----                      -> EID VNode
+----                      -> IO [(VFoundNodeData na, [(EFindsData fla, n)])]
+---- traverseEFindsOneHop spider time_interval fn_policy visit_eid = getTraversedEdges
+----   where
+----     foundNodeTraversal = pure latestFoundNodeIfOverwrite
+----                          <*.> fmap gSelectFoundNode (gFilterFoundNodeByTime time_interval)
+----                          <*.> gHasNodeEID visit_eid
+----                          <*.> pure gAllNodes
+----     latestFoundNodeIfOverwrite =
+----       case fn_policy of
+----         PolicyOverwrite -> gLatestFoundNode
+----         PolicyAppend -> gIdentity
+---- 
+----     getTraversedEdges = fmap V.toList $ traverse extractFromSMap =<< Gr.slurpResults =<< submitQuery
+----       where
+----         submitQuery = Gr.submit (spiderClient spider) query (Just bindings)
+----         ((query, label_vfnd, label_efs, label_efd, label_target_nid), bindings) = runBinder $ do
+----           lvfnd <- newAsLabel
+----           lefs <- newAsLabel
+----           lefd <- newAsLabel
+----           ltarget <- newAsLabel
+----           let gEFindsAndTarget =
+----                 gProject
+----                 ( gByL lefd gEFindsData )
+----                 [ gByL ltarget (gNodeID spider <<< gFindsTarget)
+----                 ]
+----                 <<< gFinds
+----           gt <- gProject
+----                 ( gByL lvfnd gVFoundNodeData )
+----                 [ gByL lefs (gFold <<< gEFindsAndTarget)
+----                 ]
+----                 <$.> foundNodeTraversal
+----           return (gt, lvfnd, lefs, lefd, ltarget)
+----         extractFromSMap smap = do
+----           vfnd <- lookupAsM label_vfnd smap
+----           efs <- lookupAsM label_efs smap
+----           parsed_efs <- mapM extractHopFromSMap efs
+----           return (vfnd, parsed_efs)
+----         extractHopFromSMap smap =
+----           (,)
+----           <$> lookupAsM label_efd smap
+----           <*> lookupAsM label_target_nid smap
 
 makeFoundNodesFromHops :: (n, VFoundNodeData na, [(EFindsData fla, n)]) -- ^ (Subject node ID, FoundNode data, hops)
                        -> FoundNode n na fla
@@ -319,50 +336,50 @@ makeFoundNodesFromHops (subject_nid, vfnd, efs) =
   where
     toFoundLink (ef, target_nid) = makeFoundLink target_nid ef
 
-visitNodeForSnapshot :: (ToJSON n, Ord n, Hashable n, FromGraphSON n, Show n, LinkAttributes fla, NodeAttributes na)
-                     => Spider n na fla
-                     -> Query n na fla sla
-                     -> IORef (SnapshotState n na fla)
-                     -> n
-                     -> IO ()
-visitNodeForSnapshot spider query ref_state visit_nid = do
-  logDebug spider ("Visiting node " <> spack visit_nid <> " ...")
-  cur_state <- readIORef ref_state
-  if isAlreadyVisited cur_state visit_nid
-    then logAndQuit
-    else doVisit
-  where
-    logAndQuit = do
-      logDebug spider ("Node " <> spack visit_nid <> " is already visited. Skip.")
-      return ()
-    doVisit = do
-      mvisit_eid <- getVisitedNodeEID
-      case mvisit_eid of
-       Nothing -> do
-         logWarn spider ("Node " <> spack visit_nid <> " does not exist.")
-         return ()
-       Just visit_eid -> do
-         found_nodes <- fmap ( map (\(vfnd, efs) -> makeFoundNodesFromHops (visit_nid, vfnd, efs)) )
-                        $ traverseEFindsOneHop spider (timeInterval query) (foundNodePolicy query) visit_eid
-         logFoundNodes found_nodes
-         modifyIORef ref_state $ addFoundNodes visit_nid found_nodes
-    getVisitedNodeEID = fmap vToMaybe $ Gr.slurpResults =<< submitB spider binder
-      where
-        binder = gNodeEID <$.> gHasNodeID spider visit_nid <*.> pure gAllNodes
-    logFoundNodes [] = logDebug spider ("No local finding is found for node " <> spack visit_nid)
-    logFoundNodes fns = mapM_ logFoundNode $ Found.sortByTime fns
-    logFoundNode fn = do
-      let neighbors = neighborLinks fn
-      logDebug spider
-        ( "Node " <> (spack $ subjectNode fn)
-          <> ": local finding at "  <> (showEpochTime $ foundAt fn)
-          <> ", " <> (spack $ length neighbors) <> " neighbors"
-        )
-      mapM_ logFoundLink neighbors
-    logFoundLink fl =
-      logDebug spider
-      ( "  Link is found to " <> (spack $ targetNode fl)
-      )
+---- visitNodeForSnapshot :: (ToJSON n, Ord n, Hashable n, FromGraphSON n, Show n, LinkAttributes fla, NodeAttributes na)
+----                      => Spider n na fla
+----                      -> Query n na fla sla
+----                      -> IORef (SnapshotState n na fla)
+----                      -> n
+----                      -> IO ()
+---- visitNodeForSnapshot spider query ref_state visit_nid = do
+----   logDebug spider ("Visiting node " <> spack visit_nid <> " ...")
+----   cur_state <- readIORef ref_state
+----   if isAlreadyVisited cur_state visit_nid
+----     then logAndQuit
+----     else doVisit
+----   where
+----     logAndQuit = do
+----       logDebug spider ("Node " <> spack visit_nid <> " is already visited. Skip.")
+----       return ()
+----     doVisit = do
+----       mvisit_eid <- getVisitedNodeEID
+----       case mvisit_eid of
+----        Nothing -> do
+----          logWarn spider ("Node " <> spack visit_nid <> " does not exist.")
+----          return ()
+----        Just visit_eid -> do
+----          found_nodes <- fmap ( map (\(vfnd, efs) -> makeFoundNodesFromHops (visit_nid, vfnd, efs)) )
+----                         $ traverseEFindsOneHop spider (timeInterval query) (foundNodePolicy query) visit_eid
+----          logFoundNodes found_nodes
+----          modifyIORef ref_state $ addFoundNodes visit_nid found_nodes
+----     getVisitedNodeEID = fmap vToMaybe $ Gr.slurpResults =<< submitB spider binder
+----       where
+----         binder = gNodeEID <$.> gHasNodeID spider visit_nid <*.> pure gAllNodes
+----     logFoundNodes [] = logDebug spider ("No local finding is found for node " <> spack visit_nid)
+----     logFoundNodes fns = mapM_ logFoundNode $ Found.sortByTime fns
+----     logFoundNode fn = do
+----       let neighbors = neighborLinks fn
+----       logDebug spider
+----         ( "Node " <> (spack $ subjectNode fn)
+----           <> ": local finding at "  <> (showEpochTime $ foundAt fn)
+----           <> ", " <> (spack $ length neighbors) <> " neighbors"
+----         )
+----       mapM_ logFoundLink neighbors
+----     logFoundLink fl =
+----       logDebug spider
+----       ( "  Link is found to " <> (spack $ targetNode fl)
+----       )
 
 
 -- | The state kept while making the snapshot graph.
