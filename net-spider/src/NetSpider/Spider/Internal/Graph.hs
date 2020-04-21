@@ -20,7 +20,9 @@ module NetSpider.Spider.Internal.Graph
          gMakeFoundNode,
          gSelectFoundNode,
          gLatestFoundNode,
+         gSubjectNodeID,
          gFilterFoundNodeByTime,
+         gTraverseViaFinds,
          -- * EFinds
          gFinds,
          gFindsTarget
@@ -36,7 +38,7 @@ import Data.Greskell
     Binder, newBind,
     source, sV, sV', sAddV, gHasLabel, gHasId, gHas2, gHas2P, gId, gProperty, gPropertyV, gV,
     gNot, gIdentity',
-    gAddE, gSideEffect, gTo, gFrom, gDrop, gOut, gOrder, gBy2, gValues, gOutE, gInV,
+    gAddE, gSideEffect, gTo, gFrom, gDrop, gOut, gOrder, gBy2, gValues, gOutE, gIn,
     ($.), (<*.>), (=:),
     ToGTraversal,
     Key, oDecr, gLimit,
@@ -142,6 +144,9 @@ gSelectFoundNode filterFoundNode = liftWalk filterFoundNode <<< gOut ["is_observ
 gLatestFoundNode :: Walk Transform VFoundNode VFoundNode
 gLatestFoundNode = gLimit 1 <<< gOrder [gBy2 keyTimestamp oDecr]
 
+gSubjectNodeID :: Spider n na fla -> Walk Transform VFoundNode n
+gSubjectNodeID spider = gNodeID spider <<< gIn ["is_observed_as"]
+
 gFilterFoundNodeByTime :: Interval Timestamp -> Binder (Walk Filter VFoundNode VFoundNode)
 gFilterFoundNodeByTime interval = do
   fl <- filterLower
@@ -161,3 +166,6 @@ gFilterFoundNodeByTime interval = do
 
 gFinds :: Walk Transform VFoundNode EFinds
 gFinds = gOutE ["finds"]
+
+gTraverseViaFinds :: Walk Transform VFoundNode VNode
+gTraverseViaFinds = gOut ["finds"]
