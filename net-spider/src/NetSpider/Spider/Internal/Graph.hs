@@ -23,6 +23,10 @@ module NetSpider.Spider.Internal.Graph
          gSubjectNodeID,
          gFilterFoundNodeByTime,
          gTraverseViaFinds,
+         -- * Mix of VNode and VFoundNode
+         gNodeMix,
+         gFoundNodeOnly,
+         gEitherNodeMix,
          -- * EFinds
          gFinds,
          gFindsTarget
@@ -34,10 +38,10 @@ import Data.Aeson (ToJSON(..), FromJSON(..), Value(..))
 import Data.Foldable (fold)
 import Data.Greskell
   ( WalkType, AEdge,
-    GTraversal, Filter, Transform, SideEffect, Walk, liftWalk,
+    GTraversal, Filter, Transform, SideEffect, Walk, liftWalk, unsafeCastEnd, unsafeCastStart,
     Binder, newBind,
     source, sV, sV', sAddV, gHasLabel, gHasId, gHas2, gHas2P, gId, gProperty, gPropertyV, gV,
-    gNot, gIdentity',
+    gNot, gIdentity', gIdentity, gUnion,
     gAddE, gSideEffect, gTo, gFrom, gDrop, gOut, gOrder, gBy2, gValues, gOutE, gIn,
     ($.), (<*.>), (=:),
     ToGTraversal,
@@ -169,3 +173,20 @@ gFinds = gOutE ["finds"]
 
 gTraverseViaFinds :: Walk Transform VFoundNode VNode
 gTraverseViaFinds = gOut ["finds"]
+
+-- | Make a mixed stream of 'VNode' and 'VFoundNode'. In the result
+-- walk, the input 'VNode' is output first, and then, the 'VFoundNode'
+-- derived from the 'VNode' follows.
+gNodeMix :: Walk Transform VNode VFoundNode -- ^ walk to derive 'VFoundNode's from 'VNode'.
+         -> Walk Transform VNode (Either VNode VFoundNode)
+gNodeMix walk_vfn = gUnion [unsafeCastEnd gIdentity, unsafeCastEnd walk_vfn]
+
+gFoundNodeOnly :: Walk Transform (Either VNode VFoundNode) VFoundNode
+gFoundNodeOnly = unsafeCastStart $ gHasLabel ["found_node"]
+
+-- | Transform the mixed stream of 'VNode' and 'VFoundNode' into a
+-- common type @a@.
+gEitherNodeMix :: Walk Transform VNode a
+               -> Walk Transform VFoundNode a
+               -> Walk Transform (Either VNode VFoundNode) a
+gEitherNodeMix = undefined -- TODO: we need .choose step.
