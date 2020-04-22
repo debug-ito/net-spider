@@ -25,14 +25,17 @@ module NetSpider.Spider
 import Control.Category ((<<<))
 import Control.Exception.Safe (throwString, bracket)
 import Control.Monad (void, mapM_, mapM)
+import Control.Monad.IO.Class (liftIO)
 import Data.Aeson (ToJSON)
+import Data.Conduit (ConduitT, (.|))
+import qualified Data.Conduit as Con
 import Data.Foldable (foldr', toList, foldl')
-import Data.List (intercalate)
+import Data.List (intercalate, reverse)
 import Data.Greskell
   ( runBinder, ($.), (<$.>), (<*.>),
-    Binder, ToGreskell(GreskellReturn), AsIterator(IteratorItem), FromGraphSON,
+    Greskell, Binder, ToGreskell(GreskellReturn), AsIterator(IteratorItem), FromGraphSON,
     liftWalk, gLimit, gIdentity, gSelect1, gAs, gProject, gByL, gIdentity, gFold,
-    gRepeat, gEmitAlwaysHead, gSimplePath,
+    gRepeat, gEmitHead, gSimplePath, gConstant,
     lookupAsM, newAsLabel,
     Transform, Walk
   )
@@ -74,7 +77,8 @@ import NetSpider.Spider.Config (Config(..), defConfig)
 import NetSpider.Spider.Internal.Graph
   ( gMakeFoundNode, gAllNodes, gHasNodeID, gHasNodeEID, gNodeEID, gNodeID, gMakeNode, gClearAll,
     gLatestFoundNode, gSelectFoundNode, gFinds, gFindsTarget, gHasFoundNodeEID, gAllFoundNode,
-    gFilterFoundNodeByTime, gSubjectNodeID, gTraverseViaFinds, 
+    gFilterFoundNodeByTime, gSubjectNodeID, gTraverseViaFinds,
+    gNodeMix, gFoundNodeOnly, gEitherNodeMix
   )
 import NetSpider.Spider.Internal.Log
   ( runLogger, logDebug, logWarn, logLine
@@ -178,87 +182,157 @@ getSnapshot :: (FromGraphSON n, ToJSON n, Ord n, Hashable n, Show n, LinkAttribu
             -> IO (SnapshotGraph n na sla)
 getSnapshot spider query = do
   ref_state <- newIORef $ initSnapshotState (startsFrom query) (foundNodePolicy query)
-  recurseVisitNodesForSnapshot spider query ref_state
-  (nodes, links, logs) <- fmap (makeSnapshot $ unifyLinkSamples query) $ readIORef ref_state
-  mapM_ (logLine spider) logs
-  return (nodes, links)
+  undefined -- TODO
+  -- recurseVisitNodesForSnapshot spider query ref_state
+  -- (nodes, links, logs) <- fmap (makeSnapshot $ unifyLinkSamples query) $ readIORef ref_state
+  -- mapM_ (logLine spider) logs
+  -- return (nodes, links)
 
-traverseFromOneNode :: Spider n na fla
+traverseFromOneNode :: (Eq n, Hashable n, ToJSON n, NodeAttributes na, LinkAttributes fla, FromGraphSON n)
+                    => Spider n na fla
                     -> Interval Timestamp
                     -> FoundNodePolicy n na
-                    -> IORef (SnapshotState n na fla)
+                    -> IORef (Weaver n na fla)
                     -> n -- ^ starting node
                     -> IO ()
-traverseFromOneNode spider time_interval fn_policy ref_state start_nid = do
-  getNext <- traverseFoundNodes spider time_interval fn_policy start_nid
-  go getNext
+traverseFromOneNode spider time_interval fn_policy ref_weaver start_nid = do
+  visited_node_stream <- traverseFoundNodes spider time_interval fn_policy start_nid
+  go $ Con.connect visited_node_stream Con.await
   where
     go getNext = do
-      mfnode <- getNext
-      case mfnode of
+      mvisited_node <- getNext
+      case mvisited_node of
         Nothing -> return ()
-        Just fnode -> undefined -- TODO:
-          
+        Just (sub_nid, fnodes) -> modifyIORef ref_weaver $ tryAddToWeaver sub_nid fnodes
+    tryAddToWeaver sub_nid fnodes weaver =
+      if Weaver.isVisited sub_nid weaver
+      then weaver
+      else case fnodes of
+        [] -> Weaver.markAsVisited sub_nid weaver
+        _ -> foldl' (\w fn -> Weaver.addFoundNode fn w ) weaver fnodes
+
+resultHandleConduit :: Gr.ResultHandle a -> ConduitT () a IO ()
+resultHandleConduit handle = go
+  where
+    go = do
+      mret <- liftIO $ Gr.nextResult handle
+      case mret of
+        Nothing -> return ()
+        Just ret -> do
+          Con.yield ret
+          go
 
 -- | Recursively traverse the history graph based on the query to get
--- the FoundNodes. It returns an action to get the new 'FoundNode' via
--- the response stream.
+-- the FoundNodes.
+--
+-- It returns a Conduit source that emits visited Node ID and
+-- 'FoundNode's the node has.
 traverseFoundNodes :: (ToJSON n, NodeAttributes na, LinkAttributes fla, FromGraphSON n)
                    => Spider n na fla
                    -> Interval Timestamp -- ^ query time interval.
                    -> FoundNodePolicy n na -- ^ query found node policy
                    -> n -- ^ the starting node
-                   -> IO (IO (Maybe (FoundNode n na fla)))
+                   -> IO (ConduitT () (n, [FoundNode n na fla]) IO ())
 traverseFoundNodes spider time_interval fn_policy start_nid = do
   rhandle <- Gr.submit (spiderClient spider) gr_query (Just gr_binding)
-  return $ do
-    msmap <- Gr.nextResult rhandle
-    maybe (return Nothing) (fmap Just . toFoundNode) msmap
+  return $ resultHandleConduit rhandle .| parseSMapStream
+
+  -- Implementation note: the Gremlin query makes the server output
+  -- mixed stream of VNode and VFoundNode. It first outputs a visited
+  -- VNode, then it outputs zero or more VFoundNode found from the
+  -- visited VNode, and it outputs a VNode it visits next, and so on.
+  --
+  -- [VNode, VFoundNode, VFoundNode, VNode, VNode, VFoundNode, ...]
+  --
+  -- The reason why we do this is that we need to make a list of
+  -- visited nodes, but it's possible that a VNode has no
+  -- VFoundNodes. In addition, number of VFoundNodes can be big (it
+  -- depends on the query), so we don't want to let the server fold
+  -- VFoundNodes into a list.
+  
   where
-    toFoundNode smap = fmap makeFoundNodesFromHops $ extractFromSMap smap
     sourceVNode = gHasNodeID spider start_nid <*.> pure gAllNodes
     walkLatestFoundNodeIfOverwrite =
       case fn_policy of
-        PolicyOverwrite -> gLatestFoundNode
+        PolicyOverwrite -> gLatestFoundNode -- TODO(?): maybe we need to use .local step???
         PolicyAppend -> gIdentity
     walkSelectFoundNode = (<<<) walkLatestFoundNodeIfOverwrite
                           <$> fmap gSelectFoundNode (gFilterFoundNodeByTime time_interval)
     repeat_until = Nothing -- TODO: specify the maximum number of traversals.
-    ((gr_query, label_subject, label_vfnd, label_efs, label_efd, label_target), gr_binding) = runBinder $ do
+    ((gr_query, label_smap_type, label_subject, label_vfnd, label_efs, label_efd, label_target), gr_binding) = runBinder $ do
       walk_select_fnode <- walkSelectFoundNode
+      lsmap_type <- newAsLabel
       lsubject <- newAsLabel
       lefd <- newAsLabel
       ltarget <- newAsLabel
       lvfnd <- newAsLabel
       lefs <- newAsLabel
-      let walk_finds_and_target =
+      let walk_select_mixed = gNodeMix walk_select_fnode
+          walk_finds_and_target =
             gProject
             ( gByL lefd gEFindsData )
             [ gByL ltarget (gNodeID spider <<< gFindsTarget)
             ]
             <<< gFinds
-          walk_construct_result =
+          walk_construct_result = gEitherNodeMix walk_construct_vnode walk_construct_vfnode
+          walk_construct_vnode =
             gProject
-            ( gByL lsubject (gSubjectNodeID spider) )
+            ( gByL lsmap_type (gConstant ("vn" :: Greskell Text)) )
+            [ gByL lsubject (gNodeID spider)
+            ]
+          walk_construct_vfnode =
+            gProject
+            ( gByL lsmap_type (gConstant ("vfn" :: Greskell Text)) )
             [ gByL lvfnd gVFoundNodeData,
               gByL lefs (gFold <<< walk_finds_and_target)
             ]
       gt <- walk_construct_result
-            <$.> gRepeat Nothing (walk_select_fnode <<< gSimplePath <<< gTraverseViaFinds)
-                 repeat_until gEmitAlwaysHead
-            <$.> walk_select_fnode
+            <$.> gRepeat Nothing repeat_until gEmitHead
+                 (walk_select_mixed <<< gSimplePath <<< gTraverseViaFinds <<< gFoundNodeOnly)
+            <$.> walk_select_mixed
             <$.> sourceVNode
-      return (gt, lsubject, lvfnd, lefs, lefd, ltarget)
-    extractFromSMap smap = do
-      subject <- lookupAsM label_subject smap
+      return (gt, lsmap_type, lsubject, lvfnd, lefs, lefd, ltarget)
+    extractSMap smap = do
+      got_type <- lookupAsM label_smap_type smap
+      case got_type of
+        "vn" -> fmap Left $ extractSubjectNodeID smap
+        "vfn" -> fmap Right $ extractFoundNodeData smap
+        _ -> throwString ("Unknow type of traversal result: " ++ show got_type)
+        -- TODO: make decent exception type
+    extractSubjectNodeID smap = lookupAsM label_subject smap
+    extractFoundNodeData smap = do
       vfnd <- lookupAsM label_vfnd smap
       efs <- lookupAsM label_efs smap
       parsed_efs <- mapM extractHopFromSMap efs
-      return (subject, vfnd, parsed_efs)
+      return (vfnd, parsed_efs)
     extractHopFromSMap smap =
       (,)
       <$> lookupAsM label_efd smap
       <*> lookupAsM label_target smap
+    parseSMapStream = go Nothing []
+      where
+        go mcur_sub_nid cur_fnodes = do
+          msmap <- Con.await
+          case msmap of
+            Nothing -> yieldResult mcur_sub_nid cur_fnodes
+            Just smap -> do
+              eret <- liftIO $ extractSMap smap
+              case eret of
+                Left next_sub_nid -> do
+                  yieldResult mcur_sub_nid cur_fnodes
+                  go (Just next_sub_nid) []
+                Right fnode_data -> do
+                  case mcur_sub_nid of
+                    Nothing -> unexpectedVFNode
+                    Just cur_sub_nid ->
+                      go mcur_sub_nid (makeFoundNodeFromHops cur_sub_nid fnode_data : cur_fnodes)
+        yieldResult msub_nid fnodes =
+          case msub_nid of
+            Nothing -> return ()
+            Just sub_nid -> Con.yield (sub_nid, reverse fnodes)
+        unexpectedVFNode =
+          throwString ("Unexpected VFoundNode result received before receiving VNode result.")
+          -- TODO: make decent exception type
 
 
 ---- recurseVisitNodesForSnapshot :: (ToJSON n, Ord n, Hashable n, FromGraphSON n, Show n, LinkAttributes fla, NodeAttributes na)
@@ -329,9 +403,10 @@ traverseFoundNodes spider time_interval fn_policy start_nid = do
 ----           <$> lookupAsM label_efd smap
 ----           <*> lookupAsM label_target_nid smap
 
-makeFoundNodesFromHops :: (n, VFoundNodeData na, [(EFindsData fla, n)]) -- ^ (Subject node ID, FoundNode data, hops)
+makeFoundNodeFromHops :: n -- ^ Subject node ID
+                       -> (VFoundNodeData na, [(EFindsData fla, n)]) -- ^ (FoundNode data, hops)
                        -> FoundNode n na fla
-makeFoundNodesFromHops (subject_nid, vfnd, efs) =
+makeFoundNodeFromHops subject_nid (vfnd, efs) =
   makeFoundNode subject_nid vfnd $ map toFoundLink efs
   where
     toFoundLink (ef, target_nid) = makeFoundLink target_nid ef
