@@ -27,6 +27,7 @@ module NetSpider.Spider.Internal.Graph
          gNodeMix,
          gFoundNodeOnly,
          gEitherNodeMix,
+         gNodeFirst,
          -- * EFinds
          gFinds,
          gFindsTarget
@@ -42,7 +43,7 @@ import Data.Greskell
     Binder, newBind,
     source, sV, sV', sAddV, gHasLabel, gHasId, gHas2, gHas2P, gId, gProperty, gPropertyV, gV,
     gNot, gIdentity', gIdentity, gUnion, gChoose3,
-    gAddE, gSideEffect, gTo, gFrom, gDrop, gOut, gOrder, gBy2, gValues, gOutE, gIn,
+    gAddE, gSideEffect, gTo, gFrom, gDrop, gOut, gOrder, gBy2, gValues, gOutE, gIn, gLabel,
     ($.), (<*.>), (=:),
     ToGTraversal,
     Key, oDecr, gLimit,
@@ -181,6 +182,8 @@ gNodeMix :: Walk Transform VNode VFoundNode -- ^ walk to derive 'VFoundNode's fr
          -> Walk Transform VNode (Either VNode VFoundNode)
 gNodeMix walk_vfn = gUnion [unsafeCastEnd gIdentity, unsafeCastEnd walk_vfn]
 
+-- | Filter the 'VFoundNode' only from the mix of 'VNode' and
+-- 'VFoundNode'.
 gFoundNodeOnly :: Walk Transform (Either VNode VFoundNode) VFoundNode
 gFoundNodeOnly = unsafeCastStart $ gHasLabel "found_node"
 
@@ -194,3 +197,11 @@ gEitherNodeMix walk_vn walk_vfn =
   where
     walk_pred :: Walk Filter VNode VNode
     walk_pred = gHasLabel "node"
+
+-- | Sort the mix of 'VNode' and 'VFoundNode' so that 'VNode' is
+-- output first.
+gNodeFirst :: Walk Transform (Either VNode VFoundNode) (Either VNode VFoundNode)
+gNodeFirst = unsafeCastEnd $ unsafeCastStart $ walk_for_elem
+  where
+    walk_for_elem :: Walk Transform VNode VNode
+    walk_for_elem = gOrder [gBy2 gLabel oDecr]

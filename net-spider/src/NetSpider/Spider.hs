@@ -35,7 +35,7 @@ import Data.Greskell
   ( runBinder, ($.), (<$.>), (<*.>),
     Greskell, Binder, ToGreskell(GreskellReturn), AsIterator(IteratorItem), FromGraphSON,
     liftWalk, gLimit, gIdentity, gSelect1, gAs, gProject, gByL, gIdentity, gFold,
-    gRepeat, gEmitHead, gSimplePath, gConstant,
+    gRepeat, gEmitHead, gSimplePath, gConstant, gLocal,
     lookupAsM, newAsLabel,
     Transform, Walk
   )
@@ -78,7 +78,7 @@ import NetSpider.Spider.Internal.Graph
   ( gMakeFoundNode, gAllNodes, gHasNodeID, gHasNodeEID, gNodeEID, gNodeID, gMakeNode, gClearAll,
     gLatestFoundNode, gSelectFoundNode, gFinds, gFindsTarget, gHasFoundNodeEID, gAllFoundNode,
     gFilterFoundNodeByTime, gSubjectNodeID, gTraverseViaFinds,
-    gNodeMix, gFoundNodeOnly, gEitherNodeMix
+    gNodeMix, gFoundNodeOnly, gEitherNodeMix, gNodeFirst
   )
 import NetSpider.Spider.Internal.Log
   ( runLogger, logDebug, logWarn, logLine
@@ -234,6 +234,7 @@ traverseFoundNodes :: (ToJSON n, NodeAttributes na, LinkAttributes fla, FromGrap
                    -> n -- ^ the starting node
                    -> IO (ConduitT () (n, [FoundNode n na fla]) IO ())
 traverseFoundNodes spider time_interval fn_policy start_nid = do
+  -- print gr_query
   rhandle <- Gr.submit (spiderClient spider) gr_query (Just gr_binding)
   return $ resultHandleConduit rhandle .| parseSMapStream
 
@@ -267,7 +268,7 @@ traverseFoundNodes spider time_interval fn_policy start_nid = do
       ltarget <- newAsLabel
       lvfnd <- newAsLabel
       lefs <- newAsLabel
-      let walk_select_mixed = gNodeMix walk_select_fnode
+      let walk_select_mixed = gLocal $ gNodeFirst <<< gNodeMix walk_select_fnode
           walk_finds_and_target =
             gProject
             ( gByL lefd gEFindsData )
