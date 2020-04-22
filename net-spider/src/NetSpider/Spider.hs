@@ -181,12 +181,12 @@ getSnapshot :: (FromGraphSON n, ToJSON n, Ord n, Hashable n, Show n, LinkAttribu
             -> Query n na fla sla
             -> IO (SnapshotGraph n na sla)
 getSnapshot spider query = do
-  ref_state <- newIORef $ initSnapshotState (startsFrom query) (foundNodePolicy query)
-  undefined -- TODO
-  -- recurseVisitNodesForSnapshot spider query ref_state
-  -- (nodes, links, logs) <- fmap (makeSnapshot $ unifyLinkSamples query) $ readIORef ref_state
-  -- mapM_ (logLine spider) logs
-  -- return (nodes, links)
+  let fn_policy = foundNodePolicy query
+  ref_weaver <- newIORef $ newWeaver fn_policy
+  mapM_ (traverseFromOneNode spider (timeInterval query) fn_policy ref_weaver) $ startsFrom query
+  (graph, logs) <- fmap (Weaver.getSnapshot' $ unifyLinkSamples query) $ readIORef ref_weaver
+  mapM_ (logLine spider) logs
+  return graph
 
 traverseFromOneNode :: (Eq n, Hashable n, ToJSON n, NodeAttributes na, LinkAttributes fla, FromGraphSON n)
                     => Spider n na fla
@@ -457,13 +457,13 @@ makeFoundNodeFromHops subject_nid (vfnd, efs) =
 ----       )
 
 
--- | The state kept while making the snapshot graph.
-data SnapshotState n na fla =
-  SnapshotState
-  { ssUnvisitedNodes :: Queue n,
-    ssWeaver :: Weaver n na fla
-  }
-  deriving (Show)
+---- -- | The state kept while making the snapshot graph.
+---- data SnapshotState n na fla =
+----   SnapshotState
+----   { ssUnvisitedNodes :: Queue n,
+----     ssWeaver :: Weaver n na fla
+----   }
+----   deriving (Show)
 
 -- debugShowState :: Show n => SnapshotState n na fla -> String
 -- debugShowState state = unvisited ++ visited_nodes ++ visited_links
@@ -478,45 +478,45 @@ data SnapshotState n na fla =
 --     visited_links = "visitedLinks: "
 --                     ++ (intercalate ", " $ map show $ HM.keys $ ssVisitedLinks state)
 
-emptySnapshotState :: FoundNodePolicy n na -> SnapshotState n na fla
-emptySnapshotState p =
-  SnapshotState
-  { ssUnvisitedNodes = mempty,
-    ssWeaver = newWeaver p
-  }
-
-initSnapshotState :: [n] -> FoundNodePolicy n na -> SnapshotState n na fla
-initSnapshotState init_unvisited_nodes p =
-  (emptySnapshotState p) { ssUnvisitedNodes = newQueue init_unvisited_nodes }
-
-isAlreadyVisited :: (Eq n, Hashable n) => SnapshotState n na fla -> n -> Bool
-isAlreadyVisited state nid = Weaver.isVisited nid $ ssWeaver state
-
-popUnvisitedNode :: SnapshotState n na fla -> (SnapshotState n na fla, Maybe n)
-popUnvisitedNode state = (updated, popped)
-  where
-    updated = state { ssUnvisitedNodes = updatedUnvisited }
-    (popped, updatedUnvisited) = popQueue $ ssUnvisitedNodes state
-
-makeSnapshot :: (Ord n, Hashable n, Show n)
-             => LinkSampleUnifier n na fla sla
-             -> SnapshotState n na fla
-             -> ([SnapshotNode n na], [SnapshotLink n sla], [LogLine])
-makeSnapshot unifier state = (nodes, links, logs)
-  where
-    ((nodes, links), logs) = Weaver.getSnapshot' unifier $ ssWeaver state
-
-addFoundNodes :: (Eq n, Hashable n)
-              => n -> [FoundNode n na fla] -> SnapshotState n na fla -> SnapshotState n na fla
-addFoundNodes visited_nid [] state = state { ssWeaver = new_weaver }
-  where
-    new_weaver = Weaver.markAsVisited visited_nid $ ssWeaver state
-addFoundNodes _ fns state = foldl' (\s fn -> addOneFoundNode fn s) state fns
-
-addOneFoundNode :: (Eq n, Hashable n)
-                => FoundNode n na fla -> SnapshotState n na fla -> SnapshotState n na fla
-addOneFoundNode fn state = state { ssUnvisitedNodes = new_queue, ssWeaver = new_weaver }
-  where
-    new_weaver = Weaver.addFoundNode fn $ ssWeaver state
-    new_boundary_nodes = filter (\n -> not $ Weaver.isVisited n new_weaver) $ allTargetNodes fn
-    new_queue = foldl' (\q n -> pushQueue n q) (ssUnvisitedNodes state) new_boundary_nodes
+---- emptySnapshotState :: FoundNodePolicy n na -> SnapshotState n na fla
+---- emptySnapshotState p =
+----   SnapshotState
+----   { ssUnvisitedNodes = mempty,
+----     ssWeaver = newWeaver p
+----   }
+---- 
+---- initSnapshotState :: [n] -> FoundNodePolicy n na -> SnapshotState n na fla
+---- initSnapshotState init_unvisited_nodes p =
+----   (emptySnapshotState p) { ssUnvisitedNodes = newQueue init_unvisited_nodes }
+---- 
+---- isAlreadyVisited :: (Eq n, Hashable n) => SnapshotState n na fla -> n -> Bool
+---- isAlreadyVisited state nid = Weaver.isVisited nid $ ssWeaver state
+---- 
+---- popUnvisitedNode :: SnapshotState n na fla -> (SnapshotState n na fla, Maybe n)
+---- popUnvisitedNode state = (updated, popped)
+----   where
+----     updated = state { ssUnvisitedNodes = updatedUnvisited }
+----     (popped, updatedUnvisited) = popQueue $ ssUnvisitedNodes state
+---- 
+---- makeSnapshot :: (Ord n, Hashable n, Show n)
+----              => LinkSampleUnifier n na fla sla
+----              -> SnapshotState n na fla
+----              -> ([SnapshotNode n na], [SnapshotLink n sla], [LogLine])
+---- makeSnapshot unifier state = (nodes, links, logs)
+----   where
+----     ((nodes, links), logs) = Weaver.getSnapshot' unifier $ ssWeaver state
+---- 
+---- addFoundNodes :: (Eq n, Hashable n)
+----               => n -> [FoundNode n na fla] -> SnapshotState n na fla -> SnapshotState n na fla
+---- addFoundNodes visited_nid [] state = state { ssWeaver = new_weaver }
+----   where
+----     new_weaver = Weaver.markAsVisited visited_nid $ ssWeaver state
+---- addFoundNodes _ fns state = foldl' (\s fn -> addOneFoundNode fn s) state fns
+---- 
+---- addOneFoundNode :: (Eq n, Hashable n)
+----                 => FoundNode n na fla -> SnapshotState n na fla -> SnapshotState n na fla
+---- addOneFoundNode fn state = state { ssUnvisitedNodes = new_queue, ssWeaver = new_weaver }
+----   where
+----     new_weaver = Weaver.addFoundNode fn $ ssWeaver state
+----     new_boundary_nodes = filter (\n -> not $ Weaver.isVisited n new_weaver) $ allTargetNodes fn
+---- 
