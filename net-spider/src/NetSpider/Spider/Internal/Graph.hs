@@ -41,7 +41,7 @@ import Data.Greskell
     GTraversal, Filter, Transform, SideEffect, Walk, liftWalk, unsafeCastEnd, unsafeCastStart,
     Binder, newBind,
     source, sV, sV', sAddV, gHasLabel, gHasId, gHas2, gHas2P, gId, gProperty, gPropertyV, gV,
-    gNot, gIdentity', gIdentity, gUnion,
+    gNot, gIdentity', gIdentity, gUnion, gChoose3,
     gAddE, gSideEffect, gTo, gFrom, gDrop, gOut, gOrder, gBy2, gValues, gOutE, gIn,
     ($.), (<*.>), (=:),
     ToGTraversal,
@@ -182,11 +182,15 @@ gNodeMix :: Walk Transform VNode VFoundNode -- ^ walk to derive 'VFoundNode's fr
 gNodeMix walk_vfn = gUnion [unsafeCastEnd gIdentity, unsafeCastEnd walk_vfn]
 
 gFoundNodeOnly :: Walk Transform (Either VNode VFoundNode) VFoundNode
-gFoundNodeOnly = unsafeCastStart $ gHasLabel ["found_node"]
+gFoundNodeOnly = unsafeCastStart $ gHasLabel "found_node"
 
 -- | Transform the mixed stream of 'VNode' and 'VFoundNode' into a
 -- common type @a@.
 gEitherNodeMix :: Walk Transform VNode a
                -> Walk Transform VFoundNode a
                -> Walk Transform (Either VNode VFoundNode) a
-gEitherNodeMix = undefined -- TODO: we need .choose step.
+gEitherNodeMix walk_vn walk_vfn =
+  gChoose3 (unsafeCastStart walk_pred) (unsafeCastStart walk_vn) (unsafeCastStart walk_vfn)
+  where
+    walk_pred :: Walk Filter VNode VNode
+    walk_pred = gHasLabel "node"
