@@ -35,7 +35,7 @@ import Data.Greskell
   ( runBinder, ($.), (<$.>), (<*.>),
     Greskell, Binder, ToGreskell(GreskellReturn), AsIterator(IteratorItem), FromGraphSON,
     liftWalk, gLimit, gIdentity, gSelect1, gAs, gProject, gByL, gIdentity, gFold,
-    gRepeat, gEmitHead, gSimplePath, gConstant, gLocal,
+    gRepeat, gEmitHead, gSimplePath, gConstant, gLocal, gBarrier,
     lookupAsM, newAsLabel,
     Transform, Walk
   )
@@ -268,7 +268,7 @@ traverseFoundNodes spider time_interval fn_policy start_nid = do
       ltarget <- newAsLabel
       lvfnd <- newAsLabel
       lefs <- newAsLabel
-      let walk_select_mixed = gLocal $ gNodeFirst <<< gNodeMix walk_select_fnode
+      let walk_select_mixed = gBarrier Nothing <<< (gLocal $ gNodeFirst <<< gNodeMix walk_select_fnode)
           walk_finds_and_target =
             gProject
             ( gByL lefd gEFindsData )
