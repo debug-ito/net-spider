@@ -195,10 +195,11 @@ traverseFromOneNode :: (FromGraphSON n, ToJSON n, Eq n, Hashable n, Show n, Link
                     -> IO ()
 traverseFromOneNode spider time_interval fn_policy ref_weaver start_nid = do
   init_weaver <- readIORef ref_weaver
+  logDebug spider ("Start traverse from: " <> spack start_nid)
   get_next <- traverseFoundNodes spider time_interval fn_policy start_nid
   doTraverseWith init_weaver get_next
   where
-    logTraverseItem eitem = logDebug spider ("Traverse: " <> showTraverseItem eitem)
+    logTraverseItem eitem = logDebug spider ("Visit: " <> showTraverseItem eitem)
     showTraverseItem (Left nid) = "Node(" <> spack nid <> ")"
     showTraverseItem (Right fn) =
       "FoundNode("
