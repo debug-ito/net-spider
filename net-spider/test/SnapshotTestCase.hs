@@ -19,7 +19,7 @@ import NetSpider.Graph (NodeAttributes, LinkAttributes)
 import NetSpider.Pair (Pair(Pair))
 import NetSpider.Query
   ( Query, defQuery, unifyLinkSamples,
-    foundNodePolicy, policyOverwrite, policyAppend
+    FoundNodePolicy, foundNodePolicy, policyOverwrite, policyAppend
   )
 import NetSpider.Snapshot
   ( SnapshotLink, SnapshotGraph,
@@ -79,6 +79,78 @@ sortLinksWithAttr :: (Ord n, Ord la) => Vector (SnapshotLink n la) -> Vector (Sn
 sortLinksWithAttr = V.fromList . sortOn getKey . V.toList
   where
     getKey link = (linkNodeTuple link, S.linkAttributes link)
+
+
+diamondTopologyCase :: FoundNodePolicy Text () -> SnapshotTestCase
+diamondTopologyCase fn_policy =
+  SnapshotTestCase
+  { caseName = "diamond topology, " ++ show fn_policy,
+    caseInput =
+      let mkLink target =
+            FoundLink
+            { targetNode = target,
+              linkState = LinkBidirectional,
+              linkAttributes = ()
+            }
+          mkNode sub ts targets =
+            FoundNode
+            { subjectNode = sub,
+              foundAt = fromS ts,
+              nodeAttributes = (),
+              neighborLinks = map mkLink targets
+            }
+          -- (n1)---(n2)---(n4)---(n5)---(n6)
+          --   |            |
+          --   +----(n3)----+
+          fns :: [FoundNode Text () ()]
+          fns = [ mkNode "n1" "2020-04-23T10:30" ["n2", "n3"],
+                  mkNode "n2" "2020-04-23T10:35" ["n1", "n4"],
+                  mkNode "n3" "2020-04-23T10:20" ["n1", "n4"],
+                  mkNode "n4" "2020-04-23T10:30" ["n2", "n3"],
+                  mkNode "n5" "2020-04-23T11:10" ["n4", "n6"],
+                  mkNode "n6" "2020-04-23T10:25" ["n5"]
+                ]
+      in fns,
+    caseQuery = (defQuery ["n1"]) { foundNodePolicy = fn_policy },
+    caseAssert = \got_graph -> do
+      let (got_ns, _) = sortSnapshotElements got_graph
+          got_ls = V.fromList $ sortOn linkNodePair $ snd got_graph
+      -- print got_graph
+      nodeId (got_ns ! 0) `shouldBe` "n1"
+      nodeId (got_ns ! 1) `shouldBe` "n2"
+      nodeId (got_ns ! 2) `shouldBe` "n3"
+      nodeId (got_ns ! 3) `shouldBe` "n4"
+      nodeId (got_ns ! 4) `shouldBe` "n5"
+      nodeId (got_ns ! 5) `shouldBe` "n6"
+      V.length got_ns `shouldBe` 6
+      isOnBoundary (got_ns ! 0) `shouldBe` False
+      isOnBoundary (got_ns ! 1) `shouldBe` False
+      isOnBoundary (got_ns ! 2) `shouldBe` False
+      isOnBoundary (got_ns ! 3) `shouldBe` False
+      isOnBoundary (got_ns ! 4) `shouldBe` False
+      isOnBoundary (got_ns ! 5) `shouldBe` False
+      linkNodePair (got_ls ! 0) `shouldBe` Pair ("n1", "n2")
+      linkNodePair (got_ls ! 1) `shouldBe` Pair ("n1", "n3")
+      linkNodePair (got_ls ! 2) `shouldBe` Pair ("n2", "n4")
+      linkNodePair (got_ls ! 3) `shouldBe` Pair ("n3", "n4")
+      linkNodePair (got_ls ! 4) `shouldBe` Pair ("n4", "n5")
+      linkNodePair (got_ls ! 5) `shouldBe` Pair ("n5", "n6")
+      V.length got_ls `shouldBe` 6
+      isDirected (got_ls ! 0) `shouldBe` False
+      isDirected (got_ls ! 1) `shouldBe` False
+      isDirected (got_ls ! 2) `shouldBe` False
+      isDirected (got_ls ! 3) `shouldBe` False
+      isDirected (got_ls ! 4) `shouldBe` False
+      isDirected (got_ls ! 5) `shouldBe` False
+      linkTimestamp (got_ls ! 0) `shouldBe` fromS "2020-04-23T10:35"
+      linkTimestamp (got_ls ! 1) `shouldBe` fromS "2020-04-23T10:30"
+      linkTimestamp (got_ls ! 2) `shouldBe` fromS "2020-04-23T10:35"
+      linkTimestamp (got_ls ! 3) `shouldBe` fromS "2020-04-23T10:30"
+      linkTimestamp (got_ls ! 4) `shouldBe` fromS "2020-04-23T11:10"
+      linkTimestamp (got_ls ! 5) `shouldBe` fromS "2020-04-23T11:10"
+  }
+
+
 
 -- | \"Basic\" test cases are shared by ServerTest and
 -- WeaverSpec. Weaver has the following limitation, so the test cases
@@ -583,74 +655,9 @@ basics =
         linkTimestamp (got_ls ! 2) `shouldBe` fromS "2020-02-18T10:00"
         V.length got_ls `shouldBe` 3
     },
-
-    SnapshotTestCase
-    { caseName = "diamond topology",
-      caseInput =
-        let mkLink target =
-              FoundLink
-              { targetNode = target,
-                linkState = LinkBidirectional,
-                linkAttributes = ()
-              }
-            mkNode sub ts targets =
-              FoundNode
-              { subjectNode = sub,
-                foundAt = fromS ts,
-                nodeAttributes = (),
-                neighborLinks = map mkLink targets
-              }
-            -- (n1)---(n2)---(n4)---(n5)---(n6)
-            --   |            |
-            --   +----(n3)----+
-            fns :: [FoundNode Text () ()]
-            fns = [ mkNode "n1" "2020-04-23T10:30" ["n2", "n3"],
-                    mkNode "n2" "2020-04-23T10:35" ["n1", "n4"],
-                    mkNode "n3" "2020-04-23T10:20" ["n1", "n4"],
-                    mkNode "n4" "2020-04-23T10:30" ["n2", "n3"],
-                    mkNode "n5" "2020-04-23T11:10" ["n4", "n6"],
-                    mkNode "n6" "2020-04-23T10:25" ["n5"]
-                  ]
-        in fns,
-      caseQuery = defQuery ["n1"],
-      caseAssert = \got_graph -> do
-        let (got_ns, _) = sortSnapshotElements got_graph
-            got_ls = V.fromList $ sortOn linkNodePair $ snd got_graph
-        -- print got_graph
-        nodeId (got_ns ! 0) `shouldBe` "n1"
-        nodeId (got_ns ! 1) `shouldBe` "n2"
-        nodeId (got_ns ! 2) `shouldBe` "n3"
-        nodeId (got_ns ! 3) `shouldBe` "n4"
-        nodeId (got_ns ! 4) `shouldBe` "n5"
-        nodeId (got_ns ! 5) `shouldBe` "n6"
-        V.length got_ns `shouldBe` 6
-        isOnBoundary (got_ns ! 0) `shouldBe` False
-        isOnBoundary (got_ns ! 1) `shouldBe` False
-        isOnBoundary (got_ns ! 2) `shouldBe` False
-        isOnBoundary (got_ns ! 3) `shouldBe` False
-        isOnBoundary (got_ns ! 4) `shouldBe` False
-        isOnBoundary (got_ns ! 5) `shouldBe` False
-        linkNodePair (got_ls ! 0) `shouldBe` Pair ("n1", "n2")
-        linkNodePair (got_ls ! 1) `shouldBe` Pair ("n1", "n3")
-        linkNodePair (got_ls ! 2) `shouldBe` Pair ("n2", "n4")
-        linkNodePair (got_ls ! 3) `shouldBe` Pair ("n3", "n4")
-        linkNodePair (got_ls ! 4) `shouldBe` Pair ("n4", "n5")
-        linkNodePair (got_ls ! 5) `shouldBe` Pair ("n5", "n6")
-        V.length got_ls `shouldBe` 6
-        isDirected (got_ls ! 0) `shouldBe` False
-        isDirected (got_ls ! 1) `shouldBe` False
-        isDirected (got_ls ! 2) `shouldBe` False
-        isDirected (got_ls ! 3) `shouldBe` False
-        isDirected (got_ls ! 4) `shouldBe` False
-        isDirected (got_ls ! 5) `shouldBe` False
-        linkTimestamp (got_ls ! 0) `shouldBe` fromS "2020-04-23T10:35"
-        linkTimestamp (got_ls ! 1) `shouldBe` fromS "2020-04-23T10:30"
-        linkTimestamp (got_ls ! 2) `shouldBe` fromS "2020-04-23T10:35"
-        linkTimestamp (got_ls ! 3) `shouldBe` fromS "2020-04-23T10:30"
-        linkTimestamp (got_ls ! 4) `shouldBe` fromS "2020-04-23T11:10"
-        linkTimestamp (got_ls ! 5) `shouldBe` fromS "2020-04-23T11:10"
-    }
-
+    
+    diamondTopologyCase policyOverwrite,
+    diamondTopologyCase policyAppend
   ]
   where
     one_neighbor_assert (got_ns, got_ls) = do
