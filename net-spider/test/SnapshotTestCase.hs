@@ -614,7 +614,9 @@ basics =
         in fns,
       caseQuery = defQuery ["n1"],
       caseAssert = \got_graph -> do
-        let (got_ns, got_ls) = sortSnapshotElements got_graph
+        let (got_ns, _) = sortSnapshotElements got_graph
+            got_ls = V.fromList $ sortOn linkNodePair $ snd got_graph
+        -- print got_graph
         nodeId (got_ns ! 0) `shouldBe` "n1"
         nodeId (got_ns ! 1) `shouldBe` "n2"
         nodeId (got_ns ! 2) `shouldBe` "n3"
