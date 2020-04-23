@@ -106,7 +106,7 @@ diamondTopologyCase fn_policy =
           fns = [ mkNode "n1" "2020-04-23T10:30" ["n2", "n3"],
                   mkNode "n2" "2020-04-23T10:35" ["n1", "n4"],
                   mkNode "n3" "2020-04-23T10:20" ["n1", "n4"],
-                  mkNode "n4" "2020-04-23T10:30" ["n2", "n3"],
+                  mkNode "n4" "2020-04-23T10:30" ["n2", "n3", "n5"],
                   mkNode "n5" "2020-04-23T11:10" ["n4", "n6"],
                   mkNode "n6" "2020-04-23T10:25" ["n5"]
                 ]
