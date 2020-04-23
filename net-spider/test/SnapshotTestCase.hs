@@ -316,6 +316,11 @@ basics =
                                         { targetNode = "n2",
                                           linkState = LinkToTarget,
                                           linkAttributes = ()
+                                        },
+                                        FoundLink
+                                        { targetNode = "n3",
+                                          linkState = LinkToSubject,
+                                          linkAttributes = ()
                                         }
                                       ],
                       nodeAttributes = ()
