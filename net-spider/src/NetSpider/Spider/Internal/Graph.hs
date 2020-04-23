@@ -28,6 +28,7 @@ module NetSpider.Spider.Internal.Graph
          gFoundNodeOnly,
          gEitherNodeMix,
          gNodeFirst,
+         gDedupNodes,
          -- * EFinds
          gFinds,
          gFindsTarget
@@ -42,12 +43,13 @@ import Data.Greskell
     GTraversal, Filter, Transform, SideEffect, Walk, liftWalk, unsafeCastEnd, unsafeCastStart,
     Binder, newBind,
     source, sV, sV', sAddV, gHasLabel, gHasId, gHas2, gHas2P, gId, gProperty, gPropertyV, gV,
-    gNot, gIdentity', gIdentity, gUnion, gChoose3,
-    gAddE, gSideEffect, gTo, gFrom, gDrop, gOut, gOrder, gBy2, gValues, gOutE, gIn, gLabel,
+    gNot, gIdentity', gIdentity, gUnion, gChoose3, gDedup,
+    gAddE, gSideEffect, gTo, gFrom, gDrop, gOut, gOrder, gBy, gBy2, gValues, gOutE, gIn, gLabel,
     ($.), (<*.>), (=:),
     ToGTraversal,
     Key, oDecr, gLimit,
-    pGt, pGte, pLt, pLte
+    pGt, pGte, pLt, pLte,
+    tId
   )
 import Data.Int (Int64)
 import Data.Text (Text, pack)
@@ -205,3 +207,10 @@ gNodeFirst = unsafeCastEnd $ unsafeCastStart $ walk_for_elem
   where
     walk_for_elem :: Walk Transform VNode VNode
     walk_for_elem = gOrder [gBy2 gLabel oDecr]
+
+-- | Dedup mix of 'VNode' and 'VFoundNode' based on their 'EID'.
+gDedupNodes :: Walk Transform (Either VNode VFoundNode) (Either VNode VFoundNode)
+gDedupNodes = unsafeCastEnd $ unsafeCastStart $ walk_for_elem
+  where
+    walk_for_elem :: Walk Transform VNode VNode
+    walk_for_elem = gDedup $ Just $ gBy tId

@@ -76,7 +76,7 @@ import NetSpider.Spider.Internal.Graph
   ( gMakeFoundNode, gAllNodes, gHasNodeID, gHasNodeEID, gNodeEID, gNodeID, gMakeNode, gClearAll,
     gLatestFoundNode, gSelectFoundNode, gFinds, gFindsTarget, gHasFoundNodeEID, gAllFoundNode,
     gFilterFoundNodeByTime, gSubjectNodeID, gTraverseViaFinds,
-    gNodeMix, gFoundNodeOnly, gEitherNodeMix
+    gNodeMix, gFoundNodeOnly, gEitherNodeMix, gDedupNodes
   )
 import NetSpider.Spider.Internal.Log
   ( runLogger, logDebug, logWarn, logLine
@@ -283,6 +283,7 @@ traverseFoundNodes spider time_interval fn_policy start_nid = do
               gByL lefs (gFold <<< walk_finds_and_target)
             ]
       gt <- walk_construct_result
+            <$.> gDedupNodes
             <$.> gRepeat Nothing repeat_until gEmitHead
                  (walk_select_mixed <<< gSimplePath <<< gTraverseViaFinds <<< gFoundNodeOnly)
             <$.> walk_select_mixed
