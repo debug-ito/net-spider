@@ -28,7 +28,7 @@ import Control.Monad (void, mapM_, mapM, when)
 import Control.Monad.IO.Class (liftIO)
 import Data.Aeson (ToJSON)
 import Data.Foldable (foldr', toList, foldl')
-import Data.List (intercalate, reverse)
+import Data.List (reverse)
 import Data.Greskell
   ( runBinder, ($.), (<$.>), (<*.>),
     Greskell, Binder, ToGreskell(GreskellReturn), AsIterator(IteratorItem), FromGraphSON,
@@ -45,7 +45,7 @@ import qualified Data.HashSet as HS
 import Data.IORef (IORef, modifyIORef, newIORef, readIORef, atomicModifyIORef')
 import Data.Maybe (catMaybes, mapMaybe, listToMaybe)
 import Data.Monoid (mempty, (<>))
-import Data.Text (Text, pack)
+import Data.Text (Text, pack, intercalate)
 import Data.Vector (Vector)
 import qualified Data.Vector as V
 import Network.Greskell.WebSocket (Host, Port)
@@ -82,7 +82,7 @@ import NetSpider.Spider.Internal.Log
   ( runLogger, logDebug, logWarn, logLine
   )
 import NetSpider.Spider.Internal.Spider (Spider(..))
-import NetSpider.Timestamp (Timestamp, showEpochTime)
+import NetSpider.Timestamp (Timestamp, showTimestamp)
 import NetSpider.Unify (LinkSampleUnifier, LinkSample(..), LinkSampleID, linkSampleId)
 import NetSpider.Weaver (Weaver, newWeaver)
 import qualified NetSpider.Weaver as Weaver
@@ -186,7 +186,7 @@ getSnapshot spider query = do
   mapM_ (logLine spider) logs
   return graph
 
-traverseFromOneNode :: (Eq n, Hashable n, ToJSON n, NodeAttributes na, LinkAttributes fla, FromGraphSON n)
+traverseFromOneNode :: (FromGraphSON n, ToJSON n, Eq n, Hashable n, Show n, LinkAttributes fla, NodeAttributes na)
                     => Spider n na fla
                     -> Interval Timestamp
                     -> FoundNodePolicy n na
@@ -198,14 +198,27 @@ traverseFromOneNode spider time_interval fn_policy ref_weaver start_nid = do
   get_next <- traverseFoundNodes spider time_interval fn_policy start_nid
   doTraverseWith init_weaver get_next
   where
+    logTraverseItem eitem = logDebug spider ("Traverse: " <> showTraverseItem eitem)
+    showTraverseItem (Left nid) = "Node(" <> spack nid <> ")"
+    showTraverseItem (Right fn) =
+      "FoundNode("
+      <> "ts:" <> (showTimestamp $ foundAt fn)
+      <> ", sub:" <> (spack $ subjectNode fn)
+      <> ", tgt:[" <> (intercalate ", " $ map showLink $ neighborLinks fn)
+      <> "])"
+    showLink l = spack $ targetNode l
     doTraverseWith init_weaver getNext = go
       where
         go = do
           mvisited_node <- getNext
           case mvisited_node of
             Nothing -> return ()
-            Just (Left sub_nid) -> tryAdd sub_nid Nothing >> go
-            Just (Right fnode) -> tryAdd (subjectNode fnode) (Just fnode) >> go
+            Just eitem -> do
+              logTraverseItem eitem
+              case eitem of
+                Left sub_nid -> tryAdd sub_nid Nothing
+                Right fnode -> tryAdd (subjectNode fnode) (Just fnode)
+              go
         tryAdd sub_nid mfnode = do
           when (not $ Weaver.isVisited sub_nid init_weaver) $ do
             modifyIORef ref_weaver $ \w ->
