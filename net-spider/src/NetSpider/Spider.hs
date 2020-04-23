@@ -24,18 +24,18 @@ module NetSpider.Spider
 
 import Control.Category ((<<<))
 import Control.Exception.Safe (throwString, bracket)
-import Control.Monad (void, mapM_, mapM)
+import Control.Monad (void, mapM_, mapM, when)
 import Control.Monad.IO.Class (liftIO)
 import Data.Aeson (ToJSON)
-import Data.Conduit (ConduitT, (.|))
-import qualified Data.Conduit as Con
+---- import Data.Conduit (ConduitT, (.|))
+---- import qualified Data.Conduit as Con
 import Data.Foldable (foldr', toList, foldl')
 import Data.List (intercalate, reverse)
 import Data.Greskell
   ( runBinder, ($.), (<$.>), (<*.>),
     Greskell, Binder, ToGreskell(GreskellReturn), AsIterator(IteratorItem), FromGraphSON,
     liftWalk, gLimit, gIdentity, gSelect1, gAs, gProject, gByL, gIdentity, gFold,
-    gRepeat, gEmitHead, gSimplePath, gConstant, gLocal, gBarrier,
+    gRepeat, gEmitHead, gSimplePath, gConstant, gLocal,
     lookupAsM, newAsLabel,
     Transform, Walk
   )
@@ -78,7 +78,7 @@ import NetSpider.Spider.Internal.Graph
   ( gMakeFoundNode, gAllNodes, gHasNodeID, gHasNodeEID, gNodeEID, gNodeID, gMakeNode, gClearAll,
     gLatestFoundNode, gSelectFoundNode, gFinds, gFindsTarget, gHasFoundNodeEID, gAllFoundNode,
     gFilterFoundNodeByTime, gSubjectNodeID, gTraverseViaFinds,
-    gNodeMix, gFoundNodeOnly, gEitherNodeMix, gNodeFirst
+    gNodeMix, gFoundNodeOnly, gEitherNodeMix
   )
 import NetSpider.Spider.Internal.Log
   ( runLogger, logDebug, logWarn, logLine
@@ -196,61 +196,67 @@ traverseFromOneNode :: (Eq n, Hashable n, ToJSON n, NodeAttributes na, LinkAttri
                     -> n -- ^ starting node
                     -> IO ()
 traverseFromOneNode spider time_interval fn_policy ref_weaver start_nid = do
-  visited_node_stream <- traverseFoundNodes spider time_interval fn_policy start_nid
-  go $ Con.connect visited_node_stream Con.await
+  init_weaver <- readIORef ref_weaver
+  get_next <- traverseFoundNodes spider time_interval fn_policy start_nid
+  ---- go $ Con.connect visited_node_stream Con.await
+  doTraverseWith init_weaver get_next
   where
-    go getNext = do
-      mvisited_node <- getNext
-      case mvisited_node of
-        Nothing -> return ()
-        Just (sub_nid, fnodes) -> modifyIORef ref_weaver $ tryAddToWeaver sub_nid fnodes
-    tryAddToWeaver sub_nid fnodes weaver =
-      if Weaver.isVisited sub_nid weaver
-      then weaver
-      else case fnodes of
-        [] -> Weaver.markAsVisited sub_nid weaver
-        _ -> foldl' (\w fn -> Weaver.addFoundNode fn w ) weaver fnodes
+    doTraverseWith init_weaver getNext = go
+      where
+        go = do
+          mvisited_node <- getNext
+          case mvisited_node of
+            Nothing -> return ()
+            Just (Left sub_nid) -> tryAdd sub_nid Nothing >> go
+            Just (Right fnode) -> tryAdd (subjectNode fnode) (Just fnode) >> go
+        tryAdd sub_nid mfnode = do
+          when (not $ Weaver.isVisited sub_nid init_weaver) $ do
+            modifyIORef ref_weaver $ \w ->
+              case mfnode of
+                Nothing -> Weaver.markAsVisited sub_nid w
+                Just fnode -> Weaver.addFoundNode fnode w
 
-resultHandleConduit :: Gr.ResultHandle a -> ConduitT () a IO ()
-resultHandleConduit handle = go
-  where
-    go = do
-      mret <- liftIO $ Gr.nextResult handle
-      case mret of
-        Nothing -> return ()
-        Just ret -> do
-          Con.yield ret
-          go
+        ---- Just (sub_nid, fnodes) -> modifyIORef ref_weaver $ tryAddToWeaver sub_nid fnodes
+    ---- tryAddToWeaver sub_nid fnodes weaver =
+    ----   if Weaver.isVisited sub_nid weaver
+    ----   then weaver
+    ----   else case fnodes of
+    ----     [] -> Weaver.markAsVisited sub_nid weaver
+    ----     _ -> foldl' (\w fn -> Weaver.addFoundNode fn w ) weaver fnodes
+
+---- resultHandleConduit :: Gr.ResultHandle a -> ConduitT () a IO ()
+---- resultHandleConduit handle = go
+----   where
+----     go = do
+----       mret <- liftIO $ Gr.nextResult handle
+----       case mret of
+----         Nothing -> return ()
+----         Just ret -> do
+----           Con.yield ret
+----           go
 
 -- | Recursively traverse the history graph based on the query to get
 -- the FoundNodes.
 --
--- It returns a Conduit source that emits visited Node ID and
--- 'FoundNode's the node has.
+-- It returns an action that emits the visited Node IDs and
+-- 'FoundNode's the node has. Those items are emitted as a single
+-- stream, in a mixed and unordered fashion. If it reaches to the end
+-- of the stream, the action returns 'Nothing'.
 traverseFoundNodes :: (ToJSON n, NodeAttributes na, LinkAttributes fla, FromGraphSON n)
                    => Spider n na fla
                    -> Interval Timestamp -- ^ query time interval.
                    -> FoundNodePolicy n na -- ^ query found node policy
                    -> n -- ^ the starting node
-                   -> IO (ConduitT () (n, [FoundNode n na fla]) IO ())
+                   -> IO (IO (Maybe (Either n (FoundNode n na fla))))
+                   ---- -> IO (ConduitT () (Either ) IO ())
 traverseFoundNodes spider time_interval fn_policy start_nid = do
   -- print gr_query
   rhandle <- Gr.submit (spiderClient spider) gr_query (Just gr_binding)
-  return $ resultHandleConduit rhandle .| parseSMapStream
+  return $ do
+    msmap <- Gr.nextResult rhandle
+    maybe (return Nothing) (fmap Just . extractSMap) msmap
 
-  -- Implementation note: the Gremlin query makes the server output
-  -- mixed stream of VNode and VFoundNode. It first outputs a visited
-  -- VNode, then it outputs zero or more VFoundNode found from the
-  -- visited VNode, and it outputs a VNode it visits next, and so on.
-  --
-  -- [VNode, VFoundNode, VFoundNode, VNode, VNode, VFoundNode, ...]
-  --
-  -- The reason why we do this is that we need to make a list of
-  -- visited nodes, but it's possible that a VNode has no
-  -- VFoundNodes. In addition, number of VFoundNodes can be big (it
-  -- depends on the query), so we don't want to let the server fold
-  -- VFoundNodes into a list.
-  
+  -- return $ resultHandleConduit rhandle .| parseSMapStream
   where
     sourceVNode = gHasNodeID spider start_nid <*.> pure gAllNodes
     walkLatestFoundNodeIfOverwrite =
@@ -268,7 +274,7 @@ traverseFoundNodes spider time_interval fn_policy start_nid = do
       ltarget <- newAsLabel
       lvfnd <- newAsLabel
       lefs <- newAsLabel
-      let walk_select_mixed = gBarrier Nothing <<< (gLocal $ gNodeFirst <<< gNodeMix walk_select_fnode)
+      let walk_select_mixed = gLocal $ gNodeMix walk_select_fnode
           walk_finds_and_target =
             gProject
             ( gByL lefd gEFindsData )
@@ -284,7 +290,8 @@ traverseFoundNodes spider time_interval fn_policy start_nid = do
           walk_construct_vfnode =
             gProject
             ( gByL lsmap_type (gConstant ("vfn" :: Greskell Text)) )
-            [ gByL lvfnd gVFoundNodeData,
+            [ gByL lsubject (gSubjectNodeID spider),
+              gByL lvfnd gVFoundNodeData,
               gByL lefs (gFold <<< walk_finds_and_target)
             ]
       gt <- walk_construct_result
@@ -297,43 +304,45 @@ traverseFoundNodes spider time_interval fn_policy start_nid = do
       got_type <- lookupAsM label_smap_type smap
       case got_type of
         "vn" -> fmap Left $ extractSubjectNodeID smap
-        "vfn" -> fmap Right $ extractFoundNodeData smap
+        "vfn" -> fmap Right $ extractFoundNode smap
         _ -> throwString ("Unknow type of traversal result: " ++ show got_type)
         -- TODO: make decent exception type
     extractSubjectNodeID smap = lookupAsM label_subject smap
-    extractFoundNodeData smap = do
+    extractFoundNode smap = do
+      sub_nid <- lookupAsM label_subject smap
       vfnd <- lookupAsM label_vfnd smap
       efs <- lookupAsM label_efs smap
       parsed_efs <- mapM extractHopFromSMap efs
-      return (vfnd, parsed_efs)
+      return $ makeFoundNodeFromHops sub_nid (vfnd, parsed_efs)
     extractHopFromSMap smap =
       (,)
       <$> lookupAsM label_efd smap
       <*> lookupAsM label_target smap
-    parseSMapStream = go Nothing []
-      where
-        go mcur_sub_nid cur_fnodes = do
-          msmap <- Con.await
-          case msmap of
-            Nothing -> yieldResult mcur_sub_nid cur_fnodes
-            Just smap -> do
-              eret <- liftIO $ extractSMap smap
-              case eret of
-                Left next_sub_nid -> do
-                  yieldResult mcur_sub_nid cur_fnodes
-                  go (Just next_sub_nid) []
-                Right fnode_data -> do
-                  case mcur_sub_nid of
-                    Nothing -> unexpectedVFNode
-                    Just cur_sub_nid ->
-                      go mcur_sub_nid (makeFoundNodeFromHops cur_sub_nid fnode_data : cur_fnodes)
-        yieldResult msub_nid fnodes =
-          case msub_nid of
-            Nothing -> return ()
-            Just sub_nid -> Con.yield (sub_nid, reverse fnodes)
-        unexpectedVFNode =
-          throwString ("Unexpected VFoundNode result received before receiving VNode result.")
-          -- TODO: make decent exception type
+
+    ---- parseSMapStream = go Nothing []
+    ----   where
+    ----     go mcur_sub_nid cur_fnodes = do
+    ----       msmap <- Con.await
+    ----       case msmap of
+    ----         Nothing -> yieldResult mcur_sub_nid cur_fnodes
+    ----         Just smap -> do
+    ----           eret <- liftIO $ extractSMap smap
+    ----           case eret of
+    ----             Left next_sub_nid -> do
+    ----               yieldResult mcur_sub_nid cur_fnodes
+    ----               go (Just next_sub_nid) []
+    ----             Right fnode_data -> do
+    ----               case mcur_sub_nid of
+    ----                 Nothing -> unexpectedVFNode
+    ----                 Just cur_sub_nid ->
+    ----                   go mcur_sub_nid (makeFoundNodeFromHops cur_sub_nid fnode_data : cur_fnodes)
+    ----     yieldResult msub_nid fnodes =
+    ----       case msub_nid of
+    ----         Nothing -> return ()
+    ----         Just sub_nid -> Con.yield (sub_nid, reverse fnodes)
+    ----     unexpectedVFNode =
+    ----       throwString ("Unexpected VFoundNode result received before receiving VNode result.")
+    ----       -- TODO: make decent exception type
 
 
 ---- recurseVisitNodesForSnapshot :: (ToJSON n, Ord n, Hashable n, FromGraphSON n, Show n, LinkAttributes fla, NodeAttributes na)
