@@ -42,7 +42,7 @@ import Data.Greskell
   ( WalkType, AEdge,
     GTraversal, Filter, Transform, SideEffect, Walk, liftWalk, unsafeCastEnd, unsafeCastStart,
     Binder, newBind,
-    source, sV, sV', sAddV, gHasLabel, gHasId, gHas2, gHas2P, gId, gProperty, gPropertyV, gV,
+    source, sV, sV', sAddV, gAddV, gHasLabel, gHasId, gHas2, gHas2P, gId, gProperty, gPropertyV, gV,
     gNot, gIdentity', gIdentity, gUnion, gChoose3, gDedup,
     gAddE, gSideEffect, gTo, gFrom, gDrop, gOut, gOrder, gBy, gBy2, gValues, gOutE, gIn, gLabel,
     ($.), (<*.>), (=:),
@@ -93,10 +93,10 @@ gHasNodeEID eid = do
   var_eid <- newBind eid
   return $ gHasId var_eid
 
-gMakeNode :: ToJSON n => Spider n na fla -> n -> Binder (GTraversal SideEffect () VNode)
+gMakeNode :: ToJSON n => Spider n na fla -> n -> Binder (Walk SideEffect a VNode)
 gMakeNode spider nid = do
   var_nid <- newBind nid
-  return $ gProperty (spiderNodeIdKey spider) var_nid $. sAddV "node" $ source "g"
+  return $ gProperty (spiderNodeIdKey spider) var_nid <<< gAddV "node"
 
 gGetNodeByEID :: EID VNode -> Binder (Walk Transform s VNode)
 gGetNodeByEID vid = do

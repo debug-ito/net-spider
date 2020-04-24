@@ -35,8 +35,9 @@ import Data.Greskell
     liftWalk, gLimit, gIdentity, gSelect1, gAs, gProject, gByL, gIdentity, gFold,
     gRepeat, gEmitHead, gSimplePath, gConstant, gLocal,
     lookupAsM, newAsLabel,
-    Transform, Walk
+    Transform, Walk, SideEffect
   )
+import Data.Greskell.Extra (gWhenEmptyInput)
 import Data.Hashable (Hashable)
 import Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HM
@@ -142,19 +143,16 @@ addFoundNode spider found_node = do
 vToMaybe :: Vector a -> Maybe a
 vToMaybe v = v V.!? 0
   
-getNode :: (ToJSON n) => Spider n na fla -> n -> IO (Maybe (EID VNode))
-getNode spider nid = fmap vToMaybe $ Gr.slurpResults =<< submitB spider gt
-  where
-    gt = gNodeEID <$.> gHasNodeID spider nid <*.> pure gAllNodes
-
 getOrMakeNode :: (ToJSON n) => Spider n na fla -> n -> IO (EID VNode)
-getOrMakeNode spider nid = do
-  mvid <- getNode spider nid
-  case mvid of
-   Just vid -> return vid
-   Nothing -> makeNode
+getOrMakeNode spider nid = expectOne =<< Gr.slurpResults =<< submitB spider bound_traversal
   where
-    makeNode = expectOne =<< Gr.slurpResults =<< submitB spider (liftWalk gNodeEID <$.> gMakeNode spider nid)
+    bound_traversal = do
+      wMakeNode <- gMakeNode spider nid
+      wHasNodeID <- gHasNodeID spider nid
+      return
+        $ (liftWalk gNodeEID :: Walk SideEffect VNode (EID VNode))
+        $. gWhenEmptyInput wMakeNode
+        $. liftWalk $ wHasNodeID $. gAllNodes
     expectOne v = case vToMaybe v of
       Just e -> return e
       Nothing -> throwString "Expects at least single result, but got nothing."

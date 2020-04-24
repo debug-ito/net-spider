@@ -2,7 +2,7 @@
 
 ## 0.4.3.1  -- ?
 
-* Spider is now implemented with greskell-1.0.1.0
+* Spider is now implemented with greskell-1.1.0.0
 
 ## 0.4.3.0  -- 2020-04-18
 
