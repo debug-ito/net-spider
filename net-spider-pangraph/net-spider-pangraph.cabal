@@ -1,5 +1,5 @@
 name:                   net-spider-pangraph
-version:                0.2.0.0
+version:                0.2.0.1
 author:                 Toshio Ito <debug.ito@gmail.com>
 maintainer:             Toshio Ito <debug.ito@gmail.com>
 license:                BSD3
@@ -28,7 +28,7 @@ library
                         text >=1.2.3.1 && <1.3,
                         pangraph >=0.2.1 && <0.3,
                         time >=1.8.0.2 && <1.10,
-                        greskell >=1.0.0.0 && <1.1
+                        greskell >=1.0.0.0 && <1.2
 
 -- executable net-spider-pangraph
 --   default-language:     Haskell2010

@@ -1,5 +1,9 @@
 # Revision history for net-spider-rpl-cli
 
+## 0.1.3.1  -- ?
+
+* Confirm test with `greskell-1.1.0.0`.
+
 ## 0.1.3.0  -- 2020-04-18
 
 * Add Analyze module.
