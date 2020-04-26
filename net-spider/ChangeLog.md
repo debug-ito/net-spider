@@ -1,6 +1,6 @@
 # Revision history for net-spider
 
-## 0.4.3.1  -- ?
+## 0.4.3.1  -- 2020-04-26
 
 * Spider is now implemented with greskell-1.1.0.0
 
