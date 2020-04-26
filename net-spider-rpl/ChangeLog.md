@@ -1,6 +1,6 @@
 # Revision history for net-spider-rpl
 
-## 0.4.1.1  -- ?
+## 0.4.1.1  -- 2020-04-26
 
 * Confirm test with `greskell-1.1.0.0`
 
