@@ -1,6 +1,6 @@
 # Revision history for net-spider-pangraph
 
-## 0.2.0.1  -- ?
+## 0.2.0.1  -- 2020-04-26
 
 * Confirm build with `greskell-1.1.0.0`
 
