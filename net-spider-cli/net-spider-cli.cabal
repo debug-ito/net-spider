@@ -1,5 +1,5 @@
 name:                   net-spider-cli
-version:                0.2.0.1
+version:                0.2.0.2
 author:                 Toshio Ito <debug.ito@gmail.com>
 maintainer:             Toshio Ito <debug.ito@gmail.com>
 license:                BSD3
@@ -26,7 +26,7 @@ library
   build-depends:        base >=4.11.1.0 && <4.13,
                         net-spider >=0.3.3.0 && <0.5,
                         optparse-applicative >=0.14.3.0 && <0.16,
-                        aeson >=1.2.4 && <1.5,
+                        aeson >=1.2.4 && <1.6,
                         hashable >=1.2.6.1 && <1.4,
                         greskell-core >=0.1.2.4 && <0.2,
                         text >=1.2.2.2 && <1.3

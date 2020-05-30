@@ -1,5 +1,9 @@
 # Revision history for net-spider-cli
 
+## 0.2.0.2  -- ?
+
+* Confirm test with `aeson-1.5.0.0`.
+
 ## 0.2.0.1  -- 2019-12-28
 
 * Allow `net-spider-0.4.0.0`.
