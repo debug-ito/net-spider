@@ -1,6 +1,6 @@
 # Revision history for net-spider-cli
 
-## 0.2.0.2  -- ?
+## 0.2.0.2  -- 2020-05-30
 
 * Confirm test with `aeson-1.5.0.0`.
 
