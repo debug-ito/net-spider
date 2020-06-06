@@ -1,5 +1,5 @@
 name:                   net-spider
-version:                0.4.3.2
+version:                0.4.3.3
 author:                 Toshio Ito <debug.ito@gmail.com>
 maintainer:             Toshio Ito <debug.ito@gmail.com>
 license:                BSD3
@@ -136,7 +136,7 @@ test-suite doctest
   ghc-options:          -Wall -fno-warn-unused-imports "-with-rtsopts=-M512m"
   main-is:              DocTest.hs
   build-depends:        base,
-                        doctest >=0.13 && <0.17,
+                        doctest >=0.13 && <0.18,
                         doctest-discover >=0.1.0.7 && <0.3
 
 
