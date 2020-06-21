@@ -1,5 +1,9 @@
 # Revision history for net-spider
 
+## 0.4.3.4  -- 2020-06-21
+
+* Confirm test with `base-4.13` and `base-4.14`.
+
 ## 0.4.3.3  -- 2020-06-06
 
 * Confirm test with `doctest-0.17`.
