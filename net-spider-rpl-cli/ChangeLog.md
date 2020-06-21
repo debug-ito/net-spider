@@ -1,5 +1,9 @@
 # Revision history for net-spider-rpl-cli
 
+## 0.1.3.2  -- 2020-06-21
+
+* Confirm test with `base-4.13` and `base-4.14`.
+
 ## 0.1.3.1  -- 2020-04-26
 
 * Confirm test with `greskell-1.1.0.0`.
