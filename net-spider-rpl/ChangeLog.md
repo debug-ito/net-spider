@@ -1,5 +1,9 @@
 # Revision history for net-spider-rpl
 
+## 0.4.1.3  -- 2020-06-21
+
+* Confirm test with `base-4.13` and `base-4.14`.
+
 ## 0.4.1.2  -- 2020-05-30
 
 * Confirm test with `aeson-1.5.0.0`.
