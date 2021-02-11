@@ -1,5 +1,9 @@
 # Revision history for net-spider-pangraph
 
+## 0.2.0.4  -- 2021-02-11
+
+* Confirm test with `doctest-0.18`.
+
 ## 0.2.0.3  -- 2020-12-30
 
 * Confirm test with `greskell-1.2.0.0`
