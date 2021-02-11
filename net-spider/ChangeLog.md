@@ -1,5 +1,9 @@
 # Revision history for net-spider
 
+## 0.4.3.6  -- 2021-02-11
+
+* Confirm test with `doctest-0.18`.
+
 ## 0.4.3.5  -- 2020-12-30
 
 * Confirm test with `greskell-1.2.0.0`.
