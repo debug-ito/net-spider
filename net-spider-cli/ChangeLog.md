@@ -1,5 +1,9 @@
 # Revision history for net-spider-cli
 
+## 0.2.0.6  -- 2021-02-11
+
+* Confirm test with `doctest-0.18`.
+
 ## 0.2.0.5  -- 2020-12-30
 
 * Confirm test with `optparse-applicative-0.16.0.0`.
