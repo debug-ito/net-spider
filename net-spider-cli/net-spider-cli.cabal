@@ -23,7 +23,7 @@ library
                         NetSpider.CLI.Spider,
                         NetSpider.CLI.Snapshot
   -- other-modules:        
-  build-depends:        base >=4.11.1.0 && <4.15,
+  build-depends:        base >=4.11.1.0 && <4.16,
                         net-spider >=0.3.3.0 && <0.5,
                         optparse-applicative >=0.14.3.0 && <0.17,
                         aeson >=1.2.4 && <1.6,
