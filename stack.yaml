@@ -37,10 +37,12 @@ resolver: lts-12.26
 packages:
 - net-spider
 - test-readme
-- net-spider-pangraph
 - net-spider-rpl
 - net-spider-cli
 - net-spider-rpl-cli
+
+## - net-spider-pangraph
+
 
 # Dependency packages to be pulled from upstream that are not in the resolver
 # using the same syntax as the packages field.
@@ -49,10 +51,12 @@ packages:
 extra-deps:
 - hspec-need-env-0.1.0.3
 - extended-reals-0.2.3.0
-- pangraph-0.2.1
 - greskell-core-0.1.3.0
 - greskell-websocket-0.1.2.0
 - greskell-1.2.0.0
+
+## - pangraph-0.2.1
+
 
 ## #### If we include a new ip package in extra-dep, we should use new resolver (e.g. lts-14).
 ## - ip-1.7.1@rev:1
