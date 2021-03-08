@@ -1,0 +1,19 @@
+packages: net-spider,
+          net-spider-cli,
+          net-spider-rpl,
+          net-spider-rpl-cli
+
+-- Note: net-spider-pangraph has been removed from the project because
+-- it's difficult to support it with new GHCs. If you want to build
+-- it, add a "packages" entry to cabal.project.local.
+--
+-- The dependency graph is like:
+--
+-- net-spider-pangraph-0.2.0.4 -> pangraph-0.2.1 -> containers-0.5
+--
+-- Because new GHCs have containers >=0.6, it's totally incompatible.
+--
+-- See also:
+--
+-- - https://github.com/tuura/pangraph/issues/38
+-- - https://github.com/tuura/pangraph/pull/40
