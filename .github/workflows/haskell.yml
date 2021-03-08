@@ -11,12 +11,8 @@ jobs:
         plan:
           - ghc: '8.10.3'
             resolver: 'lts-17.2'
-          - ghc: '8.8.3'
-            resolver: 'lts-16.11'
-          - ghc: '8.6.5'
-            resolver: 'lts-14.27'
-          - ghc: '8.4.4'
-            resolver: 'lts-12.26'
+          - ghc: '8.8.4'
+            resolver: 'lts-16.31'
         ## include:
         ##   - os: macOS-latest
         ##     flags: '--flag greskell:-hint-test'
