@@ -49,25 +49,22 @@ packages:
 # extra-deps: []
 extra-deps:
 
-## Starting with ip-1.6, it's difficult to meet its dependency.
-- ip-1.5.1
-  
 ## - pangraph-0.2.1
 
-
-## #### If we include a new ip package in extra-dep, we should use new resolver (e.g. lts-14).
-## - ip-1.7.1@rev:1
-## - byteslice-0.2.3.0
-## - bytesmith-0.3.3.0
-## - natural-arithmetic-0.1.1.0
-## - primitive-0.7.0.0
-## - small-bytearray-builder-0.3.2.0
-## - primitive-addr-0.1.0.2
-## - primitive-offset-0.2.0.0
-## - primitive-unlifted-0.1.2.0
-## - run-st-0.1.1.0
-## - contiguous-0.5
-## - tuples-0.1.0.0
+#### ip package and its dependencies
+- ip-1.7.3
+- bytebuild-0.3.7.0
+- byteslice-0.2.3.0
+- bytesmith-0.3.3.0
+- natural-arithmetic-0.1.1.0
+- primitive-0.7.0.0
+- small-bytearray-builder-0.3.2.0
+- primitive-addr-0.1.0.2
+- primitive-offset-0.2.0.0
+- primitive-unlifted-0.1.2.0
+- run-st-0.1.1.0
+- contiguous-0.5
+- tuples-0.1.0.0
 
 
 # Override default flag values for local packages and extra-deps
