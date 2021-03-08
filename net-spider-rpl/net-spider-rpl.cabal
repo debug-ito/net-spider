@@ -72,6 +72,7 @@ test-suite spec
                         NetSpider.RPL.DAOSpec,
                         NetSpider.RPL.CombinedSpec,
                         JSONUtil
+  build-tool-depends:   hspec-discover:hspec-discover
   build-depends:        base, net-spider-rpl, net-spider, text, monad-logger, ip, aeson,
                         hspec >=2.5.5,
                         bytestring >=0.10.8.2 && <0.11,

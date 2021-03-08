@@ -52,6 +52,7 @@ test-suite spec
   other-modules:        NetSpider.CLI.SpiderSpec,
                         NetSpider.CLI.SnapshotSpec,
                         NetSpider.CLI.TestCommon
+  build-tool-depends:   hspec-discover:hspec-discover
   build-depends:        base, net-spider-cli, net-spider, optparse-applicative,
                         hspec >=2.4.4
                         
@@ -62,6 +63,7 @@ test-suite doctest
   hs-source-dirs:       test
   ghc-options:          -Wall -fno-warn-unused-imports "-with-rtsopts=-M512m"
   main-is:              DocTest.hs
+  build-tool-depends:   doctest-discover:doctest-discover
   build-depends:        base,
                         doctest >=0.13 && <0.19,
                         doctest-discover >=0.1.0.7 && <0.3

@@ -66,6 +66,7 @@ test-suite spec
   -- other-extensions:     
   other-modules:        NetSpider.RPL.CLISpec,
                         NetSpider.RPL.CLI.AnalyzeSpec
+  build-tool-depends:   hspec-discover:hspec-discover
   build-depends:        base, net-spider-rpl-cli, net-spider, net-spider-rpl, optparse-applicative, net-spider-cli,
                         text, monad-logger,
                         hspec >=2.5.5,
