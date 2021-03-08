@@ -757,7 +757,6 @@ Sometimes you have to take care of configurations specific to the graph database
 - [net-spider](http://hackage.haskell.org/package/net-spider): net-spider core package.
 - [net-spider-cli](http://hackage.haskell.org/package/net-spider-cli): Composable CLI option parsers for NetSpider objects based on [optparse-applicative](http://hackage.haskell.org/package/optparse-applicative).
 - [net-spider-rpl](http://hackage.haskell.org/package/net-spider-rpl): net-spider data model for RPL ([RFC 6550 - RPL: IPv6 Routing Protocol for Low-Power and Lossy Networks](https://tools.ietf.org/html/rfc6550))
-- [net-spider-pangraph](http://hackage.haskell.org/package/net-spider-pangraph): Conversion between net-spider and [pangraph](https://hackage.haskell.org/package/pangraph).
 - [net-spider-rpl-cli](https://github.com/debug-ito/net-spider/tree/master/net-spider-rpl-cli/): A working example of using net-spider. It uses net-spider-rpl and net-spider-cli.
 
 
