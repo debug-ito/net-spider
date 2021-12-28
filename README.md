@@ -1,5 +1,9 @@
 # net-spider
 
+**This project is basically abandoned.**
+
+----
+
 net-spider is a graph database middleware to maintain a time-varying graph. It stores history of local findings, and creates a snapshot graph at specific time in the past.
 
 The architecture of net-spider is like:
