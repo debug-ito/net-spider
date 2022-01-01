@@ -1,3 +1,6 @@
 module Main (main) where
 
-import NetSpider.RPL.CLI (main)
+import qualified NetSpider.RPL.CLI as CLI
+
+main :: IO ()
+main = CLI.main
