@@ -1,6 +1,6 @@
 # Revision history for net-spider
 
-## 0.4.3.7
+## 0.4.3.7  -- 2022-01-02
 
 * Confirm test with `base-4.15`
 
