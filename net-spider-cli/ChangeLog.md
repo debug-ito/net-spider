@@ -1,5 +1,9 @@
 # Revision history for net-spider-cli
 
+## 0.2.0.7
+
+* Confirm test with `base-4.15`
+
 ## 0.2.0.6  -- 2021-02-11
 
 * Confirm test with `doctest-0.18`.

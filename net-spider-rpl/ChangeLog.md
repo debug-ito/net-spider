@@ -1,5 +1,9 @@
 # Revision history for net-spider-rpl
 
+## 0.4.1.5
+
+* Confirm test with `base-4.15`
+
 ## 0.4.1.4  -- 2020-12-30
 
 * Confirm test with `greskell-1.2.0.0`
