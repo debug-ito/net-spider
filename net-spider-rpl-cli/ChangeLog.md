@@ -1,6 +1,6 @@
 # Revision history for net-spider-rpl-cli
 
-## 0.1.3.4
+## 0.1.3.4  -- 2022-01-02
 
 * Confirm test with `base-4.15`
 
